@@ -1,0 +1,3105 @@
+import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart'; // kIsWeb için
+import 'dart:math' show Random;
+import 'dart:convert';
+import '../services/supabase_config.dart';
+import '../services/profile_service.dart';
+import '../web/web_home_screen.dart'; // Web arayüzü için
+import 'login_screen.dart';
+import 'profile/profile_screen.dart';
+import 'training_history_screen.dart';
+import 'statistics_screen.dart';
+import 'coach/coach_athlete_list_screen.dart';
+import 'coach/athlete_training_history_screen.dart';
+import '../services/training_history_service.dart';
+import 'package:archeryozs/models/live_training.dart';
+import 'package:archeryozs/services/live_training_service.dart';
+import 'package:intl/intl.dart';
+import 'competition/competition_list_screen.dart';
+import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+import 'timer_screen.dart';
+import 'package:archeryozs/screens/notification_page.dart';
+import 'package:package_info_plus/package_info_plus.dart';
+import 'about_screen.dart';
+import 'settings_screen.dart';
+import '../services/version_update_service.dart';
+import '../services/about_service.dart';
+import '../services/valid_days_service.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'help_screen.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:connectivity_plus/connectivity_plus.dart';
+import 'dart:async';
+import 'package:flutter/services.dart';
+import 'dart:io' as io;
+
+class HomeScreen extends StatefulWidget {
+  const HomeScreen({super.key});
+
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
+  int _selectedIndex = 0;
+  String? _userRole;
+  int _retryCount = 0;
+  static const int _maxRetryCount = 3;
+  int _pendingRequestCount = 0;
+  Map<String, dynamic> _dailyQuote = {};
+  List<Map<String, dynamic>> _availableQuotes = [];
+  final Random _random = Random();
+  String _userName = '';
+  bool _quoteInitialized = false;
+  bool _showInitialLoader = true;
+  
+  // Live training data (model-based)
+  List<LiveTraining> _liveTrainings = [];
+  bool _isLoadingLiveTrainings = false;
+  bool _isFetchingLiveTrainings = false; // prevent parallel fetches
+  Timer? _liveFetchDebounce; // debounce realtime-triggered fetches
+  bool _realtimeInitialized = false; // avoid duplicate realtime inits
+  
+  bool _pendingFetchAfterCurrent = false; // request a rerun when current fetch ends
+
+  // Today's trainings (non-live)
+  List<LiveTraining> _todayTrainings = [];
+  bool _isLoadingTodayTrainings = false;
+  bool _isFetchingTodayTrainings = false;
+  Timer? _todayFetchDebounce;
+  bool _liveExpanded = true;
+  bool _todayExpanded = true;
+  bool _validDaysWarningShown = false; // Dialog'un sadece bir kez gösterilmesi için
+  
+  // Güncelleme kontrolü servis ile yönetiliyor
+
+  
+  
+  // Realtime subscription
+  StreamSubscription? _liveTrainingsSubscription;
+  // Connectivity subscription
+  StreamSubscription<ConnectivityResult>? _connectivitySubscription;
+  // Profile realtime subscription
+  StreamSubscription<dynamic>? _profileSubscription;
+  bool _wasOffline = false;
+  bool _connectivityRecoveryScheduled = false;
+  Timer? _connectivityDebounce;
+  
+  // Animation controllers
+  late AnimationController _liveTrainingsAnimationController;
+  late Animation<double> _liveTrainingsFadeAnimation;
+  late AnimationController _liveTrainingCardAnimationController;
+
+  @override
+  void initState() {
+    super.initState();
+    
+    // Initialize animation controllers
+    _liveTrainingsAnimationController = AnimationController(
+      duration: const Duration(milliseconds: 1200),
+      vsync: this,
+    );
+    _liveTrainingsFadeAnimation = Tween<double>(
+      begin: 0.0,
+      end: 1.0,
+    ).animate(CurvedAnimation(
+      parent: _liveTrainingsAnimationController,
+      curve: Curves.easeOutBack,
+    ));
+    
+    _liveTrainingCardAnimationController = AnimationController(
+      duration: const Duration(milliseconds: 800),
+      vsync: this,
+    );
+    
+    _loadCachedProfileSummary();
+    _loadUserRole();
+    _fetchPendingRequests();
+    // Versiyon kontrolü (bloklayıcı AlertDialog gerekiyorsa gösterir)
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      VersionUpdateService.checkAndMaybeShowForceUpdate(context);
+    });
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _checkAccountValidity(context);
+      _loadDailyQuotes();
+      _checkAndDecrementValidDays();
+      // Realtime init will be started once on role load
+    });
+    // Listen connectivity changes to refresh when network returns
+    _connectivitySubscription = Connectivity().onConnectivityChanged.listen((result) async {
+      final bool isOnline = result != ConnectivityResult.none;
+      if (isOnline && _wasOffline) {
+        _onConnectivityRestored();
+      }
+      _wasOffline = !isOnline;
+    });
+    // Short initial loader for better UX
+    Future.delayed(const Duration(seconds: 1), () {
+      if (!mounted) return;
+      setState(() {
+        _showInitialLoader = false;
+      });
+    });
+  }
+
+  @override
+  void dispose() {
+    _liveTrainingsSubscription?.cancel();
+    _connectivitySubscription?.cancel();
+    _profileSubscription?.cancel();
+    _liveTrainingsAnimationController.dispose();
+    _liveTrainingCardAnimationController.dispose();
+    _liveFetchDebounce?.cancel();
+    _connectivityDebounce?.cancel();
+    // TrainingHistoryService'in cache'ini temizle
+    // Tüm sporcular için cache'i temizle (gerekirse)
+    super.dispose();
+  }
+
+  // Calculation helpers moved to mapper/service. Model already holds totals.
+
+  Future<void> _loadCachedProfileSummary() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final cachedRole = prefs.getString('cached_profile_role');
+      final cachedFirstName = prefs.getString('cached_profile_first_name');
+      if (!mounted) return;
+      if ((cachedRole != null && cachedRole.isNotEmpty) ||
+          (cachedFirstName != null && cachedFirstName.isNotEmpty)) {
+        setState(() {
+          _userRole = cachedRole ?? _userRole;
+          _userName = cachedFirstName ?? _userName;
+        });
+      }
+    } catch (e) {
+      // ignore cache read errors silently
+    }
+  }
+
+  Future<void> _saveProfileSummaryToCache({
+    required String? role,
+    required String firstName,
+  }) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      if (role != null) {
+        await prefs.setString('cached_profile_role', role);
+      }
+      await prefs.setString('cached_profile_first_name', firstName);
+    } catch (e) {
+      // ignore cache write errors silently
+    }
+  }
+
+  void _onConnectivityRestored() {
+    if (_connectivityRecoveryScheduled) return;
+    _connectivityRecoveryScheduled = true;
+    _connectivityDebounce?.cancel();
+    _connectivityDebounce = Timer(const Duration(milliseconds: 800), () async {
+      _connectivityRecoveryScheduled = false;
+      if (!mounted) return;
+      // Reload role and start realtime if needed
+      await _loadUserRole();
+      // Refresh pending requests and quotes
+      unawaited(_fetchPendingRequests());
+      unawaited(_loadDailyQuotes());
+      // Refresh sections (debounced to respect guards)
+      _debouncedFetchLiveTrainings(isRealtime: false);
+      _debouncedFetchTodayTrainings(isRealtime: false);
+      // Ensure realtime started if already coach
+      if (_userRole == 'coach') {
+        _startLiveTrainingsRealtimeSubscription();
+      }
+    });
+  }
+
+  Future<void> _loadUserRole() async {
+    if (!mounted) return;
+    
+    // Begin background loading (do not block UI)
+    setState(() {});
+    
+    try {
+      // Network quick check
+      final connectivity = await (Connectivity().checkConnectivity());
+      if (!mounted) return;
+      final hasNetwork = connectivity != ConnectivityResult.none;
+      if (!hasNetwork) {
+        // Immediate offline fallback: allow UI to proceed
+        setState(() {});
+        return;
+      }
+
+      // Kısa bir gecikme ekleyerek auth state'in doğru şekilde yüklenmesini sağla
+      if (_retryCount > 0) {
+        await Future.delayed(Duration(milliseconds: 300 * _retryCount));
+      }
+      
+      final user = SupabaseConfig.client.auth.currentUser;
+      
+      // User null ise yeniden dene
+      if (user == null) {
+        print('|10n:home_screen_user_null');
+        
+        if (_retryCount < _maxRetryCount) {
+          _retryCount++;
+          print('|10n:retrying_load_user_role: $_retryCount');
+          _loadUserRole();
+          return;
+        } else {
+          // Maksimum deneme sayısına ulaşıldı
+          throw Exception('|10n:user_not_found_after_retries');
+        }
+      }
+      
+      // Kullanıcı varsa profil bilgilerini al
+      final profileService = ProfileService();
+      final profile = await profileService
+          .getProfile(user.id)
+          .timeout(const Duration(seconds: 5));
+      
+      if (mounted) {
+        setState(() {
+          _userRole = profile?.role;
+          _userName = profile?.firstName ?? '';
+          _retryCount = 0; // başarılı olduğunda retry sayacını sıfırla
+        });
+        // Cache profile summary for fast startup rendering next time
+        _saveProfileSummaryToCache(role: _userRole, firstName: _userName);
+
+        // Start profile realtime subscription to reflect name changes immediately
+        final currentUser = SupabaseConfig.client.auth.currentUser;
+        if (currentUser != null) {
+          _startProfileRealtimeSubscription(currentUser.id);
+        }
+        
+        // Kullanıcı rolü yüklendikten sonra realtime subscription'ı tek sefer başlat
+        if (_userRole == 'coach') {
+          _startLiveTrainingsRealtimeSubscription();
+          // Rol koç olduğunda, ilk canlı antrenmanları hemen yükle
+          _fetchLiveTrainings(isRealtime: false);
+          // And also fetch today's non-live trainings
+          _fetchTodayTrainings(isRealtime: false);
+        }
+      }
+    } catch (e) {
+      print('|10n:error_loading_user_role: $e');
+      
+      if (mounted) {
+        // Fail-fast on timeout or network issues without blocking UI
+        setState(() {});
+        
+        // Hata durumunda 3 saniye sonra otomatik olarak yeniden dene
+        if (_retryCount < _maxRetryCount) {
+          _retryCount++;
+          Future.delayed(Duration(seconds: 2), () {
+            if (mounted) _loadUserRole();
+          });
+        }
+      }
+    }
+  }
+
+  void _startProfileRealtimeSubscription(String userId) {
+    // Cancel previous subscription if any
+    _profileSubscription?.cancel();
+    // Listen to profile updates and update cached name immediately
+    final service = ProfileService();
+    _profileSubscription = service.streamProfile(userId).listen((profile) {
+      if (!mounted) return;
+      if (profile != null) {
+        setState(() {
+          _userName = profile.firstName;
+          _userRole = profile.role;
+        });
+        _saveProfileSummaryToCache(role: _userRole, firstName: _userName);
+      }
+    }, onError: (_) {
+      // ignore stream errors silently
+    });
+  }
+
+  Future<void> _fetchPendingRequests() async {
+    final user = SupabaseConfig.client.auth.currentUser;
+    if (user == null) {
+      if (!mounted) return;
+      setState(() => _pendingRequestCount = 0);
+      return;
+    }
+    try {
+      final connectivity = await (Connectivity().checkConnectivity());
+      final hasNetwork = connectivity != ConnectivityResult.none;
+      if (!hasNetwork) {
+        if (!mounted) return;
+        setState(() => _pendingRequestCount = 0);
+        return;
+      }
+      final response = await SupabaseConfig.client
+          .from('athlete_coach')
+          .select()
+          .or('coach_id.eq.${user.id},athlete_id.eq.${user.id}')
+          .eq('status', 'pending')
+          .timeout(const Duration(seconds: 5));
+      final filtered = response.where((notif) => notif['requester_id'] != user.id).toList();
+      if (!mounted) return;
+      setState(() {
+        _pendingRequestCount = filtered.length;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _pendingRequestCount = 0);
+    }
+  }
+
+  Future<void> _fetchLiveTrainings({bool isRealtime = false}) async {
+    // Defer the in-flight guard until role/user checks below
+    // Sadece koç rolü için canlı antrenmanları çek
+    if (_userRole != 'coach') {
+      if (!mounted) return;
+      setState(() {
+        _liveTrainings = [];
+        _isLoadingLiveTrainings = false;
+      });
+      return;
+    }
+
+    final user = SupabaseConfig.client.auth.currentUser;
+    if (user == null) {
+      if (!mounted) return;
+      setState(() {
+        _liveTrainings = [];
+        _isLoadingLiveTrainings = false;
+      });
+      return;
+    }
+
+    if (_isFetchingLiveTrainings) {
+      print('[LIVE_BULK] Skip fetch - already running');
+      return;
+    }
+    _isFetchingLiveTrainings = true;
+
+    // Realtime update'lerde loading spinner gösterme (athlete_training_history_screen ile aynı)
+    if (!isRealtime && mounted) {
+      setState(() {
+        _isLoadingLiveTrainings = true;
+      });
+    }
+
+    try {
+      final connectivity = await (Connectivity().checkConnectivity());
+      final hasNetwork = connectivity != ConnectivityResult.none;
+      if (!hasNetwork) {
+        if (!mounted) return;
+        setState(() {
+          _liveTrainings = [];
+          _isLoadingLiveTrainings = false;
+        });
+        return;
+      }
+
+      // Use service to fetch model list
+      final service = LiveTrainingService();
+      final List<LiveTraining> liveTrainings = await service.fetchCoachLiveTrainings(isRealtime: isRealtime);
+      // Filter out trainings with no arrows entered
+      final List<LiveTraining> filteredLive = liveTrainings.where((t) => t.totalArrows > 0).toList();
+
+      if (!mounted) { _isFetchingLiveTrainings = false; return; }
+      setState(() {
+        _liveTrainings = filteredLive;
+        _isLoadingLiveTrainings = false;
+      });
+      
+      // Animasyonu tetikle
+      if (filteredLive.isNotEmpty) {
+        _liveTrainingsAnimationController.forward();
+        _liveTrainingCardAnimationController.forward();
+      } else {
+        _liveTrainingsAnimationController.reset();
+        _liveTrainingCardAnimationController.reset();
+      }
+      
+      print('🎯 Live trainings updated: ${liveTrainings.length} live trainings found');
+
+    } catch (e) {
+      print('Error fetching live trainings: $e');
+      if (!mounted) { _isFetchingLiveTrainings = false; return; }
+      setState(() {
+        _liveTrainings = [];
+        _isLoadingLiveTrainings = false;
+      });
+    }
+    _isFetchingLiveTrainings = false;
+    // If there was a debounced request while we were fetching, schedule it now
+    if (_pendingFetchAfterCurrent) {
+      _pendingFetchAfterCurrent = false;
+      print('[LIVE_BULK] Rerun debounced fetch after current completed');
+      _debouncedFetchLiveTrainings(isRealtime: true);
+    }
+  }
+
+  void _debouncedFetchLiveTrainings({required bool isRealtime}) {
+    if (_isFetchingLiveTrainings) {
+      // defer; will run once the current fetch completes
+      _pendingFetchAfterCurrent = true;
+      print('[LIVE_BULK] Debounced while fetching → will rerun after current');
+      return;
+    }
+    _liveFetchDebounce?.cancel();
+    _liveFetchDebounce = Timer(const Duration(milliseconds: 600), () {
+      _fetchLiveTrainings(isRealtime: isRealtime);
+    });
+  }
+
+  void _debouncedFetchTodayTrainings({required bool isRealtime}) {
+    if (_isFetchingTodayTrainings) return;
+    _todayFetchDebounce?.cancel();
+    _todayFetchDebounce = Timer(const Duration(milliseconds: 600), () {
+      _fetchTodayTrainings(isRealtime: isRealtime);
+    });
+  }
+
+  void _startLiveTrainingsRealtimeSubscription() {
+    // Sadece koç rolü için realtime subscription başlat
+    if (_userRole != 'coach') return;
+    if (_realtimeInitialized) return; // already started
+
+    final user = SupabaseConfig.client.auth.currentUser;
+    if (user == null) return;
+
+    // Connectivity-aware start
+    () async {
+      final connectivity = await Connectivity().checkConnectivity();
+      if (connectivity == ConnectivityResult.none) {
+        print('🔕 Skip realtime init: offline');
+        return;
+      }
+
+      try {
+        print('🔔 Starting live trainings realtime subscription for coach: ${user.id}');
+
+        // Mevcut subscription'ı iptal et
+        _liveTrainingsSubscription?.cancel();
+
+        // TrainingHistoryService'in realtime subscription'ını kullan
+        final trainingHistoryService = TrainingHistoryService();
+        
+        // Her sporcu için ayrı realtime subscription başlat
+        await _fetchAthletesAndStartRealtimeSubscriptions(trainingHistoryService);
+        _realtimeInitialized = true;
+      } catch (e) {
+        print('❌ Realtime init failed (will retry on connectivity restore): $e');
+      }
+    }();
+  }
+
+  Future<void> _fetchAthletesAndStartRealtimeSubscriptions(TrainingHistoryService trainingHistoryService) async {
+    final user = SupabaseConfig.client.auth.currentUser;
+    if (user == null) return;
+
+    try {
+      final connectivity = await (Connectivity().checkConnectivity());
+      if (connectivity == ConnectivityResult.none) {
+        print('🔕 Skip fetching athletes for realtime: offline');
+        return;
+      }
+      // Koçun sporcularını al
+      final athletesResponse = await SupabaseConfig.client
+          .from('athlete_coach')
+          .select('athlete_id')
+          .eq('coach_id', user.id)
+          .eq('status', 'accepted')
+          .timeout(const Duration(seconds: 5));
+
+      print('🏃 Found ${athletesResponse.length} athletes for realtime subscription');
+
+      // Her sporcu için realtime subscription başlat
+      for (final athlete in athletesResponse) {
+        final athleteId = athlete['athlete_id'] as String;
+        
+        // Sporcu profil bilgilerini al
+        try {
+          final profileResponse = await SupabaseConfig.client
+              .from('profiles')
+              .select('first_name, last_name, id')
+              .eq('id', athleteId)
+              .single()
+              .timeout(const Duration(seconds: 3));
+          
+          final athleteUserId = profileResponse['id'] as String;
+          
+          print('🔔 Starting realtime subscription for athlete: $athleteId (user_id: $athleteUserId)');
+          
+          // TrainingHistoryService'in realtime subscription'ını başlat
+          trainingHistoryService.startCoachRealtimeSubscription(
+            athleteUserId,
+            () {
+              print('🔔 Live trainings realtime update received for athlete: $athleteId');
+              // Realtime update geldiğinde canlı antrenmanları debounced çek
+              _debouncedFetchLiveTrainings(isRealtime: true);
+              // Also refresh today's trainings
+              _debouncedFetchTodayTrainings(isRealtime: true);
+            },
+          );
+        } catch (e) {
+          print('❌ Error setting up realtime subscription for athlete $athleteId: $e');
+        }
+      }
+    } catch (e) {
+      print('❌ Error fetching athletes for realtime subscription: $e');
+    }
+  }
+
+  Future<void> _fetchTodayTrainings({bool isRealtime = false}) async {
+    if (_userRole != 'coach') {
+      if (!mounted) return;
+      setState(() {
+        _todayTrainings = [];
+        _isLoadingTodayTrainings = false;
+      });
+      return;
+    }
+
+    final user = SupabaseConfig.client.auth.currentUser;
+    if (user == null) {
+      if (!mounted) return;
+      setState(() {
+        _todayTrainings = [];
+        _isLoadingTodayTrainings = false;
+      });
+      return;
+    }
+
+    if (_isFetchingTodayTrainings) return;
+    _isFetchingTodayTrainings = true;
+
+    if (!isRealtime && mounted) {
+      setState(() {
+        _isLoadingTodayTrainings = true;
+      });
+    }
+
+    try {
+      final connectivity = await (Connectivity().checkConnectivity());
+      final hasNetwork = connectivity != ConnectivityResult.none;
+      if (!hasNetwork) {
+        if (!mounted) return;
+        setState(() {
+          _todayTrainings = [];
+          _isLoadingTodayTrainings = false;
+        });
+        return;
+      }
+
+      final service = LiveTrainingService();
+      final List<LiveTraining> today = await service.fetchCoachTodayTrainings();
+      final List<LiveTraining> filteredToday = today.where((t) => t.totalArrows > 0).toList();
+
+      if (!mounted) { _isFetchingTodayTrainings = false; return; }
+      setState(() {
+        _todayTrainings = filteredToday;
+        _isLoadingTodayTrainings = false;
+      });
+    } catch (e) {
+      print('Error fetching today trainings: $e');
+      if (!mounted) { _isFetchingTodayTrainings = false; return; }
+      setState(() {
+        _todayTrainings = [];
+        _isLoadingTodayTrainings = false;
+      });
+    }
+    _isFetchingTodayTrainings = false;
+  }
+
+  Future<void> _loadDailyQuotes() async {
+    try {
+      // Immediate offline check to avoid waiting
+      final connectivity = await (Connectivity().checkConnectivity());
+      final hasNetwork = connectivity != ConnectivityResult.none;
+
+      // Cache-first: varsa önce cached listeden tek seferlik göster
+      final localeCode = Localizations.localeOf(context).languageCode.toLowerCase();
+      final cachedList = await _loadQuotesListFromCacheForLocale(localeCode);
+      if (cachedList.isNotEmpty && mounted && _dailyQuote.isEmpty) {
+        final item = cachedList[_random.nextInt(cachedList.length)];
+        setState(() {
+          _dailyQuote = {
+            'quote': item['quote'] as String? ?? '',
+            'author': item['author'] as String?,
+            'authorVisible': (item['authorVisible'] as bool?) ?? false,
+          };
+          _quoteInitialized = true;
+        });
+        print('[DAILY_QUOTES][CACHE] Shown from cached list immediately.');
+      }
+
+      if (!hasNetwork) {
+        // No network: rely on cache and return
+        if (!mounted) return;
+        setState(() {
+          _availableQuotes = [];
+          _quoteInitialized = true;
+        });
+        return;
+      }
+
+      print('[DAILY_QUOTES] Fetching visible quotes from Supabase...');
+      final List<dynamic> response = await SupabaseConfig.client
+          .from('daily_quotes')
+          .select('id,dailyQuote_en,dailyQuote_tr,author,author_visible,quote_visible')
+          .eq('quote_visible', true)
+          .timeout(const Duration(seconds: 6));
+      print('[DAILY_QUOTES] Fetch completed. Raw length: ' + response.length.toString());
+
+      if (!mounted) return;
+      setState(() {
+        _availableQuotes = response.cast<Map<String, dynamic>>();
+      });
+      print('[DAILY_QUOTES] Available quotes set. Count: ' + _availableQuotes.length.toString());
+
+      _generateDailyQuote();
+      if (mounted) {
+        setState(() {
+          _quoteInitialized = true;
+        });
+      }
+    } catch (e) {
+      // Sessizce yoksay; alıntılar opsiyonel bir özellik
+      if (!mounted) return;
+      setState(() {
+        _availableQuotes = [];
+      });
+      print('[DAILY_QUOTES][ERROR] Failed to load quotes: ' + e.toString());
+      // Fallback 1: son gösterilen alıntıyı cache'ten yükle
+      await _loadQuoteFromCache();
+      // Fallback 2: cached liste varsa ordan rastgele seç
+      if (mounted && (_dailyQuote.isEmpty || (_dailyQuote['quote'] as String?)?.isEmpty == true)) {
+        final localeCode = Localizations.localeOf(context).languageCode.toLowerCase();
+        final cachedList = await _loadQuotesListFromCacheForLocale(localeCode);
+        if (cachedList.isNotEmpty) {
+          print('[DAILY_QUOTES][CACHE] Selecting from cached list. Count: ' + cachedList.length.toString());
+          final item = cachedList[_random.nextInt(cachedList.length)];
+          setState(() {
+            _dailyQuote = {
+              'quote': item['quote'] as String? ?? '',
+              'author': item['author'] as String?,
+              'authorVisible': (item['authorVisible'] as bool?) ?? false,
+            };
+            _quoteInitialized = true;
+          });
+        } else {
+          print('[DAILY_QUOTES][CACHE] No cached list available for locale=' + localeCode);
+          setState(() {
+            _quoteInitialized = true;
+          });
+        }
+      }
+    }
+  }
+
+  Future<void> _generateDailyQuote() async {
+    if (!mounted) return;
+    final localeCode = Localizations.localeOf(context).languageCode.toLowerCase();
+
+    // Eğer çevrimdışı veya havuz boşsa, cached listeden seç
+    if (_availableQuotes.isEmpty) {
+      print('[DAILY_QUOTES] No available quotes in memory. Trying cached list for locale=' + localeCode);
+      final cachedList = await _loadQuotesListFromCacheForLocale(localeCode);
+      if (cachedList.isNotEmpty) {
+        final item = cachedList[_random.nextInt(cachedList.length)];
+        final quoteText = (item['quote'] as String?) ?? '';
+        final authorText = (item['author'] as String?);
+        final authorVisible = (item['authorVisible'] as bool?) ?? false;
+        setState(() {
+          _dailyQuote = {
+            'quote': quoteText,
+            'author': authorText,
+            'authorVisible': authorVisible,
+          };
+        });
+        print('[DAILY_QUOTES] Selected from cached list. hasText=' + quoteText.isNotEmpty.toString());
+        return;
+      } else {
+        print('[DAILY_QUOTES] Cached list is empty. Nothing to select.');
+        return;
+      }
+    }
+
+    print('[DAILY_QUOTES] Selecting random quote. Locale: ' + localeCode + ', pool size: ' + _availableQuotes.length.toString());
+    final quote = _availableQuotes[_random.nextInt(_availableQuotes.length)];
+    final selectedId = quote['id'];
+    final quoteText = localeCode == 'tr'
+        ? (quote['dailyQuote_tr'] as String? ?? '')
+        : (quote['dailyQuote_en'] as String? ?? '');
+    final authorVisible = (quote['author_visible'] as bool?) ?? false;
+    final authorText = (quote['author'] as String?);
+
+    print('[DAILY_QUOTES] Selected id=' + (selectedId?.toString() ?? 'null') +
+        ', hasText=' + (quoteText.isNotEmpty).toString() +
+        ', authorVisible=' + authorVisible.toString() +
+        ', hasAuthor=' + ((authorText ?? '').isNotEmpty).toString());
+
+    setState(() {
+      _dailyQuote = {
+        'quote': quoteText,
+        'author': authorText,
+        'authorVisible': authorVisible,
+      };
+    });
+
+    // Cache'e kaydet (locale'ye göre)
+    _saveQuoteToCache(
+      text: quoteText,
+      author: authorText,
+      authorVisible: authorVisible,
+      localeCode: localeCode,
+    );
+
+    // Görünür quote listesini locale bazlı cache'le
+    _saveQuotesListToCache(localeCode: 'tr', items: _availableQuotes.map((q) => {
+      'quote': (q['dailyQuote_tr'] as String?) ?? '',
+      'author': (q['author'] as String?),
+      'authorVisible': (q['author_visible'] as bool?) ?? false,
+    }).toList());
+    _saveQuotesListToCache(localeCode: 'en', items: _availableQuotes.map((q) => {
+      'quote': (q['dailyQuote_en'] as String?) ?? '',
+      'author': (q['author'] as String?),
+      'authorVisible': (q['author_visible'] as bool?) ?? false,
+    }).toList());
+  }
+
+  Future<void> _saveQuotesListToCache({
+    required String localeCode,
+    required List<Map<String, dynamic>> items,
+  }) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final jsonStr = jsonEncode(items);
+      await prefs.setString('daily_quotes_list_' + localeCode, jsonStr);
+      print('[DAILY_QUOTES][CACHE] Saved list for locale=' + localeCode + ', count=' + items.length.toString());
+    } catch (e) {
+      print('[DAILY_QUOTES][CACHE][ERROR] Save list failed: ' + e.toString());
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> _loadQuotesListFromCacheForLocale(String localeCode) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final jsonStr = prefs.getString('daily_quotes_list_' + localeCode);
+      if (jsonStr == null || jsonStr.isEmpty) return [];
+      final decoded = jsonDecode(jsonStr) as List<dynamic>;
+      final list = decoded.cast<Map<String, dynamic>>();
+      return list;
+    } catch (e) {
+      print('[DAILY_QUOTES][CACHE][ERROR] Load list failed: ' + e.toString());
+      return [];
+    }
+  }
+  Future<void> _saveQuoteToCache({
+    required String text,
+    String? author,
+    required bool authorVisible,
+    required String localeCode,
+  }) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('daily_quote_text_' + localeCode, text);
+      if (author != null && author.isNotEmpty) {
+        await prefs.setString('daily_quote_author_' + localeCode, author);
+      } else {
+        await prefs.remove('daily_quote_author_' + localeCode);
+      }
+      await prefs.setBool('daily_quote_author_visible_' + localeCode, authorVisible);
+      print('[DAILY_QUOTES][CACHE] Saved for locale=' + localeCode);
+    } catch (e) {
+      print('[DAILY_QUOTES][CACHE][ERROR] Save failed: ' + e.toString());
+    }
+  }
+
+  Future<void> _loadQuoteFromCache() async {
+    try {
+      final localeCode = Localizations.localeOf(context).languageCode.toLowerCase();
+      final prefs = await SharedPreferences.getInstance();
+      final text = prefs.getString('daily_quote_text_' + localeCode);
+      if (text == null || text.isEmpty) {
+        print('[DAILY_QUOTES][CACHE] No cached quote for locale=' + localeCode);
+        return;
+      }
+      final author = prefs.getString('daily_quote_author_' + localeCode);
+      final authorVisible = prefs.getBool('daily_quote_author_visible_' + localeCode) ?? false;
+      if (!mounted) return;
+      setState(() {
+        _dailyQuote = {
+          'quote': text,
+          'author': author,
+          'authorVisible': authorVisible,
+        };
+      });
+      print('[DAILY_QUOTES][CACHE] Loaded cached quote for locale=' + localeCode);
+    } catch (e) {
+      print('[DAILY_QUOTES][CACHE][ERROR] Load failed: ' + e.toString());
+    }
+  }
+  
+  // Lokalizasyon tabanlı statik alıntı fonksiyonları kaldırıldı; veriler Supabase'den geliyor
+
+
+
+  Future<void> _signOut(BuildContext context) async {
+    final l10n = AppLocalizations.of(context);
+    final confirmed = await showDialog<bool>(
+      context: context,
+          builder: (context) => AlertDialog(
+        title: Text(l10n.signOut),
+            content: Text(l10n.signOutConfirm),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: Text(l10n.cancel),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: Text(l10n.signOut),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true) {
+      await SupabaseConfig.client.auth.signOut();
+      if (context.mounted) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => const LoginScreen()),
+        );
+      }
+    }
+  }
+
+  // VersionUpdateService kullanılıyor; eski kontrol metodu kaldırıldı
+
+  Future<void> _checkAccountValidity(BuildContext context) async {
+    try {
+      final l10n = AppLocalizations.of(context);
+      final aboutInfo = await AboutService.fetchAboutInfo(Localizations.localeOf(context).languageCode);
+      
+      if (aboutInfo.validDays <= 0) {
+        _showAccountExpiredDialog(context, l10n);
+      } else if (aboutInfo.validDays <= 5 && !_validDaysWarningShown) {
+        _showValidDaysWarningDialog(context, l10n, aboutInfo.validDays);
+        _validDaysWarningShown = true; // Dialog gösterildi olarak işaretle
+      }
+    } catch (e) {
+      // If there's an error fetching account info, don't block the user
+      print('Error checking account validity: $e');
+    }
+  }
+
+  Future<void> _checkAndDecrementValidDays() async {
+    try {
+      await ValidDaysService.checkAndDecrementValidDays();
+    } catch (e) {
+      print('Error in daily valid_days decrement: $e');
+    }
+  }
+
+  void _showAccountExpiredDialog(BuildContext context, AppLocalizations l10n) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    showDialog(
+      context: context,
+      barrierDismissible: false, // User cannot dismiss by tapping outside
+      builder: (BuildContext context) {
+        return WillPopScope(
+          onWillPop: () async => false, // Prevent back button from closing dialog
+          child: AlertDialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+              side: BorderSide(
+                color: Theme.of(context).colorScheme.outline,
+                width: 1,
+              ),
+            ),
+            title: Row(
+              children: [
+                Icon(
+                  Icons.warning_rounded,
+                  color: Colors.red[600],
+                  size: 28,
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    l10n.accountExpired,
+                    style: TextStyle(
+                      fontSize: (screenWidth * 0.05).clamp(18.0, 22.0),
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                RichText(
+                  text: TextSpan(
+                    style: TextStyle(
+                      fontSize: 16, 
+                      color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black,
+                    ),
+                    children: [
+                      TextSpan(
+                        text: l10n.accountExpiredMessage.split('hitarcheryteam@gmail.com')[0],
+                      ),
+                      TextSpan(
+                        text: 'hitarcheryteam@gmail.com',
+                        style: const TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                      TextSpan(
+                        text: l10n.accountExpiredMessage.split('hitarcheryteam@gmail.com')[1],
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            actions: [
+              Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  TextButton(
+                    onPressed: () {
+                      _copyEmailToClipboard(context);
+                    },
+                    style: TextButton.styleFrom(
+                      foregroundColor: Theme.of(context).colorScheme.primary,
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      side: BorderSide(
+                        color: Theme.of(context).colorScheme.primary,
+                        width: 1,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    child: Text(
+                      l10n.copyEmail,
+                      style: const TextStyle(fontWeight: FontWeight.w600),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  TextButton(
+                    onPressed: () async {
+                      try {
+                        await SupabaseConfig.client.auth.signOut();
+                        if (context.mounted) {
+                          Navigator.of(context).pushAndRemoveUntil(
+                            MaterialPageRoute(builder: (context) => const LoginScreen()),
+                            (route) => false,
+                          );
+                        }
+                      } catch (e) {
+                        print('Error signing out: $e');
+                        if (context.mounted) {
+                          Navigator.of(context).pushAndRemoveUntil(
+                            MaterialPageRoute(builder: (context) => const LoginScreen()),
+                            (route) => false,
+                          );
+                        }
+                      }
+                    },
+                    style: TextButton.styleFrom(
+                      foregroundColor: Colors.orange[600],
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      side: BorderSide(
+                        color: Colors.orange[600]!,
+                        width: 1,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    child: Text(
+                      l10n.signOut,
+                      style: const TextStyle(fontWeight: FontWeight.w600),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  TextButton(
+                    onPressed: () {
+                      // Close the app
+                      SystemNavigator.pop();
+                    },
+                    style: TextButton.styleFrom(
+                      foregroundColor: Colors.red[600],
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      side: BorderSide(
+                        color: Colors.red[600]!,
+                        width: 1,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    child: Text(
+                      l10n.closeApp,
+                      style: const TextStyle(fontWeight: FontWeight.w600),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  void _copyEmailToClipboard(BuildContext context) async {
+    try {
+      await Clipboard.setData(const ClipboardData(text: 'hitarcheryteam@gmail.com'));
+      if (context.mounted) {
+        final l10n = AppLocalizations.of(context);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(l10n.emailCopied),
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
+    } catch (e) {
+      print('Error copying to clipboard: $e');
+    }
+  }
+
+  void _showValidDaysWarningDialog(BuildContext context, AppLocalizations l10n, int validDays) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final screenWidth = MediaQuery.of(context).size.width;
+    
+    showDialog(
+      context: context,
+      barrierDismissible: true, // User can dismiss by tapping outside
+      builder: (BuildContext context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+            side: BorderSide(
+              color: theme.colorScheme.outline,
+              width: 1,
+            ),
+          ),
+          title: Row(
+            children: [
+              Icon(
+                Icons.warning_amber_rounded,
+                color: Colors.orange[600],
+                size: 28,
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  l10n.warning,
+                  style: const TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.orange[50]?.withOpacity(isDark ? 0.1 : 1.0) ?? 
+                         (isDark ? Colors.orange[900]?.withOpacity(0.2) : Colors.orange[50]),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: Colors.orange[200]?.withOpacity(isDark ? 0.3 : 1.0) ?? 
+                           (isDark ? Colors.orange[700]! : Colors.orange[200]!),
+                    width: 1,
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.schedule,
+                      color: Colors.orange[600],
+                      size: (screenWidth * 0.06).clamp(20.0, 26.0),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        l10n.daysRemaining(validDays),
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.orange[800]?.withOpacity(isDark ? 0.9 : 1.0) ?? 
+                                 (isDark ? Colors.orange[200] : Colors.orange[800]),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                l10n.validDaysWarningMessage,
+                style: TextStyle(
+                  fontSize: 16,
+                  color: isDark ? Colors.grey[300] : Colors.grey[700],
+                  height: 1.5,
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              style: TextButton.styleFrom(
+                foregroundColor: theme.colorScheme.primary,
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                side: BorderSide(
+                  color: theme.colorScheme.primary,
+                  width: 1,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+              child: Text(
+                l10n.close,
+                style: const TextStyle(
+                  fontWeight: FontWeight.w600,
+                  fontSize: 16,
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // Web platformunda WebHomeScreen'e yönlendir
+    if (kIsWeb) {
+      return const WebHomeScreen();
+    }
+    
+    final l10n = AppLocalizations.of(context);
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    // Hata durumunda da içerik render edilmeye devam et (cache-first yaklaşımı)
+
+    if (_showInitialLoader) {
+      return Scaffold(
+        appBar: AppBar(
+          title: Text(l10n.appName),
+        ),
+        body: const Center(
+          child: CircularProgressIndicator(),
+        ),
+      );
+    }
+
+    final List<Widget> pages = [
+      SingleChildScrollView(
+        child: Center(
+          child: Column(
+                  mainAxisAlignment: MainAxisAlignment.start,
+                  children: [
+                    const SizedBox(height: 16),
+                    // Banner kaldırıldı; bloklayıcı dialog sayfa üstünde gösterilecek
+                    // Welcome Message
+                    if (_userName.isNotEmpty) ...[
+                      _buildWelcomeCard(context),
+                      const SizedBox(height: 16),
+                    ],
+                    // Daily Quote Widget
+                    if (_dailyQuote.isNotEmpty) ...[
+                      _buildQuoteCard(context),
+                      const SizedBox(height: 16),
+                    ],
+                    if (_dailyQuote.isEmpty && _quoteInitialized) ...[
+                      _buildOfflineInfoPlaceholder(context),
+                      const SizedBox(height: 16),
+                    ],
+                    // Sadece sporcu rolüne sahip kullanıcılar için antrenman özelliklerini göster
+                    if (_userRole == 'athlete') ...[
+                      // _buildFeatureCard(
+                      //   context,
+                      //   l10n.trainingSystem,
+                      //   l10n.trainingSystemDesc,
+                      //   Icons.sports_score,
+                      //   () => Navigator.push(
+                      //     context,
+                      //     MaterialPageRoute(
+                      //       builder: (context) => const TrainingConfigScreen(),
+                      //     ),
+                      //   ),
+                      // ),
+                      // const SizedBox(height: 16),
+                      _buildFeatureCard(
+                        context,
+                        l10n.trainingHistory,
+                        l10n.trainingHistoryDesc,
+                        Icons.history,
+                        () => Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const TrainingHistoryScreen(),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      _buildFeatureCard(
+                        context,
+                        l10n.competitionRecords,
+                        l10n.competitionRecordsDesc,
+                        Icons.emoji_events,
+                        () => Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const CompetitionListScreen(),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      _buildFeatureCard(
+                        context,
+                        l10n.myStatistics,
+                        l10n.myStatisticsDesc,
+                        Icons.analytics_outlined,
+                        () => Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const StatisticsScreen(),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      
+                    ],
+
+                    // Koç rolüne sahip kullanıcılar için Sporcularım ve Yarışmalar özelliklerini göster
+                    if (_userRole == 'coach') ...[
+                      _buildFeatureCard(
+                        context,
+                        l10n.homePage,
+                        l10n.manageAthletesDesc,
+                        Icons.people,
+                        () => Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => CoachAthleteListScreen(
+                              args: CoachAthleteListArgs(userRole: 'coach'),
+                              onPendingChanged: _fetchPendingRequests,
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      
+                      // Canlı Antrenmanlar bölümü
+                      if (_isLoadingLiveTrainings) ...[
+                        _buildLiveTrainingsLoadingSection(context, l10n, theme, isDark),
+                        const SizedBox(height: 16),
+                      ] else if (_liveTrainings.isNotEmpty) ...[
+                        _buildLiveTrainingsSection(context, l10n, theme, isDark),
+                        const SizedBox(height: 16),
+                      ] else ...[
+                        _buildLiveTrainingsEmptySection(context, l10n, theme, isDark),
+                        const SizedBox(height: 16),
+                      ],
+
+                      // Bugünkü antrenmanlar (canlı olmayanlar)
+                      if (_isLoadingTodayTrainings) ...[
+                        _buildTodayTrainingsLoadingSection(context, l10n, theme, isDark),
+                        const SizedBox(height: 16),
+                      ] else if (_todayTrainings.isNotEmpty) ...[
+                        _buildTodayTrainingsSection(context, l10n, theme, isDark),
+                        const SizedBox(height: 16),
+                      ] else ...[
+                        _buildTodayTrainingsEmptySection(context, l10n, theme, isDark),
+                        const SizedBox(height: 16),
+                      ],
+                    ],
+
+                    // Sporcu veya koç olmayanlar için bilgi mesajı göster
+                    if (_userRole != 'athlete' &&
+                        _userRole != 'coach' &&
+                        _userRole != null)
+                      Padding(
+                        padding: const EdgeInsets.all(16.0),
+                        child: Text(
+                          l10n.trainingOnlyAthlete,
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            color: isDark ? Colors.grey[400] : Colors.grey[600],
+                            fontSize: 16,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+        ),
+      ),
+      const ProfileScreen(),
+    ];
+
+    return Scaffold(
+      onDrawerChanged: (isOpened) {
+        if (isOpened) {
+          _fetchPendingRequests();
+          // Drawer açılınca bulk fetch ve realtime yeniden başlatmayı atla (gereksiz tekrarları önle)
+        }
+      },
+      appBar: AppBar(
+        leading: Builder(
+          builder: (context) => IconButton(
+            icon: const Icon(Icons.menu),
+            tooltip: l10n.options,
+            onPressed: () => Scaffold.of(context).openDrawer(),
+          ),
+        ),
+        title: Text(l10n.appName),
+      ),
+      drawer: Drawer(
+        width: MediaQuery.of(context).size.width * (MediaQuery.of(context).size.width < 600 ? 0.8 : 0.6), // responsive drawer width
+        child: SafeArea(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Text(
+                  l10n.options,
+                  style: theme.textTheme.titleLarge,
+                ),
+              ),
+              ListTile(
+                leading: const Icon(Icons.timer),
+                title: Text(l10n.timerTitle),
+                onTap: () {
+                  Navigator.pop(context);
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => const TimerScreen()),
+                  );
+                },
+              ),
+              ListTile(
+                leading: Stack(
+                  children: [
+                    const Icon(Icons.notifications),
+                    if (_pendingRequestCount > 0)
+                      Positioned(
+                        right: 0,
+                        top: 0,
+                        child: Container(
+                          padding: const EdgeInsets.all(2),
+                          decoration: BoxDecoration(
+                            color: Colors.red,
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          constraints: const BoxConstraints(
+                            minWidth: 18,
+                            minHeight: 18,
+                          ),
+                          child: Text(
+                            '$_pendingRequestCount',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+                title: Text(l10n.notificationsTitle),
+                onTap: () async {
+                  Navigator.pop(context);
+                  final user = SupabaseConfig.client.auth.currentUser;
+                  if (user == null) return;
+                  final response = await SupabaseConfig.client
+                      .from('athlete_coach')
+                      .select()
+                      .or('coach_id.eq.${user.id},athlete_id.eq.${user.id}')
+                      .eq('status', 'pending');
+                  final result = await Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => NotificationPage(
+                        notifications: response,
+                        onAccept: (notif) async {
+                          await SupabaseConfig.client
+                              .from('athlete_coach')
+                              .update({'status': 'accepted'})
+                              .match({
+                                'athlete_id': notif['athlete_id'],
+                                'coach_id': notif['coach_id'],
+                              });
+                          _fetchPendingRequests();
+                        },
+                        onReject: (notif) async {
+                          await SupabaseConfig.client
+                              .from('athlete_coach')
+                              .delete()
+                              .match({
+                                'athlete_id': notif['athlete_id'],
+                                'coach_id': notif['coach_id'],
+                              });
+                          _fetchPendingRequests();
+                        },
+                      ),
+                    ),
+                  );
+                  if (result == true) {
+                    setState(() {});
+                  }
+                },
+              ),
+              if (_userRole == 'athlete')
+                ListTile(
+                  leading: const Icon(Icons.sports_kabaddi),
+                  title: Text(l10n.myCoaches),
+                  onTap: () {
+                    Navigator.pop(context);
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => CoachAthleteListScreen(
+                          args: CoachAthleteListArgs(userRole: 'athlete'),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              const Divider(),
+              ListTile(
+                leading: const Icon(Icons.help_outline),
+                title: Text(l10n.helpTitle),
+                onTap: () {
+                  Navigator.pop(context);
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => HelpScreen(userRole: _userRole),
+                    ),
+                  );
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.settings),
+                title: Text(l10n.settings),
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => const SettingsScreen()),
+                  );
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.info_outline),
+                title: Text(l10n.about),
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => const AboutScreen()),
+                  );
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.logout),
+                title: Text(l10n.signOut),
+                onTap: () => _signOut(context),
+              ),
+              const Spacer(),
+            ],
+          ),
+        ),
+      ),
+      body: pages[_selectedIndex],
+      bottomNavigationBar: BottomNavigationBar(
+        currentIndex: _selectedIndex,
+        onTap: (index) {
+          setState(() {
+            _selectedIndex = index;
+          });
+        },
+        items: [
+          BottomNavigationBarItem(
+            icon: const Icon(Icons.home),
+            label: l10n.homeTab,
+          ),
+          BottomNavigationBarItem(
+            icon: const Icon(Icons.person),
+            label: l10n.profileTab,
+          ),
+        ],
+      ),
+    );
+  }
+
+
+
+  Widget _buildFeatureCard(BuildContext context, String title,
+      String description, IconData icon, VoidCallback onTap) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final primaryColor = theme.colorScheme.primary;
+    final textColor = isDark ? Colors.white70 : Colors.grey[600];
+
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isCompact = screenWidth < 600;
+    final double radius = (screenWidth * 0.035).clamp(14.0, 20.0);
+
+    final surfaceColor = theme.colorScheme.surface;
+
+    return Container(
+      margin: EdgeInsets.symmetric(
+        horizontal: (screenWidth * 0.04).clamp(12.0, 18.0),
+        vertical: (screenWidth * 0.02).clamp(6.0, 10.0),
+      ),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(radius),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: isDark
+              ? [
+                  surfaceColor.withOpacity(0.98),
+                  surfaceColor.withOpacity(0.94),
+                ]
+              : [
+                  surfaceColor,
+                  surfaceColor.withOpacity(0.98),
+                ],
+        ),
+        boxShadow: [
+          // Soft elevation
+          BoxShadow(
+            color: (isDark ? Colors.black : Colors.black87).withOpacity(isDark ? 0.45 : 0.08),
+            blurRadius: (screenWidth * 0.05).clamp(14.0, 22.0),
+            spreadRadius: 0,
+            offset: const Offset(0, 8),
+          ),
+          // Subtle primary glow
+          BoxShadow(
+            color: primaryColor.withOpacity(isDark ? 0.18 : 0.12),
+            blurRadius: (screenWidth * 0.075).clamp(22.0, 32.0),
+            spreadRadius: 1.5,
+            offset: const Offset(0, 0),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(radius),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(radius),
+          highlightColor: primaryColor.withOpacity(0.06),
+          splashColor: primaryColor.withOpacity(0.08),
+          child: Padding(
+            padding: EdgeInsets.all((screenWidth * 0.045).clamp(14.0, 20.0)),
+            child: Row(
+              children: [
+                // Leading icon with its own soft glow background
+                Container(
+                  padding: EdgeInsets.all((screenWidth * 0.03).clamp(10.0, 14.0)),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular((screenWidth * 0.03).clamp(10.0, 14.0)),
+                    color: primaryColor.withOpacity(isDark ? 0.14 : 0.10),
+                    boxShadow: [
+                      BoxShadow(
+                        color: primaryColor.withOpacity(isDark ? 0.22 : 0.16),
+                        blurRadius: (screenWidth * 0.04).clamp(12.0, 18.0),
+                        spreadRadius: 0.5,
+                      ),
+                    ],
+                  ),
+                  child: Icon(
+                    icon,
+                    color: primaryColor,
+                    size: (screenWidth * 0.075).clamp(24.0, 32.0),
+                  ),
+                ),
+                SizedBox(width: (screenWidth * 0.04).clamp(12.0, 18.0)),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        title,
+                        style: TextStyle(
+                          fontSize: (screenWidth * 0.045).clamp(16.0, 20.0),
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      SizedBox(height: (screenWidth * 0.015).clamp(3.0, 8.0)),
+                      Text(
+                        description,
+                        style: TextStyle(
+                          fontSize: (screenWidth * 0.035).clamp(12.0, 16.0),
+                          color: textColor,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Icon(
+                  Icons.arrow_forward_ios,
+                  color: isDark ? Colors.white30 : Colors.grey[400],
+                  size: (screenWidth * 0.04).clamp(14.0, 18.0),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildQuoteCard(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final primaryColor = theme.colorScheme.primary;
+    final textColor = isDark ? Colors.white70 : Colors.grey[700];
+    final quoteTextColor = isDark ? Colors.white : Colors.grey[800];
+    
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isCompact = screenWidth < 600;
+    final double radius = (screenWidth * 0.035).clamp(14.0, 20.0);
+    
+    return Container(
+      margin: EdgeInsets.symmetric(
+        horizontal: (screenWidth * 0.04).clamp(12.0, 18.0),
+        vertical: (screenWidth * 0.02).clamp(6.0, 10.0),
+      ),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(radius),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: isDark
+              ? [
+                  primaryColor.withOpacity(0.15),
+                  primaryColor.withOpacity(0.08),
+                ]
+              : [
+                  primaryColor.withOpacity(0.08),
+                  primaryColor.withOpacity(0.04),
+                ],
+        ),
+        border: Border.all(
+          color: primaryColor.withOpacity(isDark ? 0.3 : 0.2),
+          width: 1.5,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: (isDark ? Colors.black : Colors.black87).withOpacity(isDark ? 0.25 : 0.05),
+            blurRadius: (screenWidth * 0.03).clamp(8.0, 14.0),
+            spreadRadius: 0,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Padding(
+        padding: EdgeInsets.all((screenWidth * 0.05).clamp(16.0, 22.0)),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(
+                  Icons.format_quote,
+                  color: primaryColor,
+                  size: (screenWidth * 0.07).clamp(24.0, 30.0),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    AppLocalizations.of(context).dailyInspiration,
+                    style: TextStyle(
+                      fontSize: (screenWidth * 0.04).clamp(14.0, 18.0),
+                      fontWeight: FontWeight.w600,
+                      color: primaryColor,
+                    ),
+                  ),
+                ),
+                GestureDetector(
+                  onTap: () async {
+                    await _generateDailyQuote();
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.all(6),
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: primaryColor.withOpacity(0.1),
+                    ),
+                    child: Icon(
+                      Icons.refresh,
+                      color: primaryColor,
+                      size: (screenWidth * 0.045).clamp(16.0, 20.0),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Text(
+              '"${_dailyQuote['quote'] ?? ''}"',
+              style: TextStyle(
+                fontSize: (screenWidth * 0.042).clamp(15.0, 19.0),
+                fontStyle: FontStyle.italic,
+                color: quoteTextColor,
+                height: 1.4,
+              ),
+            ),
+            if ((_dailyQuote['authorVisible'] as bool?) == true &&
+                (_dailyQuote['author'] as String?)?.isNotEmpty == true) ...[
+              const SizedBox(height: 8),
+              Align(
+                alignment: Alignment.centerRight,
+                child: Text(
+                  (_dailyQuote['author'] as String?) ?? '',
+                  style: TextStyle(
+                    fontSize: (screenWidth * 0.032).clamp(12.0, 15.0),
+                    color: textColor,
+                    fontWeight: FontWeight.w500,
+                  ),
+                  textAlign: TextAlign.right,
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildOfflineInfoPlaceholder(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final textColor = isDark ? Colors.white70 : Colors.grey[700];
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16.0),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.cloud_off, size: 18, color: textColor),
+          const SizedBox(width: 8),
+          Flexible(
+            child: Text(
+              AppLocalizations.of(context).loadingProfile, // reuse localized short text
+              style: TextStyle(fontSize: 12, color: textColor),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.center,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildWelcomeCard(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final primaryColor = theme.colorScheme.primary;
+    final l10n = AppLocalizations.of(context);
+    
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isCompact = screenWidth < 600;
+    final double radius = (screenWidth * 0.035).clamp(14.0, 20.0);
+    
+    // Basit hoşgeldin ikonu
+    const IconData welcomeIcon = Icons.waving_hand;
+    
+    return Container(
+      margin: EdgeInsets.symmetric(
+        horizontal: (screenWidth * 0.04).clamp(12.0, 18.0),
+        vertical: (screenWidth * 0.02).clamp(6.0, 10.0),
+      ),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(radius),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: isDark
+              ? [
+                  primaryColor.withOpacity(0.2),
+                  primaryColor.withOpacity(0.1),
+                ]
+              : [
+                  primaryColor.withOpacity(0.1),
+                  primaryColor.withOpacity(0.05),
+                ],
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: (isDark ? Colors.black : Colors.black87).withOpacity(isDark ? 0.3 : 0.08),
+            blurRadius: (screenWidth * 0.037).clamp(10.0, 17.0),
+            spreadRadius: 0,
+            offset: const Offset(0, 5),
+          ),
+        ],
+      ),
+      child: Padding(
+        padding: EdgeInsets.all((screenWidth * 0.05).clamp(16.0, 22.0)),
+        child: Row(
+          children: [
+            Container(
+              padding: EdgeInsets.all((screenWidth * 0.035).clamp(12.0, 16.0)),
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: primaryColor.withOpacity(isDark ? 0.2 : 0.15),
+                boxShadow: [
+                  BoxShadow(
+                    color: primaryColor.withOpacity(isDark ? 0.3 : 0.2),
+                    blurRadius: (screenWidth * 0.03).clamp(8.0, 14.0),
+                    spreadRadius: 0,
+                  ),
+                ],
+              ),
+              child: Icon(
+                welcomeIcon,
+                color: primaryColor,
+                size: (screenWidth * 0.07).clamp(24.0, 30.0),
+              ),
+            ),
+            SizedBox(width: (screenWidth * 0.04).clamp(12.0, 18.0)),
+            Expanded(
+              child: Text(
+                l10n.welcomeUser(_userName),
+                style: TextStyle(
+                  fontSize: (screenWidth * 0.055).clamp(18.0, 24.0),
+                  fontWeight: FontWeight.w700,
+                  color: isDark ? Colors.white : Colors.grey[800],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLiveTrainingCard(BuildContext context, LiveTraining training) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final l10n = AppLocalizations.of(context);
+    
+    final trainingType = training.trainingType;
+    final trainingName = training.trainingSessionName;
+    final isIndoor = training.isIndoor;
+    final distance = training.distance ?? 0;
+    final bowType = training.bowType;
+    final totalArrows = training.totalArrows;
+    final totalScore = training.totalScore;
+    final average = training.average;
+    final createdAt = training.createdAt;
+    final updatedAt = training.updatedAt ?? training.createdAt;
+
+    // Responsive font sizes - match athlete training history screen exactly
+    final screenWidth = MediaQuery.of(context).size.width;
+    final metricFontSize = (screenWidth * 0.038).clamp(14.0, 18.0); // Responsive but bounded
+    final metricLabelFontSize = (screenWidth * 0.027).clamp(12.0, 15.0); // Responsive but bounded
+    final metricSpacing = (screenWidth * 0.03).clamp(10.0, 14.0); // Responsive but bounded
+    final leftFontSize = 14 * 1.05;
+    final leftSmallFontSize = 11 * 1.05;
+    final leftDetailFontSize = 12 * 1.05;
+
+    final bool isTechnique = trainingType == 'technique';
+    final bool isTarget = trainingType == 'target';
+    final icon = isIndoor ? Icons.home : Icons.landscape;
+    final iconColor = isIndoor ? Colors.blue : Colors.green;
+    final backgroundColor = isDark ? theme.colorScheme.surface : Colors.grey[100]!;
+    final textColor = isDark ? Colors.white : Colors.black87;
+
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 800),
+      curve: Curves.easeInOut,
+      margin: const EdgeInsets.symmetric(vertical: 2, horizontal: 12),
+      decoration: BoxDecoration(
+        color: backgroundColor,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.transparent, width: 3),
+      ),
+      child: InkWell(
+        onTap: () => _navigateToAthleteTrainingHistory(training),
+        borderRadius: BorderRadius.circular(8),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+          child: Row(
+            children: [
+              // Icon + Ongoing (alt alta) - match athlete training history exactly
+              Builder(
+                builder: (context) {
+                  Widget? ongoingWidget;
+                  if ((trainingType == 'technique' && () {
+                        final now = DateTime.now();
+                        final diffMinutes = now.difference(createdAt).inMinutes;
+                        return diffMinutes < 30;
+                      }()) ||
+                      (trainingType != 'technique' && () {
+                        var now = DateTime.now().toUtc();
+                        final diffMinutesRaw = now.difference(updatedAt.toUtc()).inMinutes;
+                        final diffMinutes = diffMinutesRaw < 0 ? 0 : diffMinutesRaw;
+                        return diffMinutes < 15;
+                      }()))
+                  {
+                    ongoingWidget = Padding(
+                      padding: const EdgeInsets.only(top: 4),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: isDark
+                              ? Colors.red.withOpacity(0.32)
+                              : Colors.red.withOpacity(0.18),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: Text(
+                          l10n.ongoing,
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: isDark ? const Color.fromARGB(255, 255, 140, 140) : Colors.red[800],
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    );
+                  }
+                  return Column(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(6),
+                        decoration: BoxDecoration(
+                          color: iconColor.withOpacity(0.1),
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(
+                          icon,
+                          color: iconColor,
+                          size: 18,
+                        ),
+                      ),
+                      if (ongoingWidget != null) ongoingWidget,
+                    ],
+                  );
+                },
+              ),
+              const SizedBox(width: 10),
+              // Info - match athlete training history exactly
+              Expanded(
+                flex: 3,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Athlete name (unique to home screen)
+                    Text(
+                      training.athleteName.isNotEmpty ? training.athleteName : 'Unknown Athlete',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: leftFontSize,
+                        color: textColor,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 2),
+                    if (trainingName != null && trainingName.isNotEmpty)
+                      Text(
+                        trainingName,
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: leftFontSize,
+                          color: textColor,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    Text(
+                      DateFormat('dd/MM/yyyy - HH:mm').format(createdAt.toLocal()),
+                      style: TextStyle(
+                        fontWeight: trainingName == null || trainingName.isEmpty
+                            ? FontWeight.bold
+                            : FontWeight.normal,
+                        fontSize: trainingName == null || trainingName.isEmpty
+                            ? leftSmallFontSize
+                            : leftSmallFontSize * 0.91,
+                        color: trainingName == null || trainingName.isEmpty
+                            ? textColor
+                            : isDark
+                                ? Colors.grey[400]
+                                : Colors.grey[600],
+                      ),
+                    ),
+                    Text(
+                      '${getLocalizedBowType(bowType, l10n)} | ${distance}${l10n.meters}',
+                      style: TextStyle(
+                        fontSize: leftDetailFontSize,
+                        color: isDark ? Colors.grey[400] : Colors.grey[600],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              // Metrics - match athlete training history exactly
+              if (isTechnique)
+                Expanded(
+                  flex: 3,
+                  child: Padding(
+                    padding: const EdgeInsets.only(left: 8.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                crossAxisAlignment: CrossAxisAlignment.center,
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                    decoration: BoxDecoration(
+                                      color: isDark
+                                          ? Colors.orange.withOpacity(0.35)
+                                          : Colors.orange.withOpacity(0.2),
+                                      borderRadius: BorderRadius.circular(4),
+                                    ),
+                                    child: FittedBox(
+                                      fit: BoxFit.scaleDown,
+                                      child: Text(
+                                        l10n.technique,
+                                        maxLines: 1,
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          color: isDark ? Colors.orange[300] : Colors.orange[800],
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    totalArrows.toString(),
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: metricFontSize * 1.1,
+                                      color: textColor,
+                                      height: 1.0,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    l10n.arrows,
+                                    style: TextStyle(
+                                      fontSize: metricLabelFontSize,
+                                      color: isDark ? Colors.grey[400] : Colors.grey[600],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const Expanded(child: SizedBox()),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                )
+              // Target antrenman kartı - match athlete training history exactly
+              else if (isTarget)
+                Expanded(
+                  flex: 3,
+                  child: Padding(
+                    padding: const EdgeInsets.only(left: 8.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                crossAxisAlignment: CrossAxisAlignment.center,
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                    decoration: BoxDecoration(
+                                      color: isDark
+                                          ? Colors.green.withOpacity(0.35)
+                                          : Colors.green.withOpacity(0.2),
+                                      borderRadius: BorderRadius.circular(4),
+                                    ),
+                                    child: FittedBox(
+                                      fit: BoxFit.scaleDown,
+                                      child: Text(
+                                        l10n.target,
+                                        maxLines: 1,
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          color: isDark ? Colors.green[300] : Colors.green[800],
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  AnimatedSwitcher(
+                                    duration: const Duration(milliseconds: 400),
+                                    transitionBuilder: (child, animation) => FadeTransition(
+                                      opacity: animation,
+                                      child: ScaleTransition(
+                                        scale: Tween<double>(begin: 0.85, end: 1.0).animate(animation),
+                                        child: child,
+                                      ),
+                                    ),
+                                    child: Text(
+                                      totalScore.toString(),
+                                      key: ValueKey(totalScore),
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: metricFontSize * 1.1,
+                                        color: textColor,
+                                        height: 1.0,
+                                      ),
+                                    ),
+                                  ),
+                                  Container(
+                                    margin: const EdgeInsets.symmetric(vertical: 2),
+                                    height: 2,
+                                    width: metricFontSize * 1.5,
+                                    color: isDark ? Colors.grey[700] : Colors.grey[400],
+                                  ),
+                                  Text(
+                                    (totalArrows > 0 ? (totalArrows * 10).toString() : '0'),
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.normal,
+                                      fontSize: metricFontSize * 0.95,
+                                      color: isDark ? Colors.grey[300] : Colors.grey[700],
+                                      height: 1.0,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    l10n.total,
+                                    style: TextStyle(
+                                      fontSize: metricLabelFontSize,
+                                      color: isDark ? Colors.grey[400] : Colors.grey[600],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            SizedBox(width: metricSpacing),
+                            Expanded(
+                              child: AnimatedSwitcher(
+                                duration: const Duration(milliseconds: 400),
+                                transitionBuilder: (child, animation) => FadeTransition(
+                                  opacity: animation,
+                                  child: ScaleTransition(
+                                    scale: Tween<double>(begin: 0.85, end: 1.0).animate(animation),
+                                    child: child,
+                                  ),
+                                ),
+                                child: _buildCompactMetric(
+                                  value: average.toStringAsFixed(2),
+                                  label: l10n.average,
+                                  isDark: isDark,
+                                  textColor: textColor,
+                                  fontSize: metricFontSize,
+                                  labelFontSize: metricLabelFontSize,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                )
+              // Skor antrenman kartı - match athlete training history exactly
+              else if (trainingType == 'score')
+                Expanded(
+                  flex: 3,
+                  child: Padding(
+                    padding: const EdgeInsets.only(left: 8.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                crossAxisAlignment: CrossAxisAlignment.center,
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                    decoration: BoxDecoration(
+                                      color: isDark
+                                          ? Colors.blue.withOpacity(0.3)
+                                          : Colors.blue.withOpacity(0.18),
+                                      borderRadius: BorderRadius.circular(4),
+                                    ),
+                                    child: FittedBox(
+                                      fit: BoxFit.scaleDown,
+                                      child: Text(
+                                        l10n.scoreLabel,
+                                        maxLines: 1,
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          color: isDark ? Colors.blue[300] : Colors.blue[800],
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  AnimatedSwitcher(
+                                    duration: const Duration(milliseconds: 400),
+                                    transitionBuilder: (child, animation) => FadeTransition(
+                                      opacity: animation,
+                                      child: ScaleTransition(
+                                        scale: Tween<double>(begin: 0.85, end: 1.0).animate(animation),
+                                        child: child,
+                                      ),
+                                    ),
+                                    child: Text(
+                                      totalScore.toString(),
+                                      key: ValueKey(totalScore),
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: metricFontSize * 1.1,
+                                        color: textColor,
+                                        height: 1.0,
+                                      ),
+                                    ),
+                                  ),
+                                  Container(
+                                    margin: const EdgeInsets.symmetric(vertical: 2),
+                                    height: 2,
+                                    width: metricFontSize * 1.5,
+                                    color: isDark ? Colors.grey[700] : Colors.grey[400],
+                                  ),
+                                  Text(
+                                    (totalArrows > 0 ? (totalArrows * 10).toString() : '0'),
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.normal,
+                                      fontSize: metricFontSize * 0.95,
+                                      color: isDark ? Colors.grey[300] : Colors.grey[700],
+                                      height: 1.0,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    l10n.total,
+                                    style: TextStyle(
+                                      fontSize: metricLabelFontSize,
+                                      color: isDark ? Colors.grey[400] : Colors.grey[600],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            SizedBox(width: metricSpacing),
+                            Expanded(
+                              child: AnimatedSwitcher(
+                                duration: const Duration(milliseconds: 400),
+                                transitionBuilder: (child, animation) => FadeTransition(
+                                  opacity: animation,
+                                  child: ScaleTransition(
+                                    scale: Tween<double>(begin: 0.85, end: 1.0).animate(animation),
+                                    child: child,
+                                  ),
+                                ),
+                                child: _buildCompactMetric(
+                                  value: average.toStringAsFixed(2),
+                                  label: l10n.average,
+                                  isDark: isDark,
+                                  textColor: textColor,
+                                  fontSize: metricFontSize,
+                                  labelFontSize: metricLabelFontSize,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                )
+              else
+                Expanded(
+                  flex: 3,
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: _buildCompactMetric(
+                          value: totalScore.toString(),
+                          label: l10n.total,
+                          isDark: isDark,
+                          textColor: textColor,
+                          fontSize: metricFontSize,
+                          labelFontSize: metricLabelFontSize,
+                        ),
+                      ),
+                      SizedBox(width: metricSpacing),
+                      Expanded(
+                        child: _buildCompactMetric(
+                          value: average.toStringAsFixed(2),
+                          label: l10n.average,
+                          isDark: isDark,
+                          textColor: textColor,
+                          fontSize: metricFontSize,
+                          labelFontSize: metricLabelFontSize,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              const Icon(Icons.chevron_right, color: Colors.grey),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCompactMetric({
+    Key? key,
+    required String value,
+    required String label,
+    required bool isDark,
+    required Color textColor,
+    double? fontSize,
+    double? labelFontSize,
+  }) {
+    return Column(
+      key: key,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          value,
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            fontSize: fontSize ?? 13,
+            color: textColor,
+          ),
+        ),
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: labelFontSize ?? 10,
+            color: isDark ? Colors.grey[400] : Colors.grey[600],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Color _getTrainingTypeColor(String trainingType, bool isDark) {
+    switch (trainingType) {
+      case 'technique':
+        return isDark ? Colors.orange[300]! : Colors.orange[800]!;
+      case 'target':
+        return isDark ? Colors.green[300]! : Colors.green[800]!;
+      case 'score':
+        return isDark ? Colors.blue[300]! : Colors.blue[800]!;
+      default:
+        return isDark ? Colors.grey[300]! : Colors.grey[600]!;
+    }
+  }
+
+  String _getTrainingTypeLabel(String trainingType, AppLocalizations l10n) {
+    switch (trainingType) {
+      case 'technique':
+        return l10n.technique;
+      case 'target':
+        return l10n.target;
+      case 'score':
+        return l10n.scoreLabel;
+      default:
+        return trainingType;
+    }
+  }
+
+  void _navigateToAthleteTrainingHistory(LiveTraining training) {
+    final athleteId = training.athleteId;
+    final athleteName = training.athleteName;
+    
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => AthleteTrainingHistoryScreen(
+          athleteId: athleteId,
+          athleteName: athleteName,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLiveTrainingsLoadingSection(BuildContext context, AppLocalizations l10n, ThemeData theme, bool isDark) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isCompact = screenWidth < 600;
+    final headerHeight = isCompact ? 56.0 : 64.0; // Consistent header height
+    final headerFontSize = (screenWidth * 0.05).clamp(18.0, 22.0); // Responsive but bounded
+    final headerIconSize = (screenWidth * 0.06).clamp(20.0, 26.0); // Responsive but bounded
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Başlık
+        Padding(
+          padding: EdgeInsets.symmetric(horizontal: (screenWidth * 0.04).clamp(12.0, 18.0)),
+            child: InkWell(
+              onTap: () => setState(() => _liveExpanded = !_liveExpanded),
+              child: Container(
+                height: headerHeight,
+                padding: EdgeInsets.symmetric(
+              horizontal: (screenWidth * 0.035).clamp(12.0, 16.0),
+              vertical: (screenWidth * 0.03).clamp(10.0, 14.0),
+            ),
+                decoration: BoxDecoration(
+                  border: Border.all(color: isDark ? Colors.grey[700]! : Colors.grey[300]!),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              child: Row(
+              children: [
+                Icon(
+                  Icons.live_tv,
+                  color: Colors.red,
+                  size: (screenWidth * 0.06).clamp(20.0, 26.0),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    l10n.liveTrainings,
+                    style: TextStyle(
+                      fontSize: (screenWidth * 0.05).clamp(18.0, 22.0),
+                      fontWeight: FontWeight.bold,
+                      color: isDark ? Colors.white : Colors.black87,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                const SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    valueColor: AlwaysStoppedAnimation<Color>(Colors.red),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Icon(_liveExpanded ? Icons.expand_less : Icons.expand_more, color: isDark ? Colors.white54 : Colors.black45),
+              ],
+            ),
+            ),
+          ),
+        ),
+        const SizedBox(height: 12),
+        
+        // Loading placeholder
+        _liveExpanded
+            ? SizedBox(
+                height: (screenWidth * 0.6).clamp(180.0, 280.0),
+                child: Center(
+                  child: Text(
+                    l10n.loadingProfile, // Reuse existing loading text
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: isDark ? Colors.grey[400] : Colors.grey[600],
+                    ),
+                  ),
+                ),
+              )
+            : const SizedBox.shrink(),
+      ],
+    );
+  }
+
+  Widget _buildLiveTrainingsSection(BuildContext context, AppLocalizations l10n, ThemeData theme, bool isDark) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isCompact = screenWidth < 600;
+    final headerHeight = isCompact ? 56.0 : 64.0; // Consistent header height
+    final headerFontSize = (screenWidth * 0.05).clamp(18.0, 22.0); // Responsive but bounded
+    final headerIconSize = (screenWidth * 0.06).clamp(20.0, 26.0); // Responsive but bounded
+
+    return FadeTransition(
+      opacity: _liveTrainingsFadeAnimation,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Başlık
+          Padding(
+            padding: EdgeInsets.symmetric(horizontal: (screenWidth * 0.04).clamp(12.0, 18.0)),
+            child: Container(
+              height: headerHeight,
+              padding: EdgeInsets.symmetric(
+              horizontal: (screenWidth * 0.035).clamp(12.0, 16.0),
+              vertical: (screenWidth * 0.03).clamp(10.0, 14.0),
+            ),
+              decoration: BoxDecoration(
+                border: Border.all(color: isDark ? Colors.grey[700]! : Colors.grey[300]!),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: InkWell(
+                onTap: () => setState(() => _liveExpanded = !_liveExpanded),
+                child: Row(
+                children: [
+                  Icon(
+                    Icons.live_tv,
+                    color: Colors.red,
+                    size: 24,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      l10n.liveTrainings,
+                      style: TextStyle(
+                        fontSize: (screenWidth * 0.05).clamp(18.0, 22.0),
+                        fontWeight: FontWeight.bold,
+                        color: isDark ? Colors.white : Colors.black87,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  AnimatedBuilder(
+                    animation: _liveTrainingsFadeAnimation,
+                    builder: (context, child) {
+                      return Transform.scale(
+                        scale: 0.5 + (0.5 * _liveTrainingsFadeAnimation.value),
+                        child: Transform.rotate(
+                          angle: (1 - _liveTrainingsFadeAnimation.value) * 0.3,
+                          child: Container(
+                            padding: EdgeInsets.symmetric(
+                              horizontal: (screenWidth * 0.02).clamp(6.0, 10.0),
+                              vertical: (screenWidth * 0.005).clamp(2.0, 4.0),
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.red.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Text(
+                              '${_liveTrainings.length}',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.red[800],
+                              ),
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                  const SizedBox(width: 8),
+                  Icon(_liveExpanded ? Icons.expand_less : Icons.expand_more, color: isDark ? Colors.white54 : Colors.black45),
+                ],
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          
+          // Canlı antrenman kartları - vertical layout like athlete training history
+          if (_liveExpanded) ..._liveTrainings.asMap().entries.map((entry) {
+            final index = entry.key;
+            final training = entry.value;
+            
+            // Staggered animation - her kart için farklı delay
+            final delay = index * 0.1; // Her kart 100ms gecikmeli
+            final adjustedAnimation = Tween<double>(
+              begin: 0.0,
+              end: 1.0,
+            ).animate(CurvedAnimation(
+              parent: _liveTrainingCardAnimationController,
+              curve: Interval(
+                delay.clamp(0.0, 1.0),
+                (delay + 0.8).clamp(0.0, 1.0),
+                curve: Curves.elasticOut,
+              ),
+            ));
+            
+            return AnimatedBuilder(
+              animation: adjustedAnimation,
+              builder: (context, child) {
+                final double clamped = adjustedAnimation.value.clamp(0.0, 1.0);
+                return Transform.translate(
+                  offset: Offset(0, 60 * (1 - adjustedAnimation.value)),
+                  child: Transform.scale(
+                    scale: 0.7 + (0.3 * clamped),
+                    child: Transform.rotate(
+                      angle: (1 - clamped) * 0.1,
+                      child: Opacity(
+                        opacity: clamped,
+                        child: _buildLiveTrainingCard(context, training),
+                      ),
+                    ),
+                  ),
+                );
+              },
+            );
+          }).toList(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildLiveTrainingsEmptySection(BuildContext context, AppLocalizations l10n, ThemeData theme, bool isDark) {
+    final screenSize = MediaQuery.of(context).size;
+    final screenWidth = screenSize.width;
+    final screenHeight = screenSize.height;
+
+    // Responsive sizing based on screen dimensions
+    final iconSize = (screenWidth * 0.08).clamp(24.0, 32.0); // Responsive but bounded icon size
+    final containerPadding = (screenWidth * 0.05).clamp(16.0, 24.0); // Responsive but bounded padding
+    final titleFontSize = (screenWidth * 0.05).clamp(18.0, 22.0); // Responsive but bounded font size
+    final descFontSize = (screenWidth * 0.04).clamp(14.0, 18.0); // Responsive but bounded description font size
+    final spacing = screenHeight * 0.02; // 2% of screen height
+    final headerHeight = (screenWidth * 0.16).clamp(56.0, 72.0); // Responsive but bounded header height
+    final headerFontSize = (screenWidth * 0.05).clamp(18.0, 22.0); // Responsive but bounded
+    final headerIconSize = (screenWidth * 0.06).clamp(20.0, 26.0); // Responsive but bounded
+    
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        // Başlık
+        Padding(
+          padding: EdgeInsets.symmetric(horizontal: (screenWidth * 0.04).clamp(12.0, 20.0)),
+          child: Container(
+            height: headerHeight,
+            padding: EdgeInsets.symmetric(
+              horizontal: (screenWidth * 0.035).clamp(12.0, 16.0),
+              vertical: (screenWidth * 0.03).clamp(10.0, 14.0),
+            ),
+            decoration: BoxDecoration(
+              border: Border.all(color: isDark ? Colors.grey[700]! : Colors.grey[300]!),
+              borderRadius: BorderRadius.circular((screenWidth * 0.03).clamp(10.0, 14.0)),
+            ),
+            child: InkWell(
+              onTap: () => setState(() => _liveExpanded = !_liveExpanded),
+              child: Row(
+              children: [
+                Icon(
+                  Icons.live_tv,
+                  color: Colors.red,
+                    size: headerIconSize,
+                ),
+                SizedBox(width: (screenWidth * 0.02).clamp(6.0, 10.0)),
+                Expanded(
+                  child: Text(
+                    l10n.liveTrainings,
+                    style: TextStyle(
+                        fontSize: headerFontSize,
+                      fontWeight: FontWeight.bold,
+                      color: isDark ? Colors.white : Colors.black87,
+                    ),
+                  ),
+                ),
+                Icon(_liveExpanded ? Icons.expand_less : Icons.expand_more, color: isDark ? Colors.white54 : Colors.black45),
+              ],
+            ),
+            ),
+          ),
+        ),
+        SizedBox(height: spacing),
+        
+        // Empty state message
+        if (_liveExpanded) Padding(
+          padding: EdgeInsets.symmetric(horizontal: (screenWidth * 0.04).clamp(12.0, 20.0)),
+          child: Container(
+            padding: EdgeInsets.all(containerPadding),
+          decoration: BoxDecoration(
+            color: isDark ? theme.colorScheme.surface : Colors.grey[100],
+            borderRadius: BorderRadius.circular(16), // Consistent border radius
+            border: Border.all(
+              color: isDark ? Colors.grey[700]! : Colors.grey[300]!,
+              width: 1,
+            ),
+          ),
+          child: Column(
+            children: [
+              Icon(
+                Icons.sports_score_outlined,
+                size: iconSize,
+                color: isDark ? Colors.grey[500] : Colors.grey[400],
+              ),
+              SizedBox(height: spacing),
+              Text(
+                l10n.noLiveTrainingsFound,
+                style: TextStyle(
+                  fontSize: (screenWidth * 0.045).clamp(16.0, 20.0),
+                  fontWeight: FontWeight.w500,
+                  color: isDark ? Colors.grey[300] : Colors.grey[700],
+                ),
+                textAlign: TextAlign.center,
+              ),
+              SizedBox(height: spacing * 0.5),
+              Text(
+                l10n.noLiveTrainingsFoundDesc,
+                style: TextStyle(
+                  fontSize: descFontSize,
+                  color: isDark ? Colors.grey[500] : Colors.grey[600],
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildTodayTrainingsLoadingSection(BuildContext context, AppLocalizations l10n, ThemeData theme, bool isDark) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isCompact = screenWidth < 600;
+    final headerHeight = isCompact ? 56.0 : 64.0; // Consistent header height
+    final headerFontSize = (screenWidth * 0.05).clamp(18.0, 22.0); // Responsive but bounded
+    final headerIconSize = (screenWidth * 0.06).clamp(20.0, 26.0); // Responsive but bounded
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: EdgeInsets.symmetric(horizontal: (screenWidth * 0.04).clamp(12.0, 18.0)),
+          child: Container(
+            height: headerHeight,
+            padding: EdgeInsets.symmetric(
+              horizontal: (screenWidth * 0.035).clamp(12.0, 16.0),
+              vertical: (screenWidth * 0.03).clamp(10.0, 14.0),
+            ),
+            decoration: BoxDecoration(
+              border: Border.all(color: isDark ? Colors.grey[700]! : Colors.grey[300]!),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: InkWell(
+              onTap: () => setState(() => _todayExpanded = !_todayExpanded),
+              child: Row(
+              children: [
+                Icon(
+                  Icons.calendar_today,
+                  color: theme.colorScheme.primary,
+                  size: (screenWidth * 0.06).clamp(20.0, 26.0),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    l10n.todaysTrainings,
+                    style: TextStyle(
+                      fontSize: (screenWidth * 0.05).clamp(18.0, 22.0),
+                      fontWeight: FontWeight.bold,
+                      color: isDark ? Colors.white : Colors.black87,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                const SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
+                const SizedBox(width: 8),
+                Icon(_todayExpanded ? Icons.expand_less : Icons.expand_more, color: isDark ? Colors.white54 : Colors.black45),
+              ],
+            ),
+            ),
+          ),
+        ),
+        const SizedBox(height: 12),
+        if (_todayExpanded)
+          SizedBox(
+            height: (screenWidth * 0.35).clamp(100.0, 160.0),
+            child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildTodayTrainingsSection(BuildContext context, AppLocalizations l10n, ThemeData theme, bool isDark) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isCompact = screenWidth < 600;
+    final headerHeight = isCompact ? 56.0 : 64.0; // Consistent header height
+    final headerFontSize = (screenWidth * 0.05).clamp(18.0, 22.0); // Responsive but bounded
+    final headerIconSize = (screenWidth * 0.06).clamp(20.0, 26.0); // Responsive but bounded
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: EdgeInsets.symmetric(horizontal: (screenWidth * 0.04).clamp(12.0, 18.0)),
+          child: Container(
+            height: headerHeight,
+            padding: EdgeInsets.symmetric(
+              horizontal: (screenWidth * 0.035).clamp(12.0, 16.0),
+              vertical: (screenWidth * 0.03).clamp(10.0, 14.0),
+            ),
+            decoration: BoxDecoration(
+              border: Border.all(color: isDark ? Colors.grey[700]! : Colors.grey[300]!),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: InkWell(
+              onTap: () => setState(() => _todayExpanded = !_todayExpanded),
+              child: Row(
+              children: [
+                Icon(
+                  Icons.calendar_today,
+                  color: theme.colorScheme.primary,
+                  size: (screenWidth * 0.06).clamp(20.0, 26.0),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    l10n.todaysTrainings,
+                    style: TextStyle(
+                      fontSize: (screenWidth * 0.05).clamp(18.0, 22.0),
+                      fontWeight: FontWeight.bold,
+                      color: isDark ? Colors.white : Colors.black87,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.primary.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    '${_todayTrainings.length}',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                      color: theme.colorScheme.primary,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Icon(_todayExpanded ? Icons.expand_less : Icons.expand_more, color: isDark ? Colors.white54 : Colors.black45),
+              ],
+            ),
+            ),
+          ),
+        ),
+        const SizedBox(height: 12),
+        if (_todayExpanded) ..._todayTrainings.map((t) => _buildLiveTrainingCard(context, t)).toList(),
+      ],
+    );
+  }
+
+  Widget _buildTodayTrainingsEmptySection(BuildContext context, AppLocalizations l10n, ThemeData theme, bool isDark) {
+    final screenSize = MediaQuery.of(context).size;
+    final screenWidth = screenSize.width;
+    final screenHeight = screenSize.height;
+    final iconSize = (screenWidth * 0.07).clamp(22.0, 30.0); // Responsive but bounded icon size
+    final containerPadding = (screenWidth * 0.045).clamp(14.0, 22.0); // Responsive but bounded padding
+    final titleFontSize = (screenWidth * 0.05).clamp(18.0, 22.0); // Responsive but bounded font size
+    final descFontSize = (screenWidth * 0.037).clamp(13.0, 17.0); // Responsive but bounded description font size
+    final spacing = screenHeight * 0.018;
+    final headerHeight = (screenWidth * 0.16).clamp(56.0, 72.0); // Responsive but bounded header height
+    final headerFontSize = (screenWidth * 0.05).clamp(18.0, 22.0); // Responsive but bounded
+    final headerIconSize = (screenWidth * 0.06).clamp(20.0, 26.0); // Responsive but bounded
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        Padding(
+          padding: EdgeInsets.symmetric(horizontal: (screenWidth * 0.04).clamp(12.0, 20.0)),
+          child: Container(
+            height: headerHeight,
+            padding: EdgeInsets.symmetric(
+              horizontal: (screenWidth * 0.035).clamp(12.0, 16.0),
+              vertical: (screenWidth * 0.03).clamp(10.0, 14.0),
+            ),
+            decoration: BoxDecoration(
+              border: Border.all(color: isDark ? Colors.grey[700]! : Colors.grey[300]!),
+              borderRadius: BorderRadius.circular((screenWidth * 0.03).clamp(10.0, 14.0)),
+            ),
+            child: InkWell(
+              onTap: () => setState(() => _todayExpanded = !_todayExpanded),
+              child: Row(
+              children: [
+                Icon(
+                  Icons.calendar_today,
+                  color: theme.colorScheme.primary,
+                    size: headerIconSize,
+                ),
+                SizedBox(width: (screenWidth * 0.02).clamp(6.0, 10.0)),
+                Expanded(
+                  child: Text(
+                    l10n.todaysTrainings,
+                    style: TextStyle(
+                        fontSize: headerFontSize,
+                      fontWeight: FontWeight.bold,
+                      color: isDark ? Colors.white : Colors.black87,
+                    ),
+                  ),
+                ),
+                Icon(_todayExpanded ? Icons.expand_less : Icons.expand_more, color: isDark ? Colors.white54 : Colors.black45),
+              ],
+            ),
+            ),
+          ),
+        ),
+        SizedBox(height: spacing),
+        if (_todayExpanded) Padding(
+          padding: EdgeInsets.symmetric(horizontal: (screenWidth * 0.04).clamp(12.0, 20.0)),
+          child: Container(
+            padding: EdgeInsets.all(containerPadding),
+            decoration: BoxDecoration(
+              color: isDark ? theme.colorScheme.surface : Colors.grey[100],
+              borderRadius: BorderRadius.circular((screenWidth * 0.03).clamp(10.0, 14.0)),
+              border: Border.all(
+                color: isDark ? Colors.grey[700]! : Colors.grey[300]!,
+                width: 1,
+              ),
+            ),
+            child: Column(
+              children: [
+                Icon(
+                  Icons.event_busy,
+                  size: iconSize,
+                  color: isDark ? Colors.grey[500] : Colors.grey[400],
+                ),
+                SizedBox(height: spacing),
+                Text(
+                  l10n.noTrainingOnDate,
+                  style: TextStyle(
+                    fontSize: titleFontSize * 0.9,
+                    fontWeight: FontWeight.w500,
+                    color: isDark ? Colors.grey[300] : Colors.grey[700],
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                SizedBox(height: spacing * 0.5),
+                Text(
+                  l10n.noTrainingInRange,
+                  style: TextStyle(
+                    fontSize: descFontSize,
+                    color: isDark ? Colors.grey[500] : Colors.grey[600],
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  // Versiyon kontrolü HomeScreen'de service ile yönetiliyor
+
+  // Store'a yönlendir
+  void _launchStore() async {
+    final packageName = 'com.example.archeryozs'; // Android package name
+    final appId = '123456789'; // iOS App ID - gerçek App ID'nizi koyun
+    
+    String url;
+    if (io.Platform.isIOS) {
+      url = 'https://apps.apple.com/app/id$appId';
+    } else {
+      url = 'https://play.google.com/store/apps/details?id=$packageName';
+    }
+    
+    try {
+      final uri = Uri.parse(url);
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+      } else {
+        print('Could not launch $url');
+      }
+    } catch (e) {
+      print('Error launching store: $e');
+    }
+  }
+
+  // Dialog serviste yönetiliyor
+}
+
+String getLocalizedBowType(String? bowType, AppLocalizations l10n) {
+  switch (bowType) {
+    case 'Recurve':
+      return l10n.bowTypeRecurve;
+    case 'Compound':
+      return l10n.bowTypeCompound;
+    case 'Barebow':
+      return l10n.bowTypeBarebow;
+    default:
+      return bowType ?? '-';
+  }
+}
+
+class AboutSectionWidget extends StatelessWidget {
+  const AboutSectionWidget({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    return FutureBuilder<PackageInfo>(
+      future: PackageInfo.fromPlatform(),
+      builder: (context, snapshot) {
+        final version = snapshot.hasData ? snapshot.data!.version : '-';
+        return Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              // App Logo (replace with your asset if available)
+              CircleAvatar(
+                radius: 36,
+                backgroundColor: theme.colorScheme.primary.withOpacity(0.1),
+                child: Icon(Icons.architecture, size: 40, color: theme.colorScheme.primary),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                l10n.appName,
+                style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 12),
+              Text(
+                l10n.aboutDescription,
+                style: theme.textTheme.bodyMedium,
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 16),
+              Text(
+                l10n.developer,
+                style: theme.textTheme.bodySmall?.copyWith(color: isDark ? Colors.grey[400] : Colors.grey[700]),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 8),
+              Text(
+                l10n.version(version),
+                style: theme.textTheme.bodySmall?.copyWith(color: isDark ? Colors.grey[400] : Colors.grey[700]),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 8),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+
+}

@@ -1,0 +1,519 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+import '../../services/supabase_config.dart';
+
+class CompetitionClassificationsScreen extends StatefulWidget {
+  final String competitionId;
+  
+  const CompetitionClassificationsScreen({
+    super.key,
+    required this.competitionId,
+  });
+
+  @override
+  State<CompetitionClassificationsScreen> createState() =>
+      _CompetitionClassificationsScreenState();
+}
+
+class _CompetitionClassificationsScreenState extends State<CompetitionClassificationsScreen> {
+  List<Map<String, dynamic>> _classifications = [];
+  bool _isLoading = false;
+  Map<String, dynamic>? _competitionData;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadCompetitionData();
+  }
+
+  Future<void> _loadCompetitionData() async {
+    setState(() => _isLoading = true);
+    try {
+      final response = await SupabaseConfig.client
+          .from('organized_competitions')
+          .select()
+          .eq('organized_competition_id', widget.competitionId)
+          .single();
+      
+      setState(() => _competitionData = response);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Yarışma bilgileri yüklenirken hata: $e')),
+        );
+      }
+    } finally {
+      setState(() => _isLoading = false);
+    }
+  }
+
+  void _addClassification() {
+    showDialog(
+      context: context,
+      builder: (context) => _ClassificationDialog(
+        onSave: (classification) {
+          setState(() {
+            _classifications.add(classification);
+          });
+        },
+      ),
+    );
+  }
+
+  void _editClassification(int index) {
+    showDialog(
+      context: context,
+      builder: (context) => _ClassificationDialog(
+        classification: _classifications[index],
+        onSave: (classification) {
+          setState(() {
+            _classifications[index] = classification;
+          });
+        },
+      ),
+    );
+  }
+
+  void _deleteClassification(int index) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Klasmanı Sil'),
+        content: const Text('Bu klasmanı silmek istediğinizden emin misiniz?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: Text(AppLocalizations.of(context).cancel),
+          ),
+          TextButton(
+            onPressed: () {
+              setState(() {
+                _classifications.removeAt(index);
+              });
+              Navigator.of(context).pop();
+            },
+            child: Text(AppLocalizations.of(context).delete),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _saveClassifications() async {
+    if (_classifications.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('En az bir klasman eklemelisiniz')),
+      );
+      return;
+    }
+
+    setState(() => _isLoading = true);
+    try {
+      // Here you would save classifications to database
+      // For now, just update competition status to active
+      await SupabaseConfig.client
+          .from('organized_competitions')
+          .update({'status': 'active', 'updated_at': DateTime.now().toIso8601String()})
+          .eq('organized_competition_id', widget.competitionId);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Yarışma başarıyla oluşturuldu!')),
+        );
+        Navigator.of(context).popUntil((route) => route.isFirst);
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Hata: $e')),
+        );
+      }
+    } finally {
+      setState(() => _isLoading = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(AppLocalizations.of(context).classifications),
+        elevation: 0,
+      ),
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : SingleChildScrollView(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Competition Info Card
+                  if (_competitionData != null)
+                    Card(
+                      child: Padding(
+                        padding: const EdgeInsets.all(16.0),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Icon(Icons.emoji_events, color: Theme.of(context).primaryColor),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    _competitionData!['name'] ?? 'İsimsiz Yarışma',
+                                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            if (_competitionData!['description'] != null) ...[
+                              const SizedBox(height: 8),
+                              Text(
+                                _competitionData!['description'],
+                                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                                ),
+                              ),
+                            ],
+                            const SizedBox(height: 8),
+                            Text(
+                              'Tarih: ${_formatDate(_competitionData!['competition_date'])}',
+                              style: Theme.of(context).textTheme.bodySmall,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  const SizedBox(height: 24),
+                  
+                  // Classifications Section
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        l10n.classifications,
+                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      ElevatedButton.icon(
+                        onPressed: _addClassification,
+                        icon: const Icon(Icons.add),
+                        label: Text(l10n.addClassification),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  
+                  if (_classifications.isEmpty)
+                    Card(
+                      child: Padding(
+                        padding: const EdgeInsets.all(32.0),
+                        child: Center(
+                          child: Column(
+                            children: [
+                              Icon(
+                                Icons.category_outlined,
+                                size: 64,
+                                color: Theme.of(context).colorScheme.onSurfaceVariant,
+                              ),
+                              const SizedBox(height: 16),
+                              Text(
+                                l10n.noClassificationsYet,
+                                style: Theme.of(context).textTheme.titleMedium,
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                l10n.noClassificationsDesc,
+                                textAlign: TextAlign.center,
+                                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    )
+                  else
+                    ...List.generate(_classifications.length, (index) {
+                      final classification = _classifications[index];
+                      return Card(
+                        margin: const EdgeInsets.only(bottom: 8),
+                        child: ListTile(
+                          leading: CircleAvatar(
+                            child: Text('${index + 1}'),
+                          ),
+                          title: Text(classification['name']),
+                          subtitle: Text(
+                            '${classification['ageGroup']} • ${classification['bowType']} • ${classification['distance']}m • ${classification['environment']}',
+                          ),
+                          trailing: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              IconButton(
+                                onPressed: () => _editClassification(index),
+                                icon: const Icon(Icons.edit),
+                              ),
+                              IconButton(
+                                onPressed: () => _deleteClassification(index),
+                                icon: const Icon(Icons.delete),
+                                color: Colors.red,
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    }),
+                  
+                  const SizedBox(height: 32),
+                  
+                  // Action Buttons
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: () => Navigator.of(context).pop(),
+                          child: const Text('Geri'),
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        flex: 2,
+                        child: ElevatedButton.icon(
+                          onPressed: _isLoading ? null : _saveClassifications,
+                          icon: _isLoading 
+                            ? const SizedBox(
+                                width: 16,
+                                height: 16,
+                                child: CircularProgressIndicator(strokeWidth: 2),
+                              )
+                            : const Icon(Icons.check),
+                          label: Text(_isLoading ? 'Kaydediliyor...' : 'Yarışmayı Tamamla'),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+    );
+  }
+
+  String _formatDate(String? dateStr) {
+    if (dateStr == null) return 'Tarih belirtilmemiş';
+    try {
+      final date = DateTime.parse(dateStr);
+      return '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}';
+    } catch (e) {
+      return 'Geçersiz tarih';
+    }
+  }
+}
+
+class _ClassificationDialog extends StatefulWidget {
+  final Map<String, dynamic>? classification;
+  final Function(Map<String, dynamic>) onSave;
+
+  const _ClassificationDialog({
+    this.classification,
+    required this.onSave,
+  });
+
+  @override
+  State<_ClassificationDialog> createState() => _ClassificationDialogState();
+}
+
+class _ClassificationDialogState extends State<_ClassificationDialog> {
+  final _nameController = TextEditingController();
+  String? _selectedAgeGroup;
+  String? _selectedBowType;
+  String? _selectedEnvironment;
+  int? _selectedDistance;
+  final _customDistanceController = TextEditingController();
+
+  final List<String> _ageGroups = [
+    '9-10 Yaş',
+    '11-12 Yaş', 
+    '13-14 Yaş',
+    'U18 (15-16-17)',
+    'U21 (18-19-20)',
+    'Büyükler',
+  ];
+
+  final List<String> _bowTypes = [
+    'Recurve',
+    'Compound',
+    'Barebow',
+  ];
+
+  final List<String> _environments = [
+    'Indoor',
+    'Outdoor',
+  ];
+
+  final List<int> _distances = [18, 20, 30, 50, 60, 70];
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.classification != null) {
+      _nameController.text = widget.classification!['name'] ?? '';
+      _selectedAgeGroup = widget.classification!['ageGroup'];
+      _selectedBowType = widget.classification!['bowType'];
+      _selectedEnvironment = widget.classification!['environment'];
+      _selectedDistance = widget.classification!['distance'];
+    }
+  }
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _customDistanceController.dispose();
+    super.dispose();
+  }
+
+  void _save() {
+    if (_nameController.text.trim().isEmpty ||
+        _selectedAgeGroup == null ||
+        _selectedBowType == null ||
+        _selectedEnvironment == null ||
+        (_selectedDistance == null && _customDistanceController.text.trim().isEmpty)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Lütfen tüm alanları doldurun')),
+      );
+      return;
+    }
+
+    final distance = _selectedDistance ?? int.tryParse(_customDistanceController.text.trim());
+    if (distance == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Geçerli bir mesafe girin')),
+      );
+      return;
+    }
+
+    widget.onSave({
+      'name': _nameController.text.trim(),
+      'ageGroup': _selectedAgeGroup!,
+      'bowType': _selectedBowType!,
+      'environment': _selectedEnvironment!,
+      'distance': distance,
+    });
+
+    Navigator.of(context).pop();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: Text(widget.classification == null ? 'Klasman Ekle' : 'Klasman Düzenle'),
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: _nameController,
+              decoration: const InputDecoration(
+                labelText: 'Klasman Adı',
+                border: OutlineInputBorder(),
+                hintText: 'Örn: Büyükler Erkek Recurve 70m',
+              ),
+            ),
+            const SizedBox(height: 16),
+            
+            DropdownButtonFormField<String>(
+              value: _selectedAgeGroup,
+              decoration: const InputDecoration(
+                labelText: 'Yaş Grubu',
+                border: OutlineInputBorder(),
+              ),
+              items: _ageGroups.map((age) => DropdownMenuItem(
+                value: age,
+                child: Text(age),
+              )).toList(),
+              onChanged: (value) => setState(() => _selectedAgeGroup = value),
+            ),
+            const SizedBox(height: 16),
+            
+            DropdownButtonFormField<String>(
+              value: _selectedBowType,
+              decoration: const InputDecoration(
+                labelText: 'Yay Tipi',
+                border: OutlineInputBorder(),
+              ),
+              items: _bowTypes.map((bow) => DropdownMenuItem(
+                value: bow,
+                child: Text(bow),
+              )).toList(),
+              onChanged: (value) => setState(() => _selectedBowType = value),
+            ),
+            const SizedBox(height: 16),
+            
+            DropdownButtonFormField<String>(
+              value: _selectedEnvironment,
+              decoration: const InputDecoration(
+                labelText: 'Ortam',
+                border: OutlineInputBorder(),
+              ),
+              items: _environments.map((env) => DropdownMenuItem(
+                value: env,
+                child: Text(env),
+              )).toList(),
+              onChanged: (value) => setState(() => _selectedEnvironment = value),
+            ),
+            const SizedBox(height: 16),
+            
+            DropdownButtonFormField<int>(
+              value: _selectedDistance,
+              decoration: const InputDecoration(
+                labelText: 'Mesafe (metre)',
+                border: OutlineInputBorder(),
+              ),
+              items: [
+                ..._distances.map((distance) => DropdownMenuItem(
+                  value: distance,
+                  child: Text('${distance}m'),
+                )),
+                const DropdownMenuItem(
+                  value: -1,
+                  child: Text('Özel Mesafe'),
+                ),
+              ],
+              onChanged: (value) => setState(() {
+                _selectedDistance = value == -1 ? null : value;
+              }),
+            ),
+            
+            if (_selectedDistance == null) ...[
+              const SizedBox(height: 16),
+              TextField(
+                controller: _customDistanceController,
+                decoration: const InputDecoration(
+                  labelText: 'Özel Mesafe (metre)',
+                  border: OutlineInputBorder(),
+                ),
+                keyboardType: TextInputType.number,
+              ),
+            ],
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: Text(AppLocalizations.of(context).cancel),
+        ),
+        ElevatedButton(
+          onPressed: _save,
+          child: Text(AppLocalizations.of(context).save),
+        ),
+      ],
+    );
+  }
+}

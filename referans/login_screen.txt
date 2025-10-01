@@ -1,0 +1,329 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../services/supabase_config.dart';
+import '../providers/google_signin_provider.dart';
+import 'register_screen.dart';
+import 'forgot_password_screen.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:flutter/foundation.dart';
+import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+
+class LoginScreen extends StatefulWidget {
+  const LoginScreen({super.key});
+
+  @override
+  State<LoginScreen> createState() => _LoginScreenState();
+}
+
+class _LoginScreenState extends State<LoginScreen> {
+  final _emailController = TextEditingController();
+  final _passwordController = TextEditingController();
+  bool _isLoading = false;
+  bool _obscurePassword = true;
+
+  void _showEmailVerificationAlert() {
+    final l10n = AppLocalizations.of(context);
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text(l10n.emailVerificationRequiredTitle),
+          content: Text(l10n.emailVerificationLoginContent),
+          actions: <Widget>[
+            TextButton(
+              child: Text(l10n.emailVerificationRequiredOk),
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<void> _signIn() async {
+    setState(() => _isLoading = true);
+    try {
+      final response = await SupabaseConfig.client.auth.signInWithPassword(
+        email: _emailController.text,
+        password: _passwordController.text,
+      );
+
+      if (response.user != null) {
+        if (response.user!.emailConfirmedAt == null) {
+          if (mounted) {
+            _showEmailVerificationAlert();
+          }
+          return;
+        }
+
+        // Navigation is handled by auth state listener in main.dart
+        // No need for duplicate profile check here
+        if (mounted) {
+          final l10n = AppLocalizations.of(context);
+          ScaffoldMessenger.of(context)
+            ..hideCurrentSnackBar()
+            ..showSnackBar(
+              SnackBar(
+                content: Text(l10n.loginSuccessRedirectingShort),
+                backgroundColor: Colors.green,
+                behavior: SnackBarBehavior.floating,
+                duration: const Duration(seconds: 2),
+              ),
+            );
+        }
+      }
+    } catch (e) {
+      // Debug console'a hata detayını yazdır
+      print('[DEBUG] Login error: $e');
+      
+      if (mounted) {
+        final l10n = AppLocalizations.of(context);
+        String errorMessage;
+        
+        // Hata tipine göre lokalize mesaj seç
+        if (e.toString().contains('Invalid login credentials') || 
+            e.toString().contains('400') ||
+            e.toString().contains('invalid_grant')) {
+          errorMessage = l10n.loginErrorInvalidCredentials;
+        } else {
+          errorMessage = l10n.loginErrorGeneric;
+        }
+        
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(errorMessage)),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
+
+
+  // This method is no longer needed as navigation is handled by main.dart auth listener
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+
+    return Consumer(
+      builder: (context, ref, child) {
+        // Google Sign In provider state'ini dinle
+        final googleSignInState = ref.watch(googleSignInProvider);
+
+        // Provider state değişikliklerini handle et
+        googleSignInState.when(
+          data: (user) {
+            // Bu kısım sadece state değişikliği olduğunda çalışacak
+            // Buton onPressed'de handle edilecek
+          },
+          loading: () {
+            // Loading durumunda ekstra işlem yapmaya gerek yok
+            // Buton disabled durumda olacak
+          },
+          error: (error, stackTrace) {
+            // Hata durumunda kullanıcıya göster
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('Google Sign In failed: $error')),
+                );
+              }
+            });
+          },
+        );
+
+        return Scaffold(
+      appBar: AppBar(title: Text(l10n.loginTitle)),
+      resizeToAvoidBottomInset: true, // Klavye açıldığında ekranı yeniden boyutlandır
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(16.0),
+        child: Center(
+          child: ConstrainedBox(
+            constraints: BoxConstraints(maxWidth: 400), // Responsive için
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const SizedBox(height: 48),
+                TextField(
+                  controller: _emailController,
+                  decoration: InputDecoration(
+                    labelText: l10n.emailLabel,
+                    prefixIcon: const Icon(Icons.email),
+                  ),
+                  enabled: !_isLoading,
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: _passwordController,
+                  decoration: InputDecoration(
+                    labelText: l10n.passwordLabel,
+                    prefixIcon: const Icon(Icons.lock),
+                    suffixIcon: IconButton(
+                      icon: Icon(
+                        _obscurePassword ? Icons.visibility_off : Icons.visibility,
+                      ),
+                      onPressed: () {
+                        setState(() {
+                          _obscurePassword = !_obscurePassword;
+                        });
+                      },
+                    ),
+                  ),
+                  obscureText: _obscurePassword,
+                  enabled: !_isLoading,
+                ),
+                const SizedBox(height: 16),
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton(
+                    style: OutlinedButton.styleFrom(
+                      backgroundColor: Colors.transparent,
+                      foregroundColor: Theme.of(context).colorScheme.primary,
+                      side: BorderSide(color: Theme.of(context).colorScheme.primary, width: 1),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      textStyle: const TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    onPressed: _isLoading ? null : _signIn,
+                    child: _isLoading
+                        ? SizedBox(
+                            height: 20,
+                            width: 20,
+                            child: CircularProgressIndicator(strokeWidth: 2, color: Theme.of(context).colorScheme.primary),
+                          )
+                        : Text(l10n.loginButton),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    onPressed: ref.watch(googleSignInProvider).isLoading
+                        ? null
+                        : () async {
+
+                      try {
+                        if (kIsWeb) {
+                          // Web için mevcut Supabase OAuth kullanıyoruz
+                          print('[DEBUG] Web Google Sign In - Supabase OAuth redirect');
+                          final result = await SupabaseConfig.client.auth.signInWithOAuth(
+                            OAuthProvider.google,
+                            redirectTo: 'https://hitarchery.com/',
+                            queryParams: {
+                              'prompt': 'select_account',
+                            },
+                          );
+                          print('[DEBUG] Web signInWithOAuth sonucu: $result');
+                        } else {
+                          // Mobile için native Google Sign In provider kullanıyoruz
+                          print('[DEBUG] Mobile Google Sign In - Native provider');
+
+                          // Önce mevcut durumu temizle
+                          ref.read(googleSignInProvider.notifier).reset();
+
+                          // Native Google Sign In'i başlat
+                          await ref.read(googleSignInProvider.notifier).signInWithGoogle();
+
+                          // Provider state değişiklikleri Consumer build metodunda handle edilecek
+
+                        }
+                      } catch (e) {
+                        print('[DEBUG] Google sign in hata: $e');
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text('Google Sign In failed: $e')),
+                          );
+                        }
+                      }
+                    },
+                    icon: Image.asset(
+                      'assets/images/googlle (1).png',
+                      height: 24,
+                    ),
+                    label: Text(
+                      l10n.localeName == 'tr' ? 'Google ile Giriş Yap' : 'Sign in with Google',
+                    ),
+                    style: OutlinedButton.styleFrom(
+                      backgroundColor: Colors.transparent,
+                      foregroundColor: Theme.of(context).colorScheme.primary,
+                      side: BorderSide(color: Theme.of(context).colorScheme.primary, width: 1),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      textStyle: const TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton(
+                    style: OutlinedButton.styleFrom(
+                      backgroundColor: Colors.transparent,
+                      foregroundColor: Theme.of(context).colorScheme.primary,
+                      side: BorderSide(color: Theme.of(context).colorScheme.primary, width: 1),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      textStyle: const TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    onPressed: _isLoading
+                        ? null
+                        : () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                  builder: (context) => const ForgotPasswordScreen()),
+                            );
+                          },
+                    child: Text(l10n.forgotPassword),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton(
+                    style: OutlinedButton.styleFrom(
+                      backgroundColor: Colors.transparent,
+                      foregroundColor: Theme.of(context).colorScheme.primary,
+                      side: BorderSide(color: Theme.of(context).colorScheme.primary, width: 1),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      textStyle: const TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    onPressed: _isLoading
+                        ? null
+                        : () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                  builder: (context) => const RegisterScreen()),
+                            );
+                          },
+                    child: Text(l10n.register),
+                  ),
+                ),
+                const SizedBox(height: 48),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+      },
+    );
+  }
+
+  @override
+  void dispose() {
+    _emailController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
+}

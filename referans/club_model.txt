@@ -1,0 +1,95 @@
+class Club {
+  final String id;
+  final String name;
+  final String? logo;
+  final String? address;
+  final String? city;
+  final String? country;
+  final DateTime? establishedDate;
+
+  Club({
+    required this.id,
+    required this.name,
+    this.logo,
+    this.address,
+    this.city,
+    this.country,
+    this.establishedDate,
+  });
+
+  // Static method to create the default Individual (No Club) option
+  static Club createIndividualClub(String localizedName) {
+    return Club(
+      id: 'individual_no_club',
+      name: localizedName,
+      logo: null,
+      address: null,
+      city: null,
+      country: null,
+      establishedDate: null,
+    );
+  }
+
+  // Check if this club is the individual (no club) option
+  bool get isIndividualClub => id == 'individual_no_club';
+
+  factory Club.fromJson(Map<String, dynamic> json) {
+    return Club(
+      id: json['club_id'] ?? json['id'] ?? '',
+      name: json['club_name'] ?? json['name'] ?? '',
+      logo: json['logo'],
+      address: json['address'],
+      city: json['city'],
+      country: json['country'],
+      establishedDate: json['established_date'] != null
+          ? DateTime.tryParse(json['established_date'])
+          : null,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'club_id': id,
+      'club_name': name,
+      'logo': logo,
+      'address': address,
+      'city': city,
+      'country': country,
+      'established_date': establishedDate?.toIso8601String(),
+    };
+  }
+
+  Club copyWith({
+    String? id,
+    String? name,
+    String? logo,
+    String? address,
+    String? city,
+    String? country,
+    DateTime? establishedDate,
+  }) {
+    return Club(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      logo: logo ?? this.logo,
+      address: address ?? this.address,
+      city: city ?? this.city,
+      country: country ?? this.country,
+      establishedDate: establishedDate ?? this.establishedDate,
+    );
+  }
+
+  @override
+  String toString() {
+    return 'Club(id: $id, name: $name, city: $city, country: $country)';
+  }
+
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+    return other is Club && other.id == id;
+  }
+
+  @override
+  int get hashCode => id.hashCode;
+} 

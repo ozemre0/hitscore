@@ -1,0 +1,1249 @@
+import 'package:flutter/material.dart';
+import '../../models/profile_model.dart';
+import '../../models/club_model.dart';
+import '../../services/profile_service.dart';
+import '../../services/club_service.dart';
+import '../../services/supabase_config.dart';
+import '../home_screen.dart';
+import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+import 'dart:io';
+import 'package:image_picker/image_picker.dart';
+import '../../services/storage_service.dart';
+import '../login_screen.dart';
+import 'package:intl_phone_number_input/intl_phone_number_input.dart';
+
+class ProfileSetupScreen extends StatefulWidget {
+  const ProfileSetupScreen({super.key});
+
+  @override
+  State<ProfileSetupScreen> createState() => _ProfileSetupScreenState();
+}
+
+class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
+  final _formKey = GlobalKey<FormState>();
+  final _firstNameController = TextEditingController();
+  final _lastNameController = TextEditingController();
+  final _addressController = TextEditingController();
+  final _phoneController = TextEditingController();
+  final _profileService = ProfileService();
+  final _clubService = ClubService();
+  final _storageService = StorageService();
+  final _imagePicker = ImagePicker();
+  String _selectedRole = 'athlete';
+  String? _selectedGender;
+  DateTime? _selectedBirthDate;
+  bool _isLoading = false;
+  dynamic _selectedImage; // File veya XFile olabilir
+  String? _currentPhotoUrl;
+  PhoneNumber _phoneNumber = PhoneNumber(isoCode: 'TR');
+  
+  // Club selection variables
+  Club? _selectedClub;
+  String? _selectedCountry;
+  String? _selectedCity;
+  List<Club> _availableClubs = [];
+  List<String> _availableCountries = [];
+  List<String> _availableCities = [];
+  bool _isLoadingClubs = false;
+  bool _isLoadingCountries = false;
+  bool _isLoadingCities = false;
+
+  // Country codes for phone input (same structure as edit screen)
+  final Map<String, Map<String, String>> _countryCodes = {
+    "AL": {"code": "+355", "flag": "🇦🇱", "name": "Albania"},
+    "AD": {"code": "+376", "flag": "🇦🇩", "name": "Andorra"},
+    "AT": {"code": "+43", "flag": "🇦🇹", "name": "Austria"},
+    "BY": {"code": "+375", "flag": "🇧🇾", "name": "Belarus"},
+    "BE": {"code": "+32", "flag": "🇧🇪", "name": "Belgium"},
+    "BA": {"code": "+387", "flag": "🇧🇦", "name": "Bosnia and Herzegovina"},
+    "BG": {"code": "+359", "flag": "🇧🇬", "name": "Bulgaria"},
+    "HR": {"code": "+385", "flag": "🇭🇷", "name": "Croatia"},
+    "CY": {"code": "+357", "flag": "🇨🇾", "name": "Cyprus"},
+    "CZ": {"code": "+420", "flag": "🇨🇿", "name": "Czech Republic"},
+    "DK": {"code": "+45", "flag": "🇩🇰", "name": "Denmark"},
+    "EE": {"code": "+372", "flag": "🇪🇪", "name": "Estonia"},
+    "FI": {"code": "+358", "flag": "🇫🇮", "name": "Finland"},
+    "FR": {"code": "+33", "flag": "🇫🇷", "name": "France"},
+    "DE": {"code": "+49", "flag": "🇩🇪", "name": "Germany"},
+    "GR": {"code": "+30", "flag": "🇬🇷", "name": "Greece"},
+    "HU": {"code": "+36", "flag": "🇭🇺", "name": "Hungary"},
+    "IS": {"code": "+354", "flag": "🇮🇸", "name": "Iceland"},
+    "IE": {"code": "+353", "flag": "🇮🇪", "name": "Ireland"},
+    "IT": {"code": "+39", "flag": "🇮🇹", "name": "Italy"},
+    "XK": {"code": "+383", "flag": "🇽🇰", "name": "Kosovo"},
+    "LV": {"code": "+371", "flag": "🇱🇻", "name": "Latvia"},
+    "LI": {"code": "+423", "flag": "🇱🇮", "name": "Liechtenstein"},
+    "LT": {"code": "+370", "flag": "🇱🇹", "name": "Lithuania"},
+    "LU": {"code": "+352", "flag": "🇱🇺", "name": "Luxembourg"},
+    "MT": {"code": "+356", "flag": "🇲🇹", "name": "Malta"},
+    "MD": {"code": "+373", "flag": "🇲🇩", "name": "Moldova"},
+    "MC": {"code": "+377", "flag": "🇲🇨", "name": "Monaco"},
+    "ME": {"code": "+382", "flag": "🇲🇪", "name": "Montenegro"},
+    "NL": {"code": "+31", "flag": "🇳🇱", "name": "Netherlands"},
+    "MK": {"code": "+389", "flag": "🇲🇰", "name": "North Macedonia"},
+    "NO": {"code": "+47", "flag": "🇳🇴", "name": "Norway"},
+    "PL": {"code": "+48", "flag": "🇵🇱", "name": "Poland"},
+    "PT": {"code": "+351", "flag": "🇵🇹", "name": "Portugal"},
+    "RO": {"code": "+40", "flag": "🇷🇴", "name": "Romania"},
+    "RU": {"code": "+7", "flag": "🇷🇺", "name": "Russia"},
+    "SM": {"code": "+378", "flag": "🇸🇲", "name": "San Marino"},
+    "RS": {"code": "+381", "flag": "🇷🇸", "name": "Serbia"},
+    "SK": {"code": "+421", "flag": "🇸🇰", "name": "Slovakia"},
+    "SI": {"code": "+386", "flag": "🇸🇮", "name": "Slovenia"},
+    "ES": {"code": "+34", "flag": "🇪🇸", "name": "Spain"},
+    "SE": {"code": "+46", "flag": "🇸🇪", "name": "Sweden"},
+    "CH": {"code": "+41", "flag": "🇨🇭", "name": "Switzerland"},
+    "TR": {"code": "+90", "flag": "🇹🇷", "name": "Turkey"},
+    "UA": {"code": "+380", "flag": "🇺🇦", "name": "Ukraine"},
+    "UK": {"code": "+44", "flag": "🇬🇧", "name": "United Kingdom"},
+    "VA": {"code": "+379", "flag": "🇻🇦", "name": "Vatican City"},
+    "US": {"code": "+1", "flag": "🇺🇸", "name": "United States"},
+    "CA": {"code": "+1", "flag": "🇨🇦", "name": "Canada"},
+    "BR": {"code": "+55", "flag": "🇧🇷", "name": "Brazil"},
+    "CN": {"code": "+86", "flag": "🇨🇳", "name": "China"},
+    "IN": {"code": "+91", "flag": "🇮🇳", "name": "India"},
+    "JP": {"code": "+81", "flag": "🇯🇵", "name": "Japan"},
+    "KR": {"code": "+82", "flag": "🇰🇷", "name": "South Korea"},
+    "AU": {"code": "+61", "flag": "🇦🇺", "name": "Australia"},
+    "NZ": {"code": "+64", "flag": "🇳🇿", "name": "New Zealand"},
+  };
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _initializeForm();
+    });
+  }
+
+  // Load countries
+  Future<void> _loadCountries() async {
+    try {
+      setState(() => _isLoadingCountries = true);
+      
+      final countries = await _clubService.getUniqueCountries();
+      
+      if (mounted) {
+        setState(() {
+          _availableCountries = countries;
+          _isLoadingCountries = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoadingCountries = false);
+        
+        final errorStr = e.toString().toLowerCase();
+        if (errorStr.contains('timeout') || errorStr.contains('connection')) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(AppLocalizations.of(context).networkError),
+              backgroundColor: Colors.orange,
+            ),
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(AppLocalizations.of(context).error(e.toString()))),
+          );
+        }
+      }
+    }
+  }
+
+  // Initialize form with existing profile data (if any)
+  Future<void> _initializeForm() async {
+    await _loadCountries();
+    try {
+      final user = SupabaseConfig.client.auth.currentUser;
+      if (user == null) return;
+
+      final existingProfile = await _profileService.getProfile(user.id);
+      if (!mounted) return;
+
+      if (existingProfile != null) {
+        setState(() {
+          _firstNameController.text = existingProfile.firstName;
+          _lastNameController.text = existingProfile.lastName;
+          _addressController.text = existingProfile.address ?? '';
+          // Initialize phone: parse "+<code> <number>" into dialCode + local number
+          final existingPhone = existingProfile.phoneNumber;
+          if (existingPhone != null && existingPhone.startsWith('+')) {
+            final spaceIndex = existingPhone.indexOf(' ');
+            if (spaceIndex > 0) {
+              final dial = existingPhone.substring(0, spaceIndex);
+              final numPart = existingPhone.substring(spaceIndex + 1);
+              _phoneController.text = numPart;
+              String? foundIsoCode;
+              for (var entry in _countryCodes.entries) {
+                if (entry.value["code"] == dial) {
+                  foundIsoCode = entry.key;
+                  break;
+                }
+              }
+              _phoneNumber = PhoneNumber(
+                phoneNumber: numPart,
+                dialCode: dial.replaceAll('+', ''),
+                isoCode: foundIsoCode ?? 'TR',
+              );
+            }
+          } else {
+            _phoneController.text = existingPhone ?? '';
+            _phoneNumber = PhoneNumber(phoneNumber: '', dialCode: "90", isoCode: 'TR');
+          }
+          _selectedRole = existingProfile.role;
+          _selectedGender = existingProfile.gender;
+          _selectedBirthDate = existingProfile.birthDate;
+          _selectedCountry = existingProfile.country;
+          _selectedCity = existingProfile.city;
+          _currentPhotoUrl = existingProfile.photoUrl;
+        });
+
+        if (existingProfile.country != null) {
+          await _loadCitiesForCountry(existingProfile.country!);
+        }
+        await _loadClubsForLocation(existingProfile.country, existingProfile.city);
+
+        Club? club;
+        if (existingProfile.clubId != null) {
+          club = await _clubService.getClubById(existingProfile.clubId!);
+        } else {
+          club = Club.createIndividualClub(AppLocalizations.of(context).individualClub);
+        }
+
+        if (mounted) {
+          setState(() {
+            _selectedClub = club;
+          });
+        }
+      } else {
+        // No existing profile: default to Individual (No Club)
+        setState(() {
+          _selectedClub = Club.createIndividualClub(AppLocalizations.of(context).individualClub);
+        });
+      }
+    } catch (_) {
+      if (mounted) {
+        // Fallback to Individual on any error
+        setState(() {
+          _selectedClub = Club.createIndividualClub(AppLocalizations.of(context).individualClub);
+        });
+      }
+    }
+  }
+
+  // Load cities for selected country
+  Future<void> _loadCitiesForCountry(String country) async {
+    try {
+      setState(() => _isLoadingCities = true);
+      
+      final cities = await _clubService.getUniqueCitiesByCountry(country);
+      
+      if (mounted) {
+        setState(() {
+          _availableCities = cities;
+          _isLoadingCities = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoadingCities = false);
+        
+        final errorStr = e.toString().toLowerCase();
+        if (errorStr.contains('timeout') || errorStr.contains('connection')) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(AppLocalizations.of(context).networkError),
+              backgroundColor: Colors.orange,
+            ),
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(AppLocalizations.of(context).error(e.toString()))),
+          );
+        }
+      }
+    }
+  }
+
+  // Load clubs for selected country and city
+  Future<void> _loadClubsForLocation(String? country, String? city) async {
+    try {
+      setState(() => _isLoadingClubs = true);
+      
+      final clubs = await _clubService.getClubsForDropdown(country: country, city: city);
+      
+      if (mounted) {
+        setState(() {
+          _availableClubs = clubs;
+          _isLoadingClubs = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoadingClubs = false);
+        
+        final errorStr = e.toString().toLowerCase();
+        if (errorStr.contains('timeout') || errorStr.contains('connection')) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(AppLocalizations.of(context).networkError),
+              backgroundColor: Colors.orange,
+            ),
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(AppLocalizations.of(context).error(e.toString()))),
+          );
+        }
+      }
+    }
+  }
+
+  Future<void> _selectDate(BuildContext context) async {
+    final DateTime? picked = await showDatePicker(
+      context: context,
+      initialDate: _selectedBirthDate ?? DateTime.now(),
+      firstDate: DateTime(1900),
+      lastDate: DateTime.now(),
+    );
+    if (picked != null && mounted) {
+      setState(() => _selectedBirthDate = picked);
+    }
+  }
+
+  Future<void> _selectImage() async {
+    try {
+      final XFile? image = await _imagePicker.pickImage(
+        source: ImageSource.gallery,
+        maxWidth: 800,
+        maxHeight: 800,
+        imageQuality: 85,
+      );
+      if (image != null) {
+        if (Platform.isAndroid || Platform.isIOS) {
+          setState(() => _selectedImage = File(image.path));
+        } else {
+          setState(() => _selectedImage = image);
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(AppLocalizations.of(context).error(e.toString()))),
+        );
+      }
+    }
+  }
+
+  Future<void> _submitForm() async {
+    if (!_formKey.currentState!.validate()) return;
+    if (_selectedBirthDate == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(AppLocalizations.of(context).birthDateRequired)),
+      );
+      return;
+    }
+    if (_selectedGender == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(AppLocalizations.of(context).genderRequired)),
+      );
+      return;
+    }
+    setState(() => _isLoading = true);
+    try {
+      final user = SupabaseConfig.client.auth.currentUser;
+      if (user != null) {
+        String? photoUrl;
+        if (_selectedImage != null) {
+          photoUrl = await _storageService.uploadProfilePhoto(
+            user.id,
+            _selectedImage!,
+          );
+        }
+        // Normalize phone number to "+<code> <number>" format
+        String? formattedPhone;
+        if (_phoneController.text.isNotEmpty) {
+          final cleanNumber = _phoneController.text.trim();
+          try {
+            final entry = _countryCodes.entries.firstWhere(
+              (e) => e.value["code"]!.replaceAll('+', '') == _phoneNumber.dialCode,
+            );
+            formattedPhone = '${entry.value["code"]} $cleanNumber';
+          } catch (_) {
+            formattedPhone = cleanNumber;
+          }
+        }
+
+        final profile = Profile(
+          id: user.id,
+          firstName: _firstNameController.text,
+          lastName: _lastNameController.text,
+          role: _selectedRole,
+          gender: _selectedGender,
+          birthDate: _selectedBirthDate!,
+          address: _addressController.text.isNotEmpty ? _addressController.text : null,
+          phoneNumber: formattedPhone,
+          photoUrl: photoUrl,
+          clubId: (_selectedClub?.isIndividualClub == true) ? null : _selectedClub?.id,
+          city: (_selectedClub?.isIndividualClub == true) ? null : _selectedCity,
+          country: (_selectedClub?.isIndividualClub == true) ? null : _selectedCountry,
+          createdAt: DateTime.now(),
+          updatedAt: DateTime.now(),
+        );
+        await _profileService.createProfile(profile);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(AppLocalizations.of(context).profileUpdated)),
+          );
+          Navigator.of(context).pushAndRemoveUntil(
+            MaterialPageRoute(builder: (context) => const HomeScreen()),
+            (route) => false,
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(AppLocalizations.of(context).error(e.toString()))),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
+
+  Future<void> _signOut() async {
+    await SupabaseConfig.client.auth.signOut();
+    if (mounted) {
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(builder: (context) => const LoginScreen()),
+        (route) => false,
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final size = MediaQuery.of(context).size;
+    final textScaleFactor = MediaQuery.of(context).textScaleFactor;
+    final adjustedTextScaleFactor = textScaleFactor > 1.2 ? 1.2 : textScaleFactor;
+    final cardBackgroundColor = isDark ? theme.colorScheme.surface : theme.cardColor;
+    final sectionTitleColor = isDark ? Colors.white : theme.primaryColor;
+    final sectionIconColor = isDark ? theme.primaryColor.withOpacity(0.8) : theme.primaryColor;
+    final textColor = isDark ? Colors.white : Colors.black87;
+    final hintTextColor = isDark ? Colors.white70 : theme.hintColor;
+
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(l10n.setupProfile),
+        automaticallyImplyLeading: false,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.save),
+            tooltip: l10n.save,
+            onPressed: _isLoading ? null : _submitForm,
+          ),
+          IconButton(
+            icon: const Icon(Icons.logout),
+            tooltip: l10n.signOut,
+            onPressed: _signOut,
+          ),
+        ],
+      ),
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : SafeArea(
+              child: GestureDetector(
+                onTap: () => FocusScope.of(context).unfocus(),
+                child: SingleChildScrollView(
+                  child: Padding(
+                    padding: EdgeInsets.all(size.width * 0.04),
+                    child: Form(
+                      key: _formKey,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          // Hoş geldin başlığı ve açıklama
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 16.0),
+                            child: Column(
+                              children: [
+                                // Profil fotoğrafı
+                                GestureDetector(
+                                  onTap: _selectImage,
+                                  child: Stack(
+                                    children: [
+                                      Container(
+                                        width: size.width * 0.28,
+                                        height: size.width * 0.28,
+                                        constraints: const BoxConstraints(
+                                          maxWidth: 130,
+                                          maxHeight: 130,
+                                          minWidth: 100,
+                                          minHeight: 100,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          shape: BoxShape.circle,
+                                          color: theme.scaffoldBackgroundColor,
+                                          border: Border.all(
+                                            color: theme.primaryColor,
+                                            width: 2,
+                                          ),
+                                        ),
+                                        child: _selectedImage == null && _currentPhotoUrl == null
+                                            ? Icon(
+                                                Icons.person_outline_rounded,
+                                                size: size.width * 0.12,
+                                                color: theme.primaryColor,
+                                              )
+                                            : null,
+                                      ),
+                                      if (_selectedImage != null || _currentPhotoUrl != null)
+                                        Positioned.fill(
+                                          child: ClipOval(
+                                            child: _selectedImage != null
+                                                ? ( _selectedImage is XFile
+                                                    ? Image.network(
+                                                        (_selectedImage as XFile).path,
+                                                        fit: BoxFit.cover,
+                                                      )
+                                                    : Image.file(
+                                                        _selectedImage!,
+                                                        fit: BoxFit.cover,
+                                                      )
+                                                  )
+                                                : Image.network(
+                                                    _currentPhotoUrl!,
+                                                    fit: BoxFit.cover,
+                                                  ),
+                                          ),
+                                        ),
+                                      Positioned(
+                                        right: 0,
+                                        bottom: 0,
+                                        child: DecoratedBox(
+                                          decoration: BoxDecoration(
+                                            color: theme.primaryColor,
+                                            shape: BoxShape.circle,
+                                            border: Border.all(
+                                              color: theme.scaffoldBackgroundColor,
+                                              width: 2,
+                                            ),
+                                          ),
+                                          child: Padding(
+                                            padding: const EdgeInsets.all(6.0),
+                                            child: Icon(
+                                              Icons.camera_alt,
+                                              color: Colors.white,
+                                              size: 16,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                const SizedBox(height: 8),
+                                const SizedBox(height: 8),
+                              ],
+                            ),
+                          ),
+                          Container(
+                            margin: const EdgeInsets.only(top: 0, bottom: 20),
+                            decoration: BoxDecoration(
+                              color: cardBackgroundColor,
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color: theme.dividerColor.withOpacity(0.3),
+                              ),
+                            ),
+                            child: Padding(
+                              padding: const EdgeInsets.all(16.0),
+                              child: LayoutBuilder(
+                                builder: (context, constraints) {
+                                  final isWide = constraints.maxWidth > 520;
+                                  return isWide
+                                      ? Row(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Expanded(child: _buildNameFields(theme, isDark, l10n)),
+                                            const SizedBox(width: 16),
+                                            Expanded(child: _buildOtherFields(theme, isDark, l10n)),
+                                          ],
+                                        )
+                                      : Column(
+                                          children: [
+                                            _buildNameFields(theme, isDark, l10n),
+                                            const SizedBox(height: 16),
+                                            _buildOtherFields(theme, isDark, l10n),
+                                          ],
+                                        );
+                                },
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 24),
+                          SizedBox(
+                            width: double.infinity,
+                            child: ElevatedButton.icon(
+                              onPressed: _isLoading ? null : _submitForm,
+                              icon: const Icon(Icons.save),
+                              label: _isLoading
+                                  ? const SizedBox(
+                                      height: 20,
+                                      width: 20,
+                                      child: CircularProgressIndicator(strokeWidth: 2),
+                                    )
+                                  : Text(l10n.save),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: theme.primaryColor,
+                                foregroundColor: Colors.white,
+                                minimumSize: const Size(double.infinity, 50),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+    );
+  }
+
+  Widget _buildNameFields(ThemeData theme, bool isDark, AppLocalizations l10n) {
+    final hintTextColor = isDark ? Colors.white70 : theme.hintColor;
+    return Column(
+      children: [
+        TextFormField(
+          controller: _firstNameController,
+          decoration: InputDecoration(
+            labelText: l10n.firstName,
+            labelStyle: TextStyle(color: hintTextColor),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+          ),
+          validator: (value) => value?.isEmpty ?? true ? l10n.firstNameRequired : null,
+        ),
+        const SizedBox(height: 16),
+        TextFormField(
+          controller: _lastNameController,
+          decoration: InputDecoration(
+            labelText: l10n.lastName,
+            labelStyle: TextStyle(color: hintTextColor),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+          ),
+          validator: (value) => value?.isEmpty ?? true ? l10n.lastNameRequired : null,
+        ),
+        const SizedBox(height: 16),
+        TextFormField(
+          controller: _addressController,
+          decoration: InputDecoration(
+            labelText: l10n.address,
+            labelStyle: TextStyle(color: hintTextColor),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+          ),
+        ),
+        const SizedBox(height: 16),
+        Align(
+          alignment: Alignment.centerLeft,
+          child: Text(
+            l10n.phoneNumber,
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: hintTextColor,
+                ),
+          ),
+        ),
+        const SizedBox(height: 8),
+        LayoutBuilder(
+          builder: (context, constraints) {
+            return constraints.maxWidth > 520
+                ? _buildPhoneRow(theme, constraints, isDark)
+                : _buildPhoneColumn(theme, isDark);
+          },
+        ),
+      ],
+    );
+  }
+
+  Widget _buildOtherFields(ThemeData theme, bool isDark, AppLocalizations l10n) {
+    final hintTextColor = isDark ? Colors.white70 : theme.hintColor;
+    final textColor = isDark ? Colors.white : Colors.black87;
+    return Column(
+      children: [
+        DropdownButtonFormField<String>(
+          value: _selectedRole,
+          decoration: InputDecoration(
+            labelText: l10n.role,
+            labelStyle: TextStyle(color: hintTextColor),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+          ),
+          items: [
+            DropdownMenuItem(
+              value: 'athlete',
+              child: Text(l10n.athlete, style: TextStyle(color: textColor)),
+            ),
+            DropdownMenuItem(
+              value: 'coach',
+              child: Text(l10n.coach, style: TextStyle(color: textColor)),
+            ),
+          ],
+          onChanged: (value) {
+            if (value != null) {
+              setState(() => _selectedRole = value);
+            }
+          },
+        ),
+        const SizedBox(height: 16),
+        DropdownButtonFormField<String>(
+          value: _selectedGender,
+          decoration: InputDecoration(
+            labelText: l10n.gender,
+            labelStyle: TextStyle(color: hintTextColor),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+          ),
+          items: [
+            DropdownMenuItem(
+              value: 'male',
+              child: Text(l10n.male, style: TextStyle(color: textColor)),
+            ),
+            DropdownMenuItem(
+              value: 'female',
+              child: Text(l10n.female, style: TextStyle(color: textColor)),
+            ),
+          ],
+          onChanged: (value) {
+            setState(() => _selectedGender = value);
+          },
+          validator: (value) => value == null ? l10n.genderRequired : null,
+        ),
+        const SizedBox(height: 16),
+        InkWell(
+          onTap: () => _selectDate(context),
+          borderRadius: BorderRadius.circular(8),
+          child: Container(
+            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
+            decoration: BoxDecoration(
+              border: Border.all(color: theme.dividerColor, width: 1),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.calendar_today_outlined, size: 20, color: hintTextColor),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(l10n.birthDate, style: theme.textTheme.bodyMedium?.copyWith(color: hintTextColor)),
+                      const SizedBox(height: 4),
+                      Text(
+                        _selectedBirthDate != null
+                            ? '${_selectedBirthDate!.day}/${_selectedBirthDate!.month}/${_selectedBirthDate!.year}'
+                            : l10n.dateNotSelected,
+                        style: theme.textTheme.titleSmall?.copyWith(
+                          fontWeight: _selectedBirthDate != null ? FontWeight.bold : FontWeight.normal,
+                          color: textColor,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
+                ),
+                Icon(Icons.arrow_drop_down, color: hintTextColor),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 16),
+        // Club Information Section
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: theme.cardColor.withOpacity(0.5),
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: theme.dividerColor.withOpacity(0.3)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Icon(Icons.sports_martial_arts_outlined, color: theme.primaryColor, size: 20),
+                  const SizedBox(width: 8),
+                  Text(
+                    l10n.clubInfo,
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: theme.primaryColor,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              _buildClubCountryDropdown(theme, isDark),
+              const SizedBox(height: 12),
+              _buildCityDropdown(theme, isDark),
+              const SizedBox(height: 12),
+              _buildClubDropdown(theme, isDark),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  // Phone input: country dropdown
+  Widget _buildCountryDropdown(ThemeData theme) {
+    final isDark = theme.brightness == Brightness.dark;
+    final hintTextColor = isDark ? Colors.white70 : theme.hintColor;
+    final textColor = isDark ? Colors.white : Colors.black87;
+    final cardColor = isDark ? theme.colorScheme.surface : theme.cardColor;
+    return Container(
+      decoration: BoxDecoration(
+        border: Border.all(color: theme.dividerColor),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: DropdownButtonFormField<String>(
+        value: _getSelectedCountryValue(),
+        items: _getCountryItems(),
+        onChanged: (value) {
+          if (value != null) {
+            final parts = value.split('_');
+            final iso = parts[1];
+            final selectedCountry = _countryCodes[iso]!;
+            setState(() {
+              _phoneNumber = PhoneNumber(
+                phoneNumber: _phoneController.text,
+                dialCode: selectedCountry["code"]!.replaceAll("+", ""),
+                isoCode: iso,
+              );
+            });
+          }
+        },
+        style: TextStyle(color: textColor),
+        decoration: const InputDecoration(
+          border: InputBorder.none,
+          contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+        ),
+        icon: Icon(Icons.arrow_drop_down, size: 24, color: hintTextColor),
+        isExpanded: true,
+        dropdownColor: cardColor,
+        isDense: true,
+        itemHeight: 50,
+        menuMaxHeight: 500, // show at most 10 items (10 * 50)
+      ),
+    );
+  }
+
+  // Phone input: responsive layouts
+  Widget _buildPhoneRow(ThemeData theme, BoxConstraints constraints, bool isDark) {
+    final hintTextColor = isDark ? Colors.white70 : theme.hintColor;
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SizedBox(
+          width: constraints.maxWidth * 0.4,
+          child: _buildCountryDropdown(theme),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: TextFormField(
+            controller: _phoneController,
+            keyboardType: TextInputType.number,
+            style: TextStyle(color: isDark ? Colors.white : Colors.black87),
+            decoration: InputDecoration(
+              hintText: AppLocalizations.of(context).phoneNumber,
+              hintStyle: TextStyle(color: hintTextColor),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide: BorderSide(color: theme.dividerColor),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide: BorderSide(color: theme.dividerColor),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide: BorderSide(color: theme.colorScheme.primary, width: 2),
+              ),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+              prefixIcon: Icon(Icons.phone_outlined, color: hintTextColor),
+            ),
+            onChanged: (value) {
+              setState(() {
+                _phoneNumber = PhoneNumber(
+                  phoneNumber: value,
+                  dialCode: _phoneNumber.dialCode,
+                  isoCode: _phoneNumber.isoCode ?? 'TR',
+                );
+              });
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildPhoneColumn(ThemeData theme, bool isDark) {
+    final hintTextColor = isDark ? Colors.white70 : theme.hintColor;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildCountryDropdown(theme),
+        const SizedBox(height: 12),
+        TextFormField(
+          controller: _phoneController,
+          keyboardType: TextInputType.number,
+          style: TextStyle(color: isDark ? Colors.white : Colors.black87),
+          decoration: InputDecoration(
+            hintText: AppLocalizations.of(context).phoneNumber,
+            hintStyle: TextStyle(color: hintTextColor),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: BorderSide(color: theme.dividerColor),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: BorderSide(color: theme.dividerColor),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: BorderSide(color: theme.colorScheme.primary, width: 2),
+            ),
+            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+            prefixIcon: Icon(Icons.phone_outlined, color: hintTextColor),
+          ),
+          onChanged: (value) {
+            setState(() {
+              _phoneNumber = PhoneNumber(
+                phoneNumber: value,
+                dialCode: _phoneNumber.dialCode,
+                isoCode: _phoneNumber.isoCode ?? 'TR',
+              );
+            });
+          },
+        ),
+      ],
+    );
+  }
+
+  // Helpers for phone country dropdown
+  List<DropdownMenuItem<String>> _getCountryItems() {
+    var entries = _countryCodes.entries.toList();
+    entries.sort((a, b) => a.value["name"]!.compareTo(b.value["name"]!));
+    return entries.map<DropdownMenuItem<String>>((entry) {
+      final value = entry.value["code"]!.replaceAll("+", "") + "_" + entry.key;
+      return DropdownMenuItem(
+        value: value,
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(entry.value["flag"]!, style: const TextStyle(fontSize: 16)),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                "${entry.value["name"]} (${entry.value["code"]})",
+                style: const TextStyle(fontSize: 13),
+                overflow: TextOverflow.ellipsis,
+                maxLines: 1,
+              ),
+            ),
+          ],
+        ),
+      );
+    }).toList();
+  }
+
+  String? _getSelectedCountryValue() {
+    if (_phoneNumber.dialCode == null || _phoneNumber.isoCode == null) return null;
+    return _phoneNumber.dialCode!.replaceAll("+", "") + "_" + _phoneNumber.isoCode!;
+  }
+
+  // Club country dropdown
+  Widget _buildClubCountryDropdown(ThemeData theme, bool isDark) {
+    final hintTextColor = isDark ? Colors.white70 : theme.hintColor;
+    final textColor = isDark ? Colors.white : Colors.black87;
+    final cardColor = isDark ? theme.colorScheme.surface : theme.cardColor;
+    
+    // Ensure selected country exists in available countries or set to null
+    String? validSelectedCountry = _selectedCountry;
+    if (_selectedCountry != null && !_availableCountries.contains(_selectedCountry)) {
+      validSelectedCountry = null;
+    }
+    
+    return DropdownButtonFormField<String>(
+      value: validSelectedCountry,
+      items: [
+        DropdownMenuItem<String>(
+          value: null,
+          child: Text(
+            AppLocalizations.of(context).allCountries,
+            style: TextStyle(color: hintTextColor),
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+        ..._availableCountries.map((country) => DropdownMenuItem<String>(
+          value: country,
+          child: Text(
+            country,
+            style: TextStyle(color: textColor),
+            overflow: TextOverflow.ellipsis,
+          ),
+        )).toList(),
+      ],
+      onChanged: (value) async {
+        setState(() {
+          _selectedCountry = value;
+          _selectedCity = null;
+          _selectedClub = null;
+          _availableCities.clear();
+          _availableClubs.clear();
+        });
+        
+        if (value != null) {
+          await _loadCitiesForCountry(value);
+        }
+      },
+      style: TextStyle(color: textColor),
+      decoration: InputDecoration(
+        labelText: AppLocalizations.of(context).selectCountry,
+        labelStyle: TextStyle(color: hintTextColor),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: BorderSide(color: theme.dividerColor),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: BorderSide(color: theme.dividerColor),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: BorderSide(color: theme.colorScheme.primary, width: 2),
+        ),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+        prefixIcon: Icon(Icons.flag_outlined, color: hintTextColor),
+      ),
+      icon: Icon(Icons.arrow_drop_down, color: hintTextColor),
+      dropdownColor: cardColor,
+      isExpanded: true,
+      menuMaxHeight: 200,
+      isDense: true,
+      itemHeight: 48,
+    );
+  }
+
+  // City dropdown
+  Widget _buildCityDropdown(ThemeData theme, bool isDark) {
+    final hintTextColor = isDark ? Colors.white70 : theme.hintColor;
+    final textColor = isDark ? Colors.white : Colors.black87;
+    final cardColor = isDark ? theme.colorScheme.surface : theme.cardColor;
+    
+    // Ensure selected city exists in available cities or set to null
+    String? validSelectedCity = _selectedCity;
+    if (_selectedCity != null && !_availableCities.contains(_selectedCity)) {
+      validSelectedCity = null;
+    }
+    
+    return DropdownButtonFormField<String>(
+      value: validSelectedCity,
+      items: [
+        DropdownMenuItem<String>(
+          value: null,
+          child: Text(
+            AppLocalizations.of(context).allCities,
+            style: TextStyle(color: hintTextColor),
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+        ..._availableCities.map((city) => DropdownMenuItem<String>(
+          value: city,
+          child: Text(
+            city,
+            style: TextStyle(color: textColor),
+            overflow: TextOverflow.ellipsis,
+          ),
+        )).toList(),
+      ],
+      onChanged: (value) async {
+        setState(() {
+          _selectedCity = value;
+          _selectedClub = null;
+          _availableClubs.clear();
+        });
+        
+        await _loadClubsForLocation(_selectedCountry, value);
+      },
+      style: TextStyle(color: textColor),
+      decoration: InputDecoration(
+        labelText: AppLocalizations.of(context).selectCity,
+        labelStyle: TextStyle(color: hintTextColor),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: BorderSide(color: theme.dividerColor),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: BorderSide(color: theme.dividerColor),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: BorderSide(color: theme.colorScheme.primary, width: 2),
+        ),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+        prefixIcon: Icon(Icons.location_city_outlined, color: hintTextColor),
+      ),
+      icon: Icon(Icons.arrow_drop_down, color: hintTextColor),
+      dropdownColor: cardColor,
+      isExpanded: true,
+      menuMaxHeight: 200,
+      isDense: true,
+      itemHeight: 48,
+    );
+  }
+
+  // Club dropdown
+  Widget _buildClubDropdown(ThemeData theme, bool isDark) {
+    final hintTextColor = isDark ? Colors.white70 : theme.hintColor;
+    final cardColor = isDark ? theme.colorScheme.surface : theme.cardColor;
+    final textColor = isDark ? Colors.white : Colors.black87;
+    
+    // Validate that selected club is in available clubs list or is the individual club
+    Club? validSelectedClub = _selectedClub;
+    if (_selectedClub != null && 
+        !_selectedClub!.isIndividualClub && 
+        !_availableClubs.any((club) => club.id == _selectedClub!.id)) {
+      validSelectedClub = null;
+    }
+    
+    return Row(
+      children: [
+        Expanded(
+          child: DropdownButtonFormField<Club?>(
+            value: validSelectedClub,
+            onChanged: (Club? newValue) {
+              setState(() {
+                _selectedClub = newValue;
+              });
+            },
+            decoration: InputDecoration(
+              labelText: AppLocalizations.of(context).selectClub,
+              labelStyle: TextStyle(color: hintTextColor),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide: BorderSide(color: theme.dividerColor),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide: BorderSide(color: theme.dividerColor),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide: BorderSide(color: theme.colorScheme.primary, width: 2),
+              ),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+              prefixIcon: Icon(Icons.sports_martial_arts_outlined, color: hintTextColor),
+              suffixIcon: _isLoadingClubs 
+                ? Padding(
+                    padding: const EdgeInsets.all(12.0),
+                    child: SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: theme.colorScheme.primary,
+                      ),
+                    ),
+                  )
+                : null,
+            ),
+            items: [
+              // Individual (No Club) option at the top
+              DropdownMenuItem<Club?>(
+                value: Club.createIndividualClub(AppLocalizations.of(context).individualClub),
+                child: Text(
+                  AppLocalizations.of(context).individualClub,
+                  style: TextStyle(
+                    color: textColor,
+                    fontWeight: FontWeight.w500,
+                    fontStyle: FontStyle.italic,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                  maxLines: 1,
+                ),
+              ),
+              // Available clubs from Supabase
+              ..._availableClubs.map<DropdownMenuItem<Club?>>((Club club) {
+                return DropdownMenuItem<Club?>(
+                  value: club,
+                  child: Text(
+                    club.name,
+                    style: TextStyle(
+                      color: textColor,
+                      fontWeight: FontWeight.w500,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                    maxLines: 1,
+                  ),
+                );
+              }).toList(),
+            ],
+            icon: Icon(Icons.arrow_drop_down, color: hintTextColor),
+            dropdownColor: cardColor,
+            isExpanded: true,
+            menuMaxHeight: 300,
+            isDense: true,
+            itemHeight: 52,
+          ),
+        ),
+        // X button to remove club selection (not shown for Individual club)
+        if (_selectedClub != null && !_selectedClub!.isIndividualClub)
+          Container(
+            margin: const EdgeInsets.only(left: 8),
+            child: IconButton(
+              onPressed: () {
+                setState(() {
+                  _selectedClub = Club.createIndividualClub(AppLocalizations.of(context).individualClub);
+                  _selectedCountry = null;
+                  _selectedCity = null;
+                  _availableCities.clear();
+                  _availableClubs.clear();
+                });
+              },
+              icon: Icon(
+                Icons.close,
+                color: theme.colorScheme.error,
+                size: 20,
+              ),
+              style: IconButton.styleFrom(
+                backgroundColor: theme.colorScheme.error.withOpacity(0.1),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                padding: const EdgeInsets.all(8),
+              ),
+              tooltip: AppLocalizations.of(context).removeClub,
+            ),
+          ),
+      ],
+    );
+  }
+
+  @override
+  void dispose() {
+    _firstNameController.dispose();
+    _lastNameController.dispose();
+    _addressController.dispose();
+    _phoneController.dispose();
+    super.dispose();
+  }
+}

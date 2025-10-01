@@ -1,0 +1,123 @@
+import 'dart:io' show Platform;
+import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:google_sign_in/google_sign_in.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import '../services/supabase_config.dart';
+
+/// Google Sign In provider for native authentication
+final googleSignInProvider = StateNotifierProvider<GoogleSignInNotifier, AsyncValue<User?>>((ref) {
+  return GoogleSignInNotifier();
+});
+
+class GoogleSignInNotifier extends StateNotifier<AsyncValue<User?>> {
+  GoogleSignInNotifier() : super(const AsyncValue.data(null)) {
+    _initializeGoogleSignIn();
+  }
+
+  late GoogleSignIn _googleSignIn;
+
+  void _initializeGoogleSignIn() {
+    // Configure Google Sign In based on platform
+    if (kIsWeb) {
+      // Web için mevcut Supabase OAuth kullanıyoruz
+      return;
+    }
+
+        // Mobile platforms için native Google Sign In
+        _googleSignIn = GoogleSignIn(
+          clientId: Platform.isIOS
+              ? '871385916265-ulcv6rj22kqhp8aatlvb52m03kh4r7rn.apps.googleusercontent.com'
+              : '871385916265-299a5dgisvq2h5ktvpt82ubl3kn8rr0f.apps.googleusercontent.com',
+          serverClientId: '871385916265-67062ldd3a7bt93rcto8l3ucev4jrg8s.apps.googleusercontent.com',
+          scopes: ['email', 'profile'],
+        );
+  }
+
+  Future<void> signInWithGoogle() async {
+    if (kIsWeb) {
+      // Web için Supabase OAuth kullan
+      state = const AsyncValue.loading();
+      try {
+        final bool response = await SupabaseConfig.client.auth.signInWithOAuth(
+          OAuthProvider.google,
+          redirectTo: 'https://hitarchery.com/',
+          queryParams: {
+            'prompt': 'select_account',
+          },
+        );
+        print('[DEBUG] Web Supabase OAuth response: $response');
+        if (response) {
+          // Web OAuth redirect başarılı, auth state change listener handle edecek
+          state = const AsyncValue.data(null);
+        } else {
+          state = const AsyncValue.data(null);
+        }
+      } catch (error, stackTrace) {
+        print('Web Google Sign In error: $error');
+        state = AsyncValue.error(error, stackTrace);
+      }
+      return;
+    }
+
+    // Mobile için native Google Sign In
+    state = const AsyncValue.loading();
+
+    try {
+      print('[DEBUG] Starting native Google Sign In...');
+      
+      // Her girişte hesap seçimi için önce çıkış yap
+      await _googleSignIn.signOut();
+      
+      // Native Google Sign In - Her seferinde hesap seçimi için
+      final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
+      print('[DEBUG] Google user: ${googleUser?.email}');
+      
+      if (googleUser == null) {
+        print('[DEBUG] User cancelled Google Sign In');
+        state = const AsyncValue.data(null);
+        return;
+      }
+
+      // Google authentication credentials al
+      final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
+      print('[DEBUG] Google auth tokens received');
+
+      // iOS ve Android için aynı yöntem - nonce sorununu çözmek için
+      print('[DEBUG] Using signInWithIdToken for both platforms');
+      final AuthResponse response = await SupabaseConfig.client.auth.signInWithIdToken(
+        provider: OAuthProvider.google,
+        idToken: googleAuth.idToken!,
+        accessToken: googleAuth.accessToken,
+      );
+      
+      print('[DEBUG] Supabase auth response: ${response.user?.email}');
+
+      if (response.user != null) {
+        state = AsyncValue.data(response.user);
+      } else {
+        state = const AsyncValue.data(null);
+      }
+    } catch (error, stackTrace) {
+      print('[DEBUG] Native Google Sign In error: $error');
+      print('[DEBUG] Error type: ${error.runtimeType}');
+      state = AsyncValue.error(error, stackTrace);
+    }
+  }
+
+  Future<void> signOut() async {
+    if (kIsWeb) {
+      // Web için Supabase sign out
+      await SupabaseConfig.client.auth.signOut();
+    } else {
+      // Mobile için hem Google hem Supabase sign out
+      await _googleSignIn.signOut();
+      await SupabaseConfig.client.auth.signOut();
+    }
+    state = const AsyncValue.data(null);
+  }
+
+  void reset() {
+    state = const AsyncValue.data(null);
+  }
+}

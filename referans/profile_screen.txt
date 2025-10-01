@@ -1,0 +1,1697 @@
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:cached_network_image/cached_network_image.dart';
+import '../../models/profile_model.dart';
+import '../../models/club_model.dart';
+import '../../services/profile_service.dart';
+import '../../services/club_service.dart';
+import '../../services/supabase_config.dart';
+import '../../services/account_deletion_service.dart';
+import '../coach/coach_athlete_list_screen.dart';
+import 'profile_setup_screen.txt';
+import 'edit_profile_screen.txt';
+import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+
+class ProfileScreen extends StatefulWidget {
+  const ProfileScreen({super.key});
+
+  @override
+  State<ProfileScreen> createState() => _ProfileScreenState();
+}
+
+class _ProfileScreenState extends State<ProfileScreen>
+    with SingleTickerProviderStateMixin {
+  final _profileService = ProfileService();
+  final _clubService = ClubService();
+  final _accountDeletionService = AccountDeletionService();
+  Profile? _profile;
+  Club? _userClub;
+  bool _isOffline = false;
+  bool _isLoadingClub = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadCachedProfile();
+  }
+
+  // Sadece cache'den profil verilerini yükle
+  Future<void> _loadCachedProfile() async {
+    final user = SupabaseConfig.client.auth.currentUser;
+    if (user != null) {
+      final profile = await _profileService.getCachedProfile(user.id);
+      if (mounted) {
+        setState(() {
+          _profile = profile;
+          _isOffline = false;
+        });
+
+        // Load club information if profile has clubId
+        if (profile?.clubId != null) {
+          _loadClubInformation(profile!.clubId!);
+        }
+
+        // İnternet kontrolünü geciktirerek yapıyoruz
+        Future.delayed(const Duration(milliseconds: 500), () {
+          _checkOnlineProfile();
+        });
+      }
+    }
+  }
+
+  // Arka planda online profil kontrolü yap - sadece profil güncellemesi için
+  Future<void> _checkOnlineProfile() async {
+    if (!mounted) return;
+
+    final user = SupabaseConfig.client.auth.currentUser;
+    if (user != null) {
+      try {
+        final profile = await _profileService.getProfile(user.id);
+        if (mounted) {
+          if (profile == null) {
+            // Profil bulunamadıysa ProfileSetupScreen'e yönlendir
+            _navigateToProfileSetup();
+          } else {
+            setState(() {
+              _profile = profile;
+              _isOffline = false;
+            });
+          }
+        }
+      } catch (e) {
+        if (mounted) {
+          setState(() {
+            _isOffline = true;
+          });
+        }
+      }
+    }
+  }
+
+  // Profil kurulum ekranına yönlendir
+  void _navigateToProfileSetup() {
+    Navigator.pushReplacement(context,
+        MaterialPageRoute(builder: (context) => const ProfileSetupScreen()));
+  }
+
+  // Load club information
+  Future<void> _loadClubInformation(String clubId) async {
+    if (!mounted) return;
+    
+    setState(() {
+      _isLoadingClub = true;
+    });
+
+    try {
+      final club = await _clubService.getClubById(clubId);
+      if (mounted) {
+        setState(() {
+          _userClub = club;
+          _isLoadingClub = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _userClub = null;
+          _isLoadingClub = false;
+        });
+      }
+    }
+  }
+
+  // Manuel yenileme için - sadece profil güncellemesi
+  Future<void> _loadProfile() async {
+    final user = SupabaseConfig.client.auth.currentUser;
+    if (user != null) {
+      try {
+        final profile = await _profileService.getProfile(user.id);
+        if (mounted) {
+          if (profile == null) {
+            // Profil bulunamadıysa ProfileSetupScreen'e yönlendir
+            _navigateToProfileSetup();
+          } else {
+            setState(() {
+              _profile = profile;
+              _isOffline = false;
+            });
+
+            // Load club information if profile has clubId
+            if (profile.clubId != null) {
+              _loadClubInformation(profile.clubId!);
+            } else {
+              setState(() {
+                _userClub = null;
+              });
+            }
+          }
+        }
+      } catch (e) {
+        setState(() {
+          _isOffline = true;
+        });
+      }
+    }
+  }
+
+  Widget _buildPhoneNumberTile(String phoneNumber) {
+    return ListTile(
+      leading: const Icon(Icons.phone),
+      title: Text(phoneNumber),
+      subtitle: Text(AppLocalizations.of(context).phoneNumberSimple),
+      trailing: IconButton(
+        icon: const Icon(Icons.content_copy),
+        onPressed: () {
+          Clipboard.setData(ClipboardData(text: phoneNumber));
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(AppLocalizations.of(context).phoneNumberCopied),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  String _getGenderDisplay(String? gender) {
+    final l10n = AppLocalizations.of(context);
+    if (gender == null) return '';
+    switch (gender.toLowerCase()) {
+      case 'male':
+        return l10n.male;
+      case 'female':
+        return l10n.female;
+      default:
+        return gender;
+    }
+  }
+
+  String _formatDate(DateTime date) {
+    final day = date.day.toString().padLeft(2, '0');
+    final month = date.month.toString().padLeft(2, '0');
+    final year = date.year.toString();
+    return '$day/$month/$year';
+  }
+
+  // Show enlarged profile photo (WhatsApp/Instagram style)
+  void _showEnlargedPhoto(BuildContext context, String imageUrl) {
+    showGeneralDialog(
+      context: context,
+      barrierDismissible: true,
+      barrierLabel: AppLocalizations.of(context).profilePicture,
+      barrierColor: Colors.black.withOpacity(0.7), // semi-transparent background
+      transitionDuration: const Duration(milliseconds: 200),
+      pageBuilder: (context, animation, secondaryAnimation) {
+        return SafeArea(
+          child: Stack(
+            children: [
+              Center(
+                child: Hero(
+                  tag: 'profile_photo_${_profile?.id}',
+                  child: ClipOval(
+                    child: CachedNetworkImage(
+                      imageUrl: imageUrl,
+                      width: MediaQuery.of(context).size.width * 0.7,
+                      height: MediaQuery.of(context).size.width * 0.7,
+                      fit: BoxFit.cover,
+                      placeholder: (context, url) => Container(
+                        width: MediaQuery.of(context).size.width * 0.7,
+                        height: MediaQuery.of(context).size.width * 0.7,
+                        decoration: const BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: Colors.grey,
+                        ),
+                        child: const Center(child: CircularProgressIndicator()),
+                      ),
+                      errorWidget: (context, url, error) => Container(
+                        width: MediaQuery.of(context).size.width * 0.7,
+                        height: MediaQuery.of(context).size.width * 0.7,
+                        decoration: const BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: Colors.grey,
+                        ),
+                        child: const Icon(Icons.error_outline, color: Colors.white, size: 50),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              Positioned(
+                top: 32,
+                right: 32,
+                child: IconButton(
+                  icon: const Icon(Icons.close, color: Colors.white, size: 32),
+                  onPressed: () => Navigator.of(context).pop(),
+                  tooltip: AppLocalizations.of(context).close,
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+      transitionBuilder: (context, animation, secondaryAnimation, child) {
+        return FadeTransition(
+          opacity: animation,
+          child: child,
+        );
+      },
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final user = SupabaseConfig.client.auth.currentUser;
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final primaryColor = theme.colorScheme.primary;
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isCompact = screenWidth < 600;
+
+    // Sadece cache'de veri yoksa loading göster
+    if (_profile == null) {
+      return const Scaffold(
+        body: Center(
+          child: CircularProgressIndicator(),
+        ),
+      );
+    }
+
+    return Scaffold(
+      body: RefreshIndicator(
+        onRefresh: _loadProfile,
+        child: Scrollbar(
+          thumbVisibility: true,
+          thickness: 6,
+          radius: const Radius.circular(10),
+          interactive: true,
+          child: ListView(
+            padding: const EdgeInsets.all(16),
+            physics: const AlwaysScrollableScrollPhysics(),
+            children: [
+              // Profil Fotoğrafı - Tıklanabilir ve büyütülebilir
+              Center(
+                child: GestureDetector(
+                  onTap: () {
+                    if (_profile?.photoUrl != null && !_isOffline) {
+                      _showEnlargedPhoto(context, _profile!.photoUrl!);
+                    }
+                  },
+                  child: Hero(
+                    tag: 'profile_photo_${_profile?.id}',
+                    child: Container(
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        border: _profile?.photoUrl != null && !_isOffline
+                            ? Border.all(
+                                color: Theme.of(context).primaryColor.withOpacity(0.3),
+                                width: 2,
+                              )
+                            : null,
+                      ),
+                      child: ClipOval(
+                        child: _profile?.photoUrl != null && !_isOffline
+                            ? CachedNetworkImage(
+                                imageUrl: _profile!.photoUrl!,
+                                width: 100,
+                                height: 100,
+                                fit: BoxFit.cover,
+                                placeholder: (context, url) => Container(
+                                  width: 100,
+                                  height: 100,
+                                  decoration: const BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    color: Colors.grey,
+                                  ),
+                                  child: const Center(
+                                    child: CircularProgressIndicator(strokeWidth: 2),
+                                  ),
+                                ),
+                                errorWidget: (context, url, error) => Container(
+                                  width: 100,
+                                  height: 100,
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    color: Colors.grey[300],
+                                  ),
+                                  child: const Icon(
+                                    Icons.person, 
+                                    size: 50,
+                                    color: Colors.grey,
+                                  ),
+                                ),
+                              )
+                            : const CircleAvatar(
+                                radius: 50,
+                                backgroundColor: Colors.grey,
+                                child: Icon(Icons.person, size: 50),
+                              ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+              Center(
+                child: Text(
+                  '${_profile?.firstName} ${_profile?.lastName}',
+                  style: Theme.of(context).textTheme.headlineSmall,
+                ),
+              ),
+              const SizedBox(height: 16),
+
+              // Role, Gender ve Club Bilgisi
+              Container(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(20),
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: isDark
+                        ? [
+                            theme.colorScheme.surface.withOpacity(0.95),
+                            theme.colorScheme.surface.withOpacity(0.9),
+                          ]
+                        : [
+                            theme.colorScheme.surface,
+                            theme.colorScheme.surface.withOpacity(0.98),
+                          ],
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: isDark
+                          ? Colors.black.withOpacity(0.4)
+                          : Colors.black87.withOpacity(0.12),
+                      blurRadius: 25,
+                      spreadRadius: 0,
+                      offset: const Offset(0, 8),
+                    ),
+                    BoxShadow(
+                      color: primaryColor.withOpacity(
+                        isDark ? 0.15 : 0.08,
+                      ),
+                      blurRadius: 20,
+                      spreadRadius: 0,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                padding: EdgeInsets.all(isCompact ? 16 : 20),
+                child: Column(
+                  children: [
+                    _buildInfoRow(
+                      context,
+                      l10n.roleLabel,
+                      _getRoleDisplay(_profile!.role),
+                      Icons.assignment_ind_outlined,
+                      primaryColor,
+                      isCompact,
+                      l10n: l10n,
+                    ),
+                    if (_profile?.gender != null) ...[
+                      SizedBox(height: isCompact ? 12 : 16),
+                      _buildInfoRow(
+                        context,
+                        l10n.genderLabel,
+                        _getGenderDisplay(_profile!.gender),
+                        Icons.wc_outlined,
+                        primaryColor,
+                        isCompact,
+                        l10n: l10n,
+                      ),
+                    ],
+                    SizedBox(height: isCompact ? 12 : 16),
+                    _buildInfoRow(
+                      context,
+                      l10n.birthDateLabel,
+                      _formatDate(_profile!.birthDate),
+                      Icons.cake_outlined,
+                      primaryColor,
+                      isCompact,
+                      l10n: l10n,
+                    ),
+                    SizedBox(height: isCompact ? 12 : 16),
+                    _buildInfoRow(
+                      context,
+                      l10n.club,
+                      _isLoadingClub 
+                          ? l10n.loadingClubs 
+                          : (_userClub?.name ?? l10n.individualClub),
+                      Icons.sports_soccer_outlined,
+                      primaryColor,
+                      isCompact,
+                      l10n: l10n,
+                      isLoading: _isLoadingClub,
+                      isClub: true,
+                    ),
+                  ],
+                ),
+              ),
+              
+              SizedBox(height: isCompact ? 12 : 16),
+
+              if (_profile?.visibleId != null && _profile!.visibleId!.isNotEmpty) ...[
+                Center(
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(10),
+                      color: Theme.of(context).brightness == Brightness.dark
+                          ? Colors.grey[800]?.withOpacity(0.22)
+                          : Colors.grey.withOpacity(0.22),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        GestureDetector(
+                          onTap: () {
+                            Clipboard.setData(ClipboardData(text: _profile!.visibleId!));
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text(l10n.profileIdCopied)),
+                            );
+                          },
+                          child: Icon(Icons.content_copy, size: 20, color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
+                        ),
+                        const SizedBox(width: 10),
+                        Text(
+                          '${l10n.profileId}: ',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: Theme.of(context).colorScheme.onSurface,
+                            fontSize: 17,
+                          ),
+                        ),
+                        Text(
+                          _profile!.visibleId!,
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: Theme.of(context).colorScheme.onSurface,
+                            fontSize: 17,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 8),
+              ],
+
+              // Contact Information section
+              if (_profile?.address != null ||
+                  _profile?.phoneNumber != null ||
+                  user?.email != null) ...[
+                SizedBox(height: isCompact ? 10 : 12),
+                
+                // Contact Information Section
+                Container(
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(20),
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: isDark
+                          ? [
+                              theme.colorScheme.surface.withOpacity(0.95),
+                              theme.colorScheme.surface.withOpacity(0.9),
+                            ]
+                          : [
+                              theme.colorScheme.surface,
+                              theme.colorScheme.surface.withOpacity(0.98),
+                            ],
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: isDark
+                            ? Colors.black.withOpacity(0.4)
+                            : Colors.black87.withOpacity(0.12),
+                        blurRadius: 25,
+                        spreadRadius: 0,
+                        offset: const Offset(0, 8),
+                      ),
+                      BoxShadow(
+                        color: primaryColor.withOpacity(
+                          isDark ? 0.15 : 0.08,
+                        ),
+                        blurRadius: 20,
+                        spreadRadius: 0,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                                  padding: EdgeInsets.all(isCompact ? 16 : 20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Contact Info Header
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(8),
+                            color: primaryColor.withOpacity(0.1),
+                          ),
+                          child: Icon(
+                            Icons.contact_mail_outlined,
+                            color: primaryColor,
+                            size: 20,
+                          ),
+                        ),
+                        SizedBox(width: 12),
+                        Text(
+                          l10n.contactInfo,
+                          style: TextStyle(
+                            fontSize: isCompact ? 16 : 18,
+                            fontWeight: FontWeight.w700,
+                            color: theme.colorScheme.onSurface,
+                          ),
+                        ),
+                      ],
+                    ),
+                    
+                    SizedBox(height: isCompact ? 12 : 16),
+                    
+                    // Contact Info Items
+                    if (user?.email != null) ...[
+                      _buildInfoRow(
+                        context,
+                        l10n.emailLabel,
+                        user!.email!,
+                        Icons.email_outlined,
+                        primaryColor,
+                        isCompact,
+                        l10n: l10n,
+                      ),
+                      if (_profile?.address != null || _profile?.phoneNumber != null)
+                        SizedBox(height: isCompact ? 12 : 16),
+                    ],
+
+                    if (_profile?.address != null) ...[
+                      _buildInfoRow(
+                        context,
+                        l10n.addressSimple,
+                        _profile!.address!,
+                        Icons.location_on_outlined,
+                        primaryColor,
+                        isCompact,
+                        l10n: l10n,
+                      ),
+                      if (_profile?.phoneNumber != null)
+                        SizedBox(height: isCompact ? 12 : 16),
+                    ],
+
+                    if (_profile?.phoneNumber != null) ...[
+                      _buildInfoRow(
+                        context,
+                        l10n.phoneNumberSimple,
+                        _profile!.phoneNumber!,
+                        Icons.phone_outlined,
+                        primaryColor,
+                        isCompact,
+                        l10n: l10n,
+                      ),
+                    ],
+                  ],
+                ),
+                ),
+              ],
+
+              SizedBox(height: isCompact ? 16 : 20),
+              
+              // Action Buttons Section
+              Container(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: [
+                    BoxShadow(
+                      color: isDark
+                          ? Colors.black.withOpacity(0.3)
+                          : Colors.black87.withOpacity(0.1),
+                      blurRadius: 20,
+                      spreadRadius: 0,
+                      offset: const Offset(0, 6),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  children: [
+
+                    if (_profile?.role == 'athlete') ...[
+                      SizedBox(
+                        width: double.infinity,
+                        height: 56,
+                        child: Material(
+                          color: Colors.transparent,
+                          child: InkWell(
+                            borderRadius: BorderRadius.circular(16),
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => CoachAthleteListScreen(
+                                    args: CoachAthleteListArgs(
+                                        userRole: _profile!.role),
+                                  ),
+                                ),
+                              );
+                            },
+                            child: Container(
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(16),
+                                color: isDark ? theme.colorScheme.surface : Colors.white,
+                                border: Border.all(
+                                  color: primaryColor.withOpacity(0.5),
+                                  width: 1.5,
+                                ),
+                              ),
+                              child: Center(
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(
+                                      Icons.sports_outlined,
+                                      color: primaryColor,
+                                      size: 24,
+                                    ),
+                                    SizedBox(width: 12),
+                                    Text(
+                                      l10n.myCoaches,
+                                      style: TextStyle(
+                                        color: primaryColor,
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                      SizedBox(height: 8),
+                    ],
+                    SizedBox(
+                      width: double.infinity,
+                      height: 56,
+                      child: Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(16),
+                          onTap: _isOffline
+                              ? () {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text(l10n.profileUpdateError),
+                                      backgroundColor: Colors.orange,
+                                    ),
+                                  );
+                                }
+                              : () async {
+                                  final result = await Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) =>
+                                          EditProfileScreen(profile: _profile!),
+                                    ),
+                                  );
+                                  if (result == true) {
+                                    _loadProfile();
+                                  }
+                                },
+                          child: Container(
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(16),
+                              color: isDark ? theme.colorScheme.surface : Colors.white,
+                              border: Border.all(
+                                color: primaryColor.withOpacity(0.5),
+                                width: 1.5,
+                              ),
+                            ),
+                            child: Center(
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(
+                                    Icons.edit_outlined,
+                                    color: primaryColor,
+                                    size: 24,
+                                  ),
+                                  SizedBox(width: 12),
+                                  Text(
+                                    l10n.editProfile,
+                                    style: TextStyle(
+                                      color: primaryColor,
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 12),
+              SizedBox(
+                width: double.infinity,
+                height: 56,
+                child: Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(16),
+                    onTap: _isOffline
+                        ? null
+                        : () {
+                            _handlePasswordManagement(context, l10n);
+                          },
+                    child: Container(
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(16),
+                        color: isDark ? theme.colorScheme.surface : Colors.white,
+                        border: Border.all(
+                          color: primaryColor.withOpacity(0.5),
+                          width: 1.5,
+                        ),
+                      ),
+                      child: Center(
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.lock_outline,
+                              color: primaryColor,
+                              size: 24,
+                            ),
+                            SizedBox(width: 12),
+                            Text(
+                              l10n.setPassword,
+                              style: TextStyle(
+                                color: primaryColor,
+                                fontSize: 18,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+              // Hesap Silme Butonu
+              SizedBox(
+                width: double.infinity,
+                height: 56,
+                child: Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(16),
+                    onTap: _isOffline
+                        ? null
+                        : () {
+                            _showDeleteAccountDialog(context, l10n);
+                          },
+                    child: Container(
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(16),
+                        color: Colors.red.withOpacity(0.1),
+                        border: Border.all(
+                          color: Colors.red.withOpacity(0.5),
+                          width: 1.5,
+                        ),
+                      ),
+                      child: Center(
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.delete_forever_outlined,
+                              color: Colors.red,
+                              size: 24,
+                            ),
+                            SizedBox(width: 12),
+                            Text(
+                              l10n.deleteAccount,
+                              style: TextStyle(
+                                color: Colors.red,
+                                fontSize: 18,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildInfoCard({required String title, required String value}) {
+    return Card(
+      margin: const EdgeInsets.symmetric(vertical: 8),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Row(
+          children: [
+            Text(
+              title,
+              style: const TextStyle(fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(width: 8),
+            Text(value),
+          ],
+        ),
+      ),
+    );
+  }
+
+  String _getRoleDisplay(String role) {
+    final l10n = AppLocalizations.of(context);
+
+    switch (role) {
+      case 'athlete':
+        return l10n.athlete;
+      case 'coach':
+        return l10n.coach;
+      case 'viewer':
+        return l10n.viewer;
+      case 'admin':
+        return 'Admin';
+      default:
+        return role;
+    }
+  }
+
+  bool _isGoogleUser() {
+    final user = SupabaseConfig.client.auth.currentUser;
+    return user?.appMetadata['provider'] == 'google';
+  }
+
+  void _handlePasswordManagement(BuildContext context, AppLocalizations l10n) {
+    if (_isGoogleUser()) {
+      _showGoogleAccountManagementDialog(context, l10n);
+    } else {
+      _showSetPasswordDialog(context, l10n);
+    }
+  }
+
+  // Hesap silme dialog'u
+  void _showDeleteAccountDialog(BuildContext context, AppLocalizations l10n) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        contentPadding: const EdgeInsets.all(24),
+        title: Row(
+          children: [
+            Icon(Icons.warning_amber_outlined, color: Colors.red),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                l10n.deleteAccount,
+                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              l10n.deleteAccountWarning,
+              style: const TextStyle(fontSize: 16),
+            ),
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.red.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                  color: Colors.red.withOpacity(0.3),
+                ),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.info_outline,
+                    color: Colors.red,
+                    size: 20,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      l10n.deleteAccountInfo,
+                      style: TextStyle(
+                        color: Colors.red,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: Text(l10n.cancel),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.of(context).pop();
+              _showDeleteAccountVerification(context, l10n);
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+            ),
+            child: Text(l10n.continueText),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Hesap silme doğrulama dialog'u
+  void _showDeleteAccountVerification(BuildContext context, AppLocalizations l10n) {
+    final firstNameController = TextEditingController();
+    final lastNameController = TextEditingController();
+    final birthDateController = TextEditingController();
+    final confirmTextController = TextEditingController();
+    
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setStateDialog) => AlertDialog(
+          title: Row(
+            children: [
+              Icon(Icons.security_outlined, color: Colors.red),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  l10n.verifyAccountDeletion,
+                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+              ),
+            ],
+          ),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  l10n.verifyAccountDeletionInfo,
+                  style: const TextStyle(fontSize: 16),
+                ),
+                const SizedBox(height: 20),
+                
+                // Ad
+                TextField(
+                  controller: firstNameController,
+                  decoration: InputDecoration(
+                    labelText: l10n.firstName,
+                    prefixIcon: const Icon(Icons.person_outline),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                
+                // Soyad
+                TextField(
+                  controller: lastNameController,
+                  decoration: InputDecoration(
+                    labelText: l10n.lastName,
+                    prefixIcon: const Icon(Icons.person_outline),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                
+                // Doğum tarihi
+                TextField(
+                  controller: birthDateController,
+                  decoration: InputDecoration(
+                    labelText: l10n.birthDateLabel,
+                    prefixIcon: const Icon(Icons.cake_outlined),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    hintText: 'DD/MM/YYYY',
+                  ),
+                  onTap: () async {
+                    final date = await showDatePicker(
+                      context: context,
+                      initialDate: DateTime.now().subtract(const Duration(days: 365 * 20)),
+                      firstDate: DateTime(1900),
+                      lastDate: DateTime.now(),
+                    );
+                    if (date != null) {
+                      birthDateController.text = _formatDate(date);
+                    }
+                  },
+                ),
+                const SizedBox(height: 20),
+                
+                // Onay metni
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.red.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.red.withOpacity(0.3)),
+                  ),
+                  child: Column(
+                    children: [
+                      Text(
+                        l10n.typeToConfirm,
+                        style: const TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        l10n.deleteAccountConfirmText,
+                        style: TextStyle(
+                          color: Colors.red,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 16),
+                
+                TextField(
+                  controller: confirmTextController,
+                  decoration: InputDecoration(
+                    labelText: l10n.typeHere,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: Text(l10n.cancel),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                await _verifyAndDeleteAccount(
+                  context, 
+                  l10n,
+                  firstNameController.text.trim(),
+                  lastNameController.text.trim(),
+                  birthDateController.text.trim(),
+                  confirmTextController.text.trim(),
+                );
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red,
+                foregroundColor: Colors.white,
+              ),
+              child: Text(l10n.deleteAccount),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // Hesap silme doğrulama ve silme işlemi
+  Future<void> _verifyAndDeleteAccount(
+    BuildContext context,
+    AppLocalizations l10n,
+    String firstName,
+    String lastName,
+    String birthDate,
+    String confirmText,
+  ) async {
+    // Doğrulama kontrolleri
+    if (firstName.isEmpty || lastName.isEmpty || birthDate.isEmpty) {
+      _showErrorDialog(context, l10n.fillAllFields, Colors.orange);
+      return;
+    }
+
+    if (confirmText != l10n.deleteAccountConfirmText) {
+      _showErrorDialog(context, l10n.confirmTextMismatch, Colors.red);
+      return;
+    }
+
+    // Profil bilgilerini kontrol et
+    if (_profile == null) {
+      _showErrorDialog(context, l10n.profileNotFound, Colors.red);
+      return;
+    }
+
+    // Bilgileri karşılaştır
+    final profileFirstName = _profile!.firstName.toLowerCase().trim();
+    final profileLastName = _profile!.lastName.toLowerCase().trim();
+    final profileBirthDate = _formatDate(_profile!.birthDate);
+
+    if (profileFirstName != firstName.toLowerCase().trim() ||
+        profileLastName != lastName.toLowerCase().trim() ||
+        profileBirthDate != birthDate) {
+      _showErrorDialog(context, l10n.verificationFailed, Colors.red);
+      return;
+    }
+
+    // Son onay dialog'u
+    final finalConfirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        contentPadding: const EdgeInsets.all(24),
+        title: Row(
+          children: [
+            Icon(Icons.warning_amber_outlined, color: Colors.red),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                l10n.finalConfirmation,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
+        ),
+        content: Text(l10n.finalConfirmationText),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: Text(l10n.cancel),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+            ),
+            child: Text(l10n.deleteAccount),
+          ),
+        ],
+      ),
+    );
+
+    if (finalConfirm != true) return;
+
+    // Hesap silme işlemi
+    try {
+      // Dialog'u kapat
+      if (context.mounted && Navigator.of(context).canPop()) {
+        Navigator.of(context).pop();
+      }
+      
+      // Loading göster
+      if (context.mounted) {
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (context) => AlertDialog(
+            content: Row(
+              children: [
+                const CircularProgressIndicator(),
+                const SizedBox(width: 20),
+                Text(l10n.deletingAccount),
+              ],
+            ),
+          ),
+        );
+      }
+
+      // Hesap silme işlemini gerçekleştir
+      print('DEBUG: Hesap silme işlemi başlıyor...');
+      await _deleteUserAccount();
+      print('DEBUG: Hesap silme işlemi tamamlandı');
+
+      // Loading'i kapat
+      if (context.mounted && Navigator.of(context).canPop()) {
+        Navigator.of(context).pop();
+      }
+
+      // Başarı mesajı
+      if (context.mounted) {
+        _showSuccessDialog(context, l10n.accountDeletedSuccessfully);
+        
+        // Login ekranına yönlendir
+        Navigator.pushNamedAndRemoveUntil(context, '/login', (route) => false);
+      }
+
+    } catch (e) {
+      print('DEBUG: Hesap silme hatası: $e');
+      
+      // Loading'i kapat
+      if (context.mounted && Navigator.of(context).canPop()) {
+        Navigator.of(context).pop();
+      }
+      
+      if (context.mounted) {
+        _showErrorDialog(context, '${l10n.deleteAccountError}: $e', Colors.red);
+      }
+    }
+  }
+
+  // Hesap silme servisi
+  Future<void> _deleteUserAccount() async {
+    final user = SupabaseConfig.client.auth.currentUser;
+    if (user == null) {
+      throw Exception('Kullanıcı oturumu bulunamadı');
+    }
+
+    // Hesap silme işlemini gerçekleştir
+    await _accountDeletionService.deleteAccount(user.id);
+  }
+
+  // Error dialog helper - SnackBar yerine dialog kullanır
+  void _showErrorDialog(BuildContext context, String message, Color color) {
+    final l10n = AppLocalizations.of(context);
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Row(
+          children: [
+            Icon(
+              color == Colors.red ? Icons.error_outline : Icons.warning_amber_outlined,
+              color: color,
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                color == Colors.red ? l10n.errorPrefix.replaceAll(': ', '') : l10n.warning,
+                style: TextStyle(color: color),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
+        ),
+        content: Text(message),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: Text(l10n.okButtonLabel),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Success dialog helper
+  void _showSuccessDialog(BuildContext context, String message) {
+    final l10n = AppLocalizations.of(context);
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Row(
+          children: [
+            Icon(Icons.check_circle_outline, color: Colors.green),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                l10n.success,
+                style: TextStyle(color: Colors.green),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
+        ),
+        content: Text(message),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: Text(l10n.okButtonLabel),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showGoogleAccountManagementDialog(BuildContext context, AppLocalizations l10n) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        contentPadding: const EdgeInsets.all(24),
+        title: Row(
+          children: [
+            Icon(Icons.lock_outline, color: Theme.of(context).colorScheme.primary),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                l10n.setPassword,
+                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              l10n.google_password_info,
+              style: const TextStyle(fontSize: 16),
+            ),
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                  color: Theme.of(context).colorScheme.primary.withOpacity(0.3),
+                ),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.info_outline,
+                    color: Theme.of(context).colorScheme.primary,
+                    size: 20,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      l10n.password_not_available_for_google,
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.primary,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: Text(l10n.close),
+          ),
+        ],
+      ),
+    );
+  }
+
+
+  void _showSetPasswordDialog(BuildContext context, AppLocalizations l10n) {
+    final currentPasswordController = TextEditingController();
+    final newPasswordController = TextEditingController();
+    final confirmPasswordController = TextEditingController();
+    bool obscureCurrent = true;
+    bool obscureNew = true;
+    bool obscureConfirm = true;
+    final outerContext = context;
+    showDialog(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setStateDialog) => AlertDialog(
+            title: Text(l10n.setPasswordTitle),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextField(
+                    controller: currentPasswordController,
+                    obscureText: obscureCurrent,
+                    decoration: InputDecoration(
+                      labelText: l10n.setPasswordCurrent,
+                      prefixIcon: const Icon(Icons.lock_outline),
+                      suffixIcon: IconButton(
+                        icon: Icon(obscureCurrent ? Icons.visibility_off : Icons.visibility),
+                        onPressed: () => setStateDialog(() { obscureCurrent = !obscureCurrent; }),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: newPasswordController,
+                    obscureText: obscureNew,
+                    decoration: InputDecoration(
+                      labelText: l10n.setPasswordNew,
+                      prefixIcon: const Icon(Icons.lock),
+                      suffixIcon: IconButton(
+                        icon: Icon(obscureNew ? Icons.visibility_off : Icons.visibility),
+                        onPressed: () => setStateDialog(() { obscureNew = !obscureNew; }),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: confirmPasswordController,
+                    obscureText: obscureConfirm,
+                    decoration: InputDecoration(
+                      labelText: l10n.setPasswordConfirm,
+                      prefixIcon: const Icon(Icons.lock_outline),
+                      suffixIcon: IconButton(
+                        icon: Icon(obscureConfirm ? Icons.visibility_off : Icons.visibility),
+                        onPressed: () => setStateDialog(() { obscureConfirm = !obscureConfirm; }),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: Text(l10n.cancel),
+              ),
+              ElevatedButton(
+                onPressed: () async {
+                  final currentPassword = currentPasswordController.text.trim();
+                  final newPassword = newPasswordController.text.trim();
+                  final confirmPassword = confirmPasswordController.text.trim();
+                  if (currentPassword.isEmpty) {
+                    ScaffoldMessenger.of(outerContext).showSnackBar(
+                      SnackBar(content: Text(l10n.setPasswordCurrentRequired)),
+                    );
+                    return;
+                  }
+                  if (newPassword != confirmPassword) {
+                    ScaffoldMessenger.of(outerContext).showSnackBar(
+                      SnackBar(content: Text(l10n.setPasswordMismatch)),
+                    );
+                    return;
+                  }
+                  if (newPassword.length < 6) {
+                    ScaffoldMessenger.of(outerContext).showSnackBar(
+                      SnackBar(content: Text(l10n.passwordTooShort)),
+                    );
+                    return;
+                  }
+                  // Confirm first
+                  final confirm = await showDialog<bool>(
+                    context: outerContext,
+                    builder: (dCtx) => Dialog(
+                      insetPadding: const EdgeInsets.symmetric(horizontal: 32, vertical: 24),
+                      child: Container(
+                        width: MediaQuery.of(outerContext).size.width * 0.8,
+                        padding: const EdgeInsets.all(32),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            Icon(Icons.lock, size: 48, color: Theme.of(outerContext).colorScheme.primary),
+                            const SizedBox(height: 24),
+                            Text(
+                              l10n.confirmPasswordChangeTitle,
+                              style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+                              textAlign: TextAlign.center,
+                            ),
+                            const SizedBox(height: 16),
+                            Text(
+                              l10n.confirmPasswordChangeContent,
+                              style: const TextStyle(fontSize: 18),
+                              textAlign: TextAlign.center,
+                            ),
+                            const SizedBox(height: 32),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                              children: [
+                                TextButton(
+                                  onPressed: () => Navigator.of(dCtx).pop(false),
+                                  child: Text(l10n.cancel, style: const TextStyle(fontSize: 16)),
+                                ),
+                                ElevatedButton(
+                                  onPressed: () => Navigator.of(dCtx).pop(true),
+                                  child: Text(l10n.setPasswordSave, style: const TextStyle(fontSize: 16)),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  );
+                  if (confirm != true) return;
+
+                  // Close the password dialog now
+                  if (Navigator.of(context).canPop()) {
+                    Navigator.of(context).pop();
+                  }
+
+                  try {
+                    final email = SupabaseConfig.client.auth.currentUser?.email;
+                    if (email == null) {
+                      ScaffoldMessenger.of(outerContext).showSnackBar(
+                        SnackBar(content: Text(l10n.userSessionNotFound)),
+                      );
+                      return;
+                    }
+                    await SupabaseConfig.client.auth.signInWithPassword(
+                      email: email,
+                      password: currentPassword,
+                    );
+                    final user = await SupabaseConfig.client.auth.updateUser(
+                      UserAttributes(password: newPassword),
+                    );
+                    if (user.user != null) {
+                      ScaffoldMessenger.of(outerContext).showSnackBar(
+                        SnackBar(content: Text(l10n.setPasswordSuccess)),
+                      );
+                    } else {
+                      ScaffoldMessenger.of(outerContext).showSnackBar(
+                        SnackBar(content: Text(l10n.setPasswordError)),
+                      );
+                    }
+                  } catch (e) {
+                    if (e is AuthException) {
+                      String msg = l10n.setPasswordCurrentIncorrect;
+                      if (e.message.isNotEmpty) msg += ' (${e.message})';
+                      ScaffoldMessenger.of(outerContext).showSnackBar(SnackBar(content: Text(msg)));
+                      return;
+                    }
+                    try {
+                      final email = SupabaseConfig.client.auth.currentUser?.email;
+                      if (email != null) {
+                        final response = await SupabaseConfig.client.auth.signInWithPassword(
+                          email: email,
+                          password: newPassword,
+                        );
+                        if (response.user != null) {
+                          ScaffoldMessenger.of(outerContext).showSnackBar(
+                            SnackBar(content: Text(l10n.setPasswordSuccess)),
+                          );
+                          return;
+                        }
+                      }
+                    } catch (_) {}
+                    String errorMsg = l10n.setPasswordError;
+                    if (e is AuthException && e.message.isNotEmpty) {
+                      errorMsg += ' (${e.message})';
+                    }
+                    ScaffoldMessenger.of(outerContext).showSnackBar(
+                      SnackBar(content: Text(errorMsg)),
+                    );
+                  }
+                },
+                child: Text(l10n.setPasswordSave),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  // Info Row Helper
+  Widget _buildInfoRow(
+    BuildContext context,
+    String label,
+    String value,
+    IconData icon,
+    Color primaryColor,
+    bool isCompact, {
+    bool isLoading = false,
+    bool isClub = false,
+    required AppLocalizations l10n,
+  }) {
+    return Container(
+      padding: EdgeInsets.symmetric(
+        horizontal: isCompact ? 14 : 18,
+        vertical: isCompact ? 10 : 14,
+      ),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(12),
+        color: Theme.of(context).brightness == Brightness.dark
+            ? Theme.of(context).colorScheme.surface.withOpacity(0.6)
+            : Theme.of(context).colorScheme.surface.withOpacity(0.8),
+        border: Border.all(
+          color: primaryColor.withOpacity(0.2),
+          width: 1,
+        ),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(8),
+              color: primaryColor.withOpacity(0.1),
+            ),
+            child: Icon(
+              icon,
+              color: primaryColor,
+              size: isCompact ? 18 : 20,
+            ),
+          ),
+          SizedBox(width: isCompact ? 10 : 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: TextStyle(
+                    fontSize: isCompact ? 12 : 14,
+                    fontWeight: FontWeight.w600,
+                    color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                  ),
+                ),
+                SizedBox(height: isCompact ? 3 : 4),
+                if (isLoading)
+                  const SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                else
+                  Text(
+                    value,
+                    style: TextStyle(
+                      fontSize: isCompact ? 14 : 16,
+                      fontWeight: FontWeight.w500,
+                      color: Theme.of(context).colorScheme.onSurface,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                    maxLines: isClub ? 3 : (label.toLowerCase().contains('email') ? 2 : 1),
+                  ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}

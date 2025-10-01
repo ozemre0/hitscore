@@ -1,0 +1,10 @@
+{
+    "installed": {
+        "client_id": "871385916265-5cva16esks45k2ikrvai0gqdqo6t6dl2.apps.googleusercontent.com",
+        "project_id": "ozstech",
+        "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+        "token_uri": "https://oauth2.googleapis.com/token",
+        "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+        "api_key": "AIzaSyD_eXLnw0R0uCAZhrR9WBknQAEPeU6PXmc"
+    }
+}
