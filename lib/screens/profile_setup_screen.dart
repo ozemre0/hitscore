@@ -1,7 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
-import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+import '../l10n/app_localizations.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -241,7 +241,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
     final l10n = AppLocalizations.of(context);
     final String text = (msg.contains('timeout') || msg.contains('connection'))
         ? (l10n?.networkError ?? 'Network error')
-        : (l10n != null ? l10n.error(e.toString()) : 'Error: ${e.toString()}');
+        : (l10n != null ? l10n.errorGeneric : 'Error: ${e.toString()}');
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(text)),
     );
@@ -277,7 +277,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
     } catch (e) {
       final l10n = AppLocalizations.of(context);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(l10n != null ? l10n.error(e.toString()) : 'Error: ${e.toString()}')),
+        SnackBar(content: Text(l10n != null ? l10n.errorGeneric : 'Error: ${e.toString()}')),
       );
     }
   }
@@ -374,7 +374,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(l10n.error(e.toString()))),
+        SnackBar(content: Text(l10n.errorGeneric)),
       );
     } finally {
       if (mounted) {

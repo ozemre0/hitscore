@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
-import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+import 'l10n/app_localizations.dart';
 import 'screens/login_screen.dart';
+import 'screens/home_shell.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'providers/settings_providers.dart';
+import 'providers/auth_provider.dart';
 import 'services/supabase_config.dart';
 
 Future<void> main() async {
@@ -19,6 +21,7 @@ class MyApp extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final themeMode = ref.watch(themeModeProvider);
     final locale = ref.watch(localeProvider);
+    final authState = ref.watch(authStateProvider);
 
     return MaterialApp(
       onGenerateTitle: (context) => AppLocalizations.of(context)!.appTitle,
@@ -63,7 +66,13 @@ class MyApp extends ConsumerWidget {
         GlobalCupertinoLocalizations.delegate,
       ],
       supportedLocales: const [Locale('en'), Locale('tr')],
-      home: const LoginScreen(),
+      home: authState.when(
+        data: (user) => user != null ? const HomeShell() : const LoginScreen(),
+        loading: () => const Scaffold(
+          body: Center(child: CircularProgressIndicator()),
+        ),
+        error: (_, __) => const LoginScreen(),
+      ),
     );
   }
 }

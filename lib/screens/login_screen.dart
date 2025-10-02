@@ -1,10 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+import '../l10n/app_localizations.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'profile_screen.dart';
 import '../services/supabase_config.dart';
-import 'home_shell.dart';
 import '../providers/google_signin_provider.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -89,15 +87,8 @@ class _LoginScreenState extends State<LoginScreen> {
           ),
         );
 
-      // Navigate to HomeScreen after successful login
-      if (!mounted) return;
-      await Future.delayed(const Duration(milliseconds: 850));
-      if (!mounted) return;
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute(
-          builder: (_) => const HomeShell(),
-        ),
-      );
+      // Authentication state provider will handle navigation automatically
+      // No need for manual navigation
     } catch (e) {
       if (!mounted) return;
       final String message;
@@ -121,43 +112,6 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
-  Future<void> _signInWithGoogle() async {
-    final l10n = AppLocalizations.of(context);
-    if (l10n == null) return;
-    setState(() => _isGoogleLoading = true);
-    try {
-      // Web: Supabase OAuth; Mobile: use google_sign_in package
-      if (SupabaseConfig.client.auth.currentSession == null) {
-        // proceed regardless; session will be set by auth call
-      }
-
-      // Use Supabase OAuth which handles web and can accept native tokens via provider flow if configured
-      final bool result = await SupabaseConfig.client.auth.signInWithOAuth(
-        OAuthProvider.google,
-        queryParams: const {'prompt': 'select_account'},
-      );
-      if (!mounted) return;
-      if (result) {
-        ScaffoldMessenger.of(context)
-          ..hideCurrentSnackBar()
-          ..showSnackBar(
-            SnackBar(
-              content: Text(l10n.loginSuccessRedirectingShort),
-              backgroundColor: Colors.green,
-              behavior: SnackBarBehavior.floating,
-              duration: const Duration(milliseconds: 800),
-            ),
-          );
-      }
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(l10n.loginErrorGeneric)),
-      );
-    } finally {
-      if (mounted) setState(() => _isGoogleLoading = false);
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -234,18 +188,8 @@ class _LoginScreenState extends State<LoginScreen> {
                     const SizedBox(height: 12),
                     Consumer(
                       builder: (context, ref, _) {
-                        ref.listen<AsyncValue<User?>>(googleSignInProvider,
-                            (prev, next) async {
-                          next.whenOrNull(data: (user) async {
-                            if (user != null && context.mounted) {
-                              Navigator.of(context).pushReplacement(
-                                MaterialPageRoute(
-                                  builder: (_) => const HomeShell(),
-                                ),
-                              );
-                            }
-                          });
-                        });
+                        // Authentication state provider will handle navigation automatically
+                        // No need for manual navigation listener
                         final state = ref.watch(googleSignInProvider);
                         final isLoading = state.isLoading || _isGoogleLoading;
                         return OutlinedButton(

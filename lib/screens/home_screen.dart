@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+import '../l10n/app_localizations.dart';
 import 'organized/create_competition_screen.dart';
+import 'my_competitions_screen.dart';
+import 'active_competitions_screen.dart';
 import '../services/supabase_config.dart';
-import 'login_screen.dart';
 import 'settings_screen.dart';
 
 class HomeScreen extends StatelessWidget {
@@ -42,8 +43,23 @@ class HomeScreen extends StatelessWidget {
                         title: l10n.myCompetitionsTitle,
                         subtitle: l10n.myCompetitionsSubtitle,
                         onTap: () {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text(l10n.comingSoon)),
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (context) => const MyCompetitionsScreen(),
+                            ),
+                          );
+                        },
+                      ),
+                      const SizedBox(height: 12),
+                      _HomeCardButton(
+                        icon: Icons.sports_martial_arts,
+                        title: l10n.activeCompetitionsTitle,
+                        subtitle: l10n.activeCompetitionsSubtitle,
+                        onTap: () {
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (context) => const ActiveCompetitionsScreen(),
+                            ),
                           );
                         },
                       ),
@@ -254,19 +270,50 @@ class _HomeDrawer extends StatelessWidget {
               title: Text(l10n.signOut),
               onTap: () async {
                 Navigator.pop(context);
-                try {
-                  await SupabaseConfig.client.auth.signOut();
-                  if (context.mounted) {
-                    Navigator.of(context).pushAndRemoveUntil(
-                      MaterialPageRoute(builder: (ctx) => const LoginScreen()),
-                      (route) => false,
+                final bool? confirmed = await showDialog<bool>(
+                  context: context,
+                  builder: (BuildContext dialogContext) {
+                    return AlertDialog(
+                      title: Text(l10n.signOut),
+                      content: Text(l10n.signOutConfirm),
+                      actions: <Widget>[
+                        OutlinedButton(
+                          onPressed: () => Navigator.of(dialogContext).pop(false),
+                          style: OutlinedButton.styleFrom(
+                            side: BorderSide(
+                              color: Theme.of(context).colorScheme.outline,
+                              width: 1,
+                            ),
+                          ),
+                          child: Text(l10n.cancel),
+                        ),
+                        OutlinedButton(
+                          onPressed: () => Navigator.of(dialogContext).pop(true),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: Colors.red,
+                            side: const BorderSide(
+                              color: Colors.red,
+                              width: 1,
+                            ),
+                          ),
+                          child: Text(l10n.signOut),
+                        ),
+                      ],
                     );
-                  }
-                } catch (e) {
-                  if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text(l10n.errorGeneric)),
-                    );
+                  },
+                );
+                
+                if (confirmed == true) {
+                  try {
+                    await SupabaseConfig.client.auth.signOut();
+                    // The authentication state provider will automatically handle navigation
+                    // No need for manual navigation as the app will rebuild based on auth state
+                  } catch (e) {
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text(l10n.errorGeneric)),
+                      );
+                    }
                   }
                 }
               },
@@ -277,5 +324,3 @@ class _HomeDrawer extends StatelessWidget {
     );
   }
 }
-
-

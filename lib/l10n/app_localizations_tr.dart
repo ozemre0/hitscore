@@ -1,0 +1,626 @@
+// ignore: unused_import
+import 'package:intl/intl.dart' as intl;
+import 'app_localizations.dart';
+
+// ignore_for_file: type=lint
+
+/// The translations for Turkish (`tr`).
+class AppLocalizationsTr extends AppLocalizations {
+  AppLocalizationsTr([String locale = 'tr']) : super(locale);
+
+  @override
+  String get appTitle => 'HitScore';
+
+  @override
+  String get loginTitle => 'Giriş Yap';
+
+  @override
+  String get emailLabel => 'E-posta';
+
+  @override
+  String get passwordLabel => 'Şifre';
+
+  @override
+  String get loginButton => 'Giriş Yap';
+
+  @override
+  String get loginWithGoogle => 'Google ile Giriş Yap';
+
+  @override
+  String get loginErrorGoogle => 'Google ile giriş başarısız.';
+
+  @override
+  String get profileTitle => 'Profil';
+
+  @override
+  String get refresh => 'Yenile';
+
+  @override
+  String get errorGeneric => 'Bir hata oluştu.';
+
+  @override
+  String get networkError => 'Ağ sorunu. Lütfen bağlantınızı kontrol edin.';
+
+  @override
+  String get setupProfile => 'Profil Oluştur';
+
+  @override
+  String get setupProfileDescription => 'Profil bulunamadı. Lütfen profilinizi tamamlayın.';
+
+  @override
+  String get back => 'Geri';
+
+  @override
+  String get role => 'Rol';
+
+  @override
+  String get gender => 'Cinsiyet';
+
+  @override
+  String get genderRequired => 'Cinsiyet zorunludur';
+
+  @override
+  String get birthDateLabel => 'Doğum tarihi';
+
+  @override
+  String get birthDateRequired => 'Doğum tarihi zorunludur';
+
+  @override
+  String get phoneNumber => 'Telefon numarası';
+
+  @override
+  String get selectCity => 'Şehir Seç';
+
+  @override
+  String get homeTab => 'Ana Sayfa';
+
+  @override
+  String get profileTab => 'Profil';
+
+  @override
+  String get clubLabel => 'Kulüp';
+
+  @override
+  String get profileId => 'Profil ID';
+
+  @override
+  String get contactInfo => 'İletişim Bilgileri';
+
+  @override
+  String get addressSimple => 'Adres';
+
+  @override
+  String get phoneNumberSimple => 'Telefon';
+
+  @override
+  String get countryLabel => 'Ülke';
+
+  @override
+  String get cityLabel => 'Şehir';
+
+  @override
+  String get clubIdLabel => 'Kulüp ID';
+
+  @override
+  String get editProfile => 'Profili Düzenle';
+
+  @override
+  String get save => 'Kaydet';
+
+  @override
+  String get cancel => 'Vazgeç';
+
+  @override
+  String get firstName => 'Ad';
+
+  @override
+  String get firstNameRequired => 'Ad zorunludur';
+
+  @override
+  String get lastName => 'Soyad';
+
+  @override
+  String get lastNameRequired => 'Soyad zorunludur';
+
+  @override
+  String get birthDate => 'Doğum Tarihi';
+
+  @override
+  String get dateNotSelected => 'Seçilmedi';
+
+  @override
+  String get male => 'Erkek';
+
+  @override
+  String get female => 'Kadın';
+
+  @override
+  String get personalInfo => 'Kişisel Bilgiler';
+
+  @override
+  String get clubInfo => 'Kulüp Bilgileri';
+
+  @override
+  String get selectCountry => 'Ülke Seç';
+
+  @override
+  String get selectClub => 'Kulüp Seç';
+
+  @override
+  String get allCountries => 'Tüm Ülkeler';
+
+  @override
+  String get allCities => 'Tüm Şehirler';
+
+  @override
+  String get individualClub => 'Bireysel (Kulüp Yok)';
+
+  @override
+  String get removeClub => 'Kulübü Kaldır';
+
+  @override
+  String get roleChangeNotAllowed => 'Rol kurulumdan sonra değiştirilemez';
+
+  @override
+  String get changePhoto => 'Fotoğrafı değiştir';
+
+  @override
+  String get removePhoto => 'Fotoğrafı kaldır';
+
+  @override
+  String get emailVerificationRequiredTitle => 'E-posta doğrulaması gerekli';
+
+  @override
+  String get emailVerificationLoginContent => 'Lütfen giriş yapmadan önce e-postanızı doğrulayın.';
+
+  @override
+  String get emailVerificationRequiredOk => 'Tamam';
+
+  @override
+  String get loginSuccessRedirectingShort => 'Giriş başarılı. Yönlendiriliyor...';
+
+  @override
+  String get loginErrorInvalidCredentials => 'E-posta veya şifre hatalı.';
+
+  @override
+  String get loginErrorGeneric => 'Bir hata oluştu. Lütfen tekrar deneyin.';
+
+  @override
+  String welcomeWithName(String name) {
+    return 'Hoş geldin $name';
+  }
+
+  @override
+  String get createCompetitionTitle => 'Yarışma Oluştur';
+
+  @override
+  String get competitionGeneralInfo => 'Genel Bilgiler';
+
+  @override
+  String get competitionGeneralInfoDesc => 'Aşağıya yarışma bilgilerini girin.';
+
+  @override
+  String get competitionNameLabel => 'Yarışma adı';
+
+  @override
+  String get competitionDescriptionLabel => 'Açıklama';
+
+  @override
+  String get competitionDuration => 'Yarışma Süresi';
+
+  @override
+  String get competitionDurationDesc => 'Başlangıç ve bitiş tarih/saatini seçin.';
+
+  @override
+  String get startDate => 'Başlangıç tarihi';
+
+  @override
+  String get endDate => 'Bitiş tarihi';
+
+  @override
+  String get competitionDateHint => 'GG.AA.YYYY SS:dd';
+
+  @override
+  String get registrationDatesLabel => 'Kayıt Tarihleri';
+
+  @override
+  String get registrationDatesOptional => 'Opsiyonel kayıt başlangıç ve bitiş zamanları.';
+
+  @override
+  String get registrationStartLabel => 'Kayıt başlangıcı';
+
+  @override
+  String get registrationEndLabel => 'Kayıt bitişi';
+
+  @override
+  String get savingInProgress => 'Kaydediliyor...';
+
+  @override
+  String get saveAndContinue => 'Kaydet ve devam et';
+
+  @override
+  String get competitionNameRequired => 'Yarışma adı zorunludur';
+
+  @override
+  String get startDateRequired => 'Başlangıç tarihi zorunludur';
+
+  @override
+  String get endDateRequired => 'Bitiş tarihi zorunludur';
+
+  @override
+  String get startDateCannotBeAfterEndDate => 'Başlangıç tarihi bitişten sonra olamaz';
+
+  @override
+  String get competitionSavedSuccess => 'Yarışma başarıyla oluşturuldu!';
+
+  @override
+  String get competitionLoadError => 'Yarışmalar yüklenemedi';
+
+  @override
+  String get classifications => 'Klasmanlar';
+
+  @override
+  String get addClassification => 'Klasman Ekle';
+
+  @override
+  String get noClassificationsYet => 'Henüz klasman eklenmedi';
+
+  @override
+  String get noClassificationsDesc => 'Devam etmek için en az bir klasman ekleyin.';
+
+  @override
+  String get delete => 'Sil';
+
+  @override
+  String get classificationAtLeastOneRequired => 'Lütfen en az bir klasman ekleyin';
+
+  @override
+  String get completeCompetition => 'Yarışmayı Tamamla';
+
+  @override
+  String get savingGeneric => 'Kaydediliyor...';
+
+  @override
+  String get untitledCompetition => 'İsimsiz Yarışma';
+
+  @override
+  String get dateLabelGeneric => 'Tarih';
+
+  @override
+  String get dateNotProvided => 'Tarih belirtilmemiş';
+
+  @override
+  String get invalidDate => 'Geçersiz tarih';
+
+  @override
+  String get enterValidDistance => 'Geçerli bir mesafe girin';
+
+  @override
+  String get fillAllFields => 'Lütfen tüm alanları doldurun';
+
+  @override
+  String get classificationNameLabel => 'Klasman adı';
+
+  @override
+  String get ageGroupLabel => 'Yaş grubu';
+
+  @override
+  String get bowTypeLabel => 'Yay tipi';
+
+  @override
+  String get environmentLabel => 'Ortam';
+
+  @override
+  String get distanceMetersLabel => 'Mesafe (metre)';
+
+  @override
+  String get customDistance => 'Özel Mesafe';
+
+  @override
+  String get customDistanceMeters => 'Özel mesafe (metre)';
+
+  @override
+  String get editClassificationTitle => 'Klasman Düzenle';
+
+  @override
+  String get addClassificationTitle => 'Klasman Ekle';
+
+  @override
+  String get myCompetitionsTitle => 'Yarışmalarım';
+
+  @override
+  String get myCompetitionsSubtitle => 'Yarışmalarınızı görüntüleyin ve yönetin.';
+
+  @override
+  String get myCompetitionsEmptyTitle => 'Henüz yarışma yok';
+
+  @override
+  String get myCompetitionsEmptyDesc => 'Başlamak için ilk yarışmanızı oluşturun.';
+
+  @override
+  String get competitionStatusDraft => 'Taslak';
+
+  @override
+  String get competitionStatusActive => 'Aktif';
+
+  @override
+  String get competitionStatusCompleted => 'Tamamlandı';
+
+  @override
+  String get competitionStatusCancelled => 'İptal Edildi';
+
+  @override
+  String get competitionCreatedOn => 'Oluşturulma tarihi';
+
+  @override
+  String get competitionStartsOn => 'Başlangıç tarihi';
+
+  @override
+  String get competitionEndsOn => 'Bitiş tarihi';
+
+  @override
+  String get registrationStartsOn => 'Kayıt başlangıcı';
+
+  @override
+  String get registrationEndsOn => 'Kayıt bitişi';
+
+  @override
+  String get competitionParticipants => 'Katılımcılar';
+
+  @override
+  String get competitionViewDetails => 'Detayları Görüntüle';
+
+  @override
+  String get competitionEdit => 'Düzenle';
+
+  @override
+  String get competitionDelete => 'Sil';
+
+  @override
+  String get competitionDeleteConfirm => 'Bu yarışmayı silmek istediğinizden emin misiniz?';
+
+  @override
+  String get competitionDeleteSuccess => 'Yarışma başarıyla silindi';
+
+  @override
+  String get editCompetitionTitle => 'Yarışmayı Düzenle';
+
+  @override
+  String get competitionUpdateSuccess => 'Yarışma başarıyla güncellendi';
+
+  @override
+  String get competitionUpdateError => 'Yarışma güncellenemedi';
+
+  @override
+  String get classificationDeleteConfirm => 'Bu klasmanı silmek istediğinizden emin misiniz?';
+
+  @override
+  String get classificationDeleteTitle => 'Klasmanı Sil';
+
+  @override
+  String get competitionCreatedSuccess => 'Yarışma başarıyla oluşturuldu!';
+
+  @override
+  String get competitionDateLabel => 'Tarih';
+
+  @override
+  String get competitionDateNotProvided => 'Tarih belirtilmemiş';
+
+  @override
+  String get competitionInvalidDate => 'Geçersiz tarih';
+
+  @override
+  String get ageGroup9_10 => '9-10 Yaş';
+
+  @override
+  String get ageGroup11_12 => '11-12 Yaş';
+
+  @override
+  String get ageGroup13_14 => '13-14 Yaş';
+
+  @override
+  String get ageGroupU18 => 'U18 (15-16-17)';
+
+  @override
+  String get ageGroupU21 => 'U21 (18-19-20)';
+
+  @override
+  String get ageGroupSenior => 'Büyükler';
+
+  @override
+  String get bowTypeRecurve => 'Recurve';
+
+  @override
+  String get bowTypeCompound => 'Compound';
+
+  @override
+  String get bowTypeBarebow => 'Barebow';
+
+  @override
+  String get environmentIndoor => 'Indoor';
+
+  @override
+  String get environmentOutdoor => 'Outdoor';
+
+  @override
+  String get genderMale => 'Erkek';
+
+  @override
+  String get genderFemale => 'Kadın';
+
+  @override
+  String get genderMixed => 'Karma';
+
+  @override
+  String get genderLabel => 'Cinsiyet';
+
+  @override
+  String get unsavedChangesTitle => 'Kaydedilmemiş Değişiklikler';
+
+  @override
+  String get unsavedChangesMessage => 'Değişiklikler kaydedilmeyecek. Emin misiniz?';
+
+  @override
+  String get exit => 'Çık';
+
+  @override
+  String get comingSoon => 'Yakında';
+
+  @override
+  String get signOut => 'Çıkış Yap';
+
+  @override
+  String get signOutConfirm => 'Çıkış yapmak istediğinizden emin misiniz?';
+
+  @override
+  String get profileUpdated => 'Profil başarıyla kaydedildi';
+
+  @override
+  String get settingsTitle => 'Ayarlar';
+
+  @override
+  String get languageSettings => 'Dil';
+
+  @override
+  String get themeSettings => 'Tema';
+
+  @override
+  String get lightTheme => 'Açık';
+
+  @override
+  String get darkTheme => 'Koyu';
+
+  @override
+  String get systemTheme => 'Sistem';
+
+  @override
+  String competitionClassificationsCount(int count) {
+    return 'Klasmanlar: $count';
+  }
+
+  @override
+  String get competitionVisibleIdLabel => 'Yarışma ID';
+
+  @override
+  String get competitionVisibleIdCopyTooltip => 'ID\'yi kopyala';
+
+  @override
+  String get competitionVisibleIdCopied => 'Yarışma ID kopyalandı';
+
+  @override
+  String get participantsTitle => 'Katılımcılar';
+
+  @override
+  String get participantsLoadError => 'Katılımcılar yüklenemedi';
+
+  @override
+  String get participantsEmptyTitle => 'Henüz katılımcı yok';
+
+  @override
+  String get participantsEmptyDesc => 'Bu yarışmaya henüz kimse kayıt olmadı.';
+
+  @override
+  String get participantAthleteId => 'Sporcu ID';
+
+  @override
+  String get participantGender => 'Cinsiyet';
+
+  @override
+  String get participantAgeGroup => 'Yaş grubu';
+
+  @override
+  String get participantEquipment => 'Ekipman';
+
+  @override
+  String get pendingStatus => 'Beklemede';
+
+  @override
+  String get acceptedStatus => 'Kabul Edildi';
+
+  @override
+  String get cancelledStatus => 'Reddedildi';
+
+  @override
+  String get acceptRequest => 'Kabul Et';
+
+  @override
+  String get rejectRequest => 'Reddet';
+
+  @override
+  String get changeStatus => 'Durumu Değiştir';
+
+  @override
+  String get acceptRequestConfirm => 'Bu katılımcıyı kabul ediyor musunuz?';
+
+  @override
+  String get rejectRequestConfirm => 'Bu katılımcıyı reddediyor musunuz?';
+
+  @override
+  String get changeToAcceptedConfirm => 'Durumu kabul edildi olarak değiştir?';
+
+  @override
+  String get changeToRejectedConfirm => 'Durumu reddedildi olarak değiştir?';
+
+  @override
+  String get requestAccepted => 'İstek kabul edildi';
+
+  @override
+  String get requestRejected => 'İstek reddedildi';
+
+  @override
+  String get statusChanged => 'Durum değiştirildi';
+
+  @override
+  String get activeCompetitionsTitle => 'Aktif Yarışmalar';
+
+  @override
+  String get activeCompetitionsSubtitle => 'Uygun yarışmaları incele ve katıl.';
+
+  @override
+  String get activeCompetitionsEmptyTitle => 'Aktif yarışma yok';
+
+  @override
+  String get activeCompetitionsEmptyDesc => 'Şu anda kayıta açık yarışma bulunmuyor.';
+
+  @override
+  String get competitionJoin => 'Katıl';
+
+  @override
+  String get competitionJoined => 'Yarışmaya katıldınız';
+
+  @override
+  String get competitionJoinError => 'Yarışmaya katılım başarısız';
+
+  @override
+  String get athleteProfileRequired => 'Sporcu profili gerekli. Lütfen önce profilinizi tamamlayın.';
+
+  @override
+  String get registrationOpen => 'Kayıt açık';
+
+  @override
+  String get registrationClosed => 'Kayıt kapalı';
+
+  @override
+  String get requestSent => 'İstek gönderildi';
+
+  @override
+  String get pending => 'Beklemede';
+
+  @override
+  String get cancelRequest => 'İsteği iptal et';
+
+  @override
+  String get cancelRequestConfirm => 'Katılım isteğini iptal etmek istiyor musun?';
+
+  @override
+  String get requestCancelled => 'İstek iptal edildi';
+
+  @override
+  String get selectClassificationTitle => 'Klasman seç';
+
+  @override
+  String get selectClassificationInstruction => 'Katılmak için klasmanını seç';
+
+  @override
+  String get noClassificationsAvailable => 'Bu yarışma için klasman yok';
+}

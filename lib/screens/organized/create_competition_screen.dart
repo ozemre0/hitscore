@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+import '../../l10n/app_localizations.dart';
 import 'package:uuid/uuid.dart';
 import '../../services/supabase_config.dart';
 import 'competition_classifications_screen.dart';
@@ -142,7 +142,10 @@ class _CreateCompetitionScreenState extends State<CreateCompetitionScreen> {
         title: Text(l10n.createCompetitionTitle),
         elevation: 0,
       ),
-      body: SingleChildScrollView(
+      body: Scrollbar(
+        thumbVisibility: true,
+        trackVisibility: true,
+        child: SingleChildScrollView(
         padding: EdgeInsets.only(
           bottom: MediaQuery.of(context).viewPadding.bottom + 16,
           left: 16.0,
@@ -198,51 +201,10 @@ class _CreateCompetitionScreenState extends State<CreateCompetitionScreen> {
                 border: const OutlineInputBorder(),
                 prefixIcon: const Icon(Icons.description),
               ),
-              maxLines: 3,
+              minLines: 1,
+              maxLines: 4,
             ),
             const SizedBox(height: 16),
-            Text(
-              l10n.competitionDuration,
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              l10n.competitionDurationDesc,
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant),
-            ),
-            const SizedBox(height: 16),
-            Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: _startDateController,
-                    decoration: InputDecoration(
-                      labelText: l10n.startDate,
-                      border: const OutlineInputBorder(),
-                      prefixIcon: const Icon(Icons.start),
-                      hintText: l10n.competitionDateHint,
-                    ),
-                    readOnly: true,
-                    onTap: () => _selectDateTime(_startDateController, _startDate, (d) => _startDate = d),
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: TextField(
-                    controller: _endDateController,
-                    decoration: InputDecoration(
-                      labelText: l10n.endDate,
-                      border: const OutlineInputBorder(),
-                      prefixIcon: const Icon(Icons.event),
-                      hintText: l10n.competitionDateHint,
-                    ),
-                    readOnly: true,
-                    onTap: () => _selectDateTime(_endDateController, _endDate, (d) => _endDate = d),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 24),
             Text(l10n.registrationDatesLabel, style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
             const SizedBox(height: 8),
             Text(
@@ -273,6 +235,44 @@ class _CreateCompetitionScreenState extends State<CreateCompetitionScreen> {
               readOnly: true,
               onTap: () => _selectDateTime(_registrationEndController, _registrationEndDate, (d) => _registrationEndDate = d),
             ),
+            const SizedBox(height: 24),
+            Text(
+              l10n.competitionDuration,
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              l10n.competitionDurationDesc,
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant),
+            ),
+            const SizedBox(height: 16),
+            Column(
+              children: [
+                TextField(
+                  controller: _startDateController,
+                  decoration: InputDecoration(
+                    labelText: l10n.startDate,
+                    border: const OutlineInputBorder(),
+                    prefixIcon: const Icon(Icons.start),
+                    hintText: l10n.competitionDateHint,
+                  ),
+                  readOnly: true,
+                  onTap: () => _selectDateTime(_startDateController, _startDate, (d) => _startDate = d),
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: _endDateController,
+                  decoration: InputDecoration(
+                    labelText: l10n.endDate,
+                    border: const OutlineInputBorder(),
+                    prefixIcon: const Icon(Icons.event),
+                    hintText: l10n.competitionDateHint,
+                  ),
+                  readOnly: true,
+                  onTap: () => _selectDateTime(_endDateController, _endDate, (d) => _endDate = d),
+                ),
+              ],
+            ),
             const SizedBox(height: 32),
             SizedBox(
               width: double.infinity,
@@ -288,6 +288,7 @@ class _CreateCompetitionScreenState extends State<CreateCompetitionScreen> {
             const SizedBox(height: 16),
           ],
         ),
+      ),
       ),
     );
   }

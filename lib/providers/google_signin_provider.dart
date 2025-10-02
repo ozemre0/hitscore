@@ -26,7 +26,7 @@ class GoogleSignInNotifier extends StateNotifier<AsyncValue<User?>> {
     _googleSignIn = GoogleSignIn(
       // For Android, you typically leave clientId null and set only serverClientId
       clientId: Platform.isIOS
-          ? '871385916265-ulcv6rj22kqhp8aatlvb52m03kh4r7rn.apps.googleusercontent.com'
+          ? '871385916265-o1noqvi90qrdnb4k5q8lapo8qn67lihs.apps.googleusercontent.com'
           : null,
       serverClientId: GoogleOAuthConfig.androidServerClientId,
       scopes: const ['email', 'profile'],
