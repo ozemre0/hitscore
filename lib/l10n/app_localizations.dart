@@ -1409,6 +1409,12 @@ abstract class AppLocalizations {
   /// **'Add to competition'**
   String get addToCompetition;
 
+  /// No description provided for @searchCompetitionHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Search competitions'**
+  String get searchCompetitionHint;
+
   /// No description provided for @pendingRequestsCount.
   ///
   /// In en, this message translates to:
@@ -1756,6 +1762,84 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'OK'**
   String get ok;
+
+  /// No description provided for @filters.
+  ///
+  /// In en, this message translates to:
+  /// **'Filters'**
+  String get filters;
+
+  /// No description provided for @filter.
+  ///
+  /// In en, this message translates to:
+  /// **'Filter'**
+  String get filter;
+
+  /// No description provided for @apply.
+  ///
+  /// In en, this message translates to:
+  /// **'Apply'**
+  String get apply;
+
+  /// No description provided for @clear.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear'**
+  String get clear;
+
+  /// No description provided for @dateFrom.
+  ///
+  /// In en, this message translates to:
+  /// **'Start date'**
+  String get dateFrom;
+
+  /// No description provided for @dateTo.
+  ///
+  /// In en, this message translates to:
+  /// **'End date'**
+  String get dateTo;
+
+  /// No description provided for @dateRange.
+  ///
+  /// In en, this message translates to:
+  /// **'Date range'**
+  String get dateRange;
+
+  /// No description provided for @presetToday.
+  ///
+  /// In en, this message translates to:
+  /// **'Today'**
+  String get presetToday;
+
+  /// No description provided for @presetThisWeek.
+  ///
+  /// In en, this message translates to:
+  /// **'This week'**
+  String get presetThisWeek;
+
+  /// No description provided for @presetThisMonth.
+  ///
+  /// In en, this message translates to:
+  /// **'This month'**
+  String get presetThisMonth;
+
+  /// No description provided for @scorePermission.
+  ///
+  /// In en, this message translates to:
+  /// **'Score permission'**
+  String get scorePermission;
+
+  /// No description provided for @scoreAllowed.
+  ///
+  /// In en, this message translates to:
+  /// **'Allowed'**
+  String get scoreAllowed;
+
+  /// No description provided for @scoreNotAllowed.
+  ///
+  /// In en, this message translates to:
+  /// **'Not allowed'**
+  String get scoreNotAllowed;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

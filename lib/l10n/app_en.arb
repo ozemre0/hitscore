@@ -246,6 +246,8 @@
   "addedSuccessfully": "Added successfully",
   "addToCompetition": "Add to competition"
   ,
+  "searchCompetitionHint": "Search competitions",
+  
   "pendingRequestsCount": "Pending requests: {count}",
   "@pendingRequestsCount": {"placeholders": {"count": {"type": "int"}}},
   "acceptedParticipantsCount": "Accepted participants: {count}",
@@ -331,5 +333,24 @@
   "scoreEntryNotAllowedTitle": "Score Entry Not Available",
   "scoreEntryNotAllowedMessage": "Score entry is not currently available for this competition. You will be able to enter scores when the organizer opens it.",
   "ok": "OK"
+  ,
+  "filters": "Filters",
+  "filter": "Filter",
+  "apply": "Apply",
+  "clear": "Clear",
+  "dateFrom": "Start date",
+  "dateTo": "End date",
+  "dateRange": "Date range",
+  "presetToday": "Today",
+  "presetThisWeek": "This week",
+  "presetThisMonth": "This month",
+  "scorePermission": "Score permission",
+  "scoreAllowed": "Allowed",
+  "scoreNotAllowed": "Not allowed"
+  ,
+  "sets": "Sets",
+  "setLabel": "Set {setNumber}",
+  "@setLabel": {"placeholders": {"setNumber": {"type": "int"}}},
+  "arrows": "Arrows"
 }
 

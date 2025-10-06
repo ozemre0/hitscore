@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../l10n/app_localizations.dart';
@@ -121,7 +122,8 @@ class _CompetitionParticipantsScreenState extends State<CompetitionParticipantsS
               )
             ),
             qualifications:organized_qualifications!participant_id (
-              qualification_total_score
+              qualification_total_score,
+              qualification_sets_data
             )
           ''')
           .eq('organized_competition_id', widget.competitionId)
@@ -624,6 +626,156 @@ class _CompetitionParticipantsScreenState extends State<CompetitionParticipantsS
           final bool shouldAnimate = (wasTop || isTop) && _activePulseIds.contains(pid);
           final bool movedUp = prevRank > currentRank; // smaller rank = moved up
 
+          void _openSetsDrawer() {
+            final qData = qualificationData;
+            if (qData == null) return;
+            final dynamic raw = qData['qualification_sets_data'];
+            List<dynamic> sets;
+            if (raw == null) {
+              sets = const [];
+            } else if (raw is String) {
+              try {
+                sets = (jsonDecode(raw) as List).toList();
+              } catch (_) {
+                sets = const [];
+              }
+            } else if (raw is List) {
+              sets = raw;
+            } else {
+              sets = const [];
+            }
+
+            showModalBottomSheet<void>(
+              context: context,
+              isScrollControlled: true,
+              builder: (ctx) {
+                final l10n = AppLocalizations.of(ctx)!;
+                final cs = Theme.of(ctx).colorScheme;
+                return SafeArea(
+                  child: Padding(
+                    padding: EdgeInsets.only(
+                      left: 16,
+                      right: 16,
+                      top: 12,
+                      bottom: 16 + MediaQuery.of(ctx).viewPadding.bottom,
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                l10n.scoreEntryTitle,
+                                style: Theme.of(ctx).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
+                              ),
+                            ),
+                            IconButton(
+                              onPressed: () => Navigator.of(ctx).pop(),
+                              icon: const Icon(Icons.close),
+                              tooltip: l10n.cancel,
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        Flexible(
+                          child: ListView.separated(
+                            shrinkWrap: true,
+                            itemCount: sets.length,
+                            separatorBuilder: (_, __) => const SizedBox(height: 8),
+                            itemBuilder: (c2, i) {
+                              final item = sets[i];
+                              int setNo = i + 1;
+                              List<dynamic> rawArrows = const [];
+                              if (item is List && item.length >= 2) {
+                                if (item[0] is int) setNo = item[0] as int;
+                                if (item[1] is List) rawArrows = List<dynamic>.from(item[1] as List);
+                              }
+                              final arrowsInt = rawArrows.map<int>((v) {
+                                if (v is String) {
+                                  if (v == 'X') return 10;
+                                  if (v == 'M') return 0;
+                                  return int.tryParse(v) ?? 0;
+                                }
+                                return (v as num?)?.toInt() ?? 0;
+                              }).toList();
+                              final setTotal = arrowsInt.fold<int>(0, (s, a) => s + a);
+                              return Container(
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  color: Theme.of(ctx).colorScheme.surface,
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(color: cs.outline.withOpacity(0.3)),
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Row(
+                                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                      children: [
+                                        Text(
+                                          '${l10n.currentSet} $setNo',
+                                          style: Theme.of(ctx).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
+                                        ),
+                                        Text(
+                                          '${l10n.totalScore}: $setTotal',
+                                          style: Theme.of(ctx).textTheme.bodySmall?.copyWith(color: cs.primary, fontWeight: FontWeight.w600),
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 8),
+                                    Wrap(
+                                      spacing: 6,
+                                      runSpacing: 6,
+                                      children: rawArrows.map<Widget>((v) {
+                                        final label = v is String ? v : ((v as num?)?.toInt() ?? 0).toString();
+                                        final score = v is String
+                                            ? (v == 'X' ? 10 : (v == 'M' ? 0 : int.tryParse(v) ?? 0))
+                                            : ((v as num?)?.toInt() ?? 0);
+                                        Color bg;
+                                        Color fg;
+                                        if (score >= 9) {
+                                          bg = Colors.yellow;
+                                          fg = Colors.black;
+                                        } else if (score >= 7) {
+                                          bg = Colors.red;
+                                          fg = Colors.white;
+                                        } else if (score >= 5) {
+                                          bg = Colors.blue;
+                                          fg = Colors.white;
+                                        } else if (score >= 1) {
+                                          bg = Colors.black;
+                                          fg = Colors.white;
+                                        } else {
+                                          bg = Colors.grey;
+                                          fg = Colors.white;
+                                        }
+                                        return Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                          decoration: BoxDecoration(
+                                            color: bg,
+                                            borderRadius: BorderRadius.circular(16),
+                                            border: Border.all(color: Colors.black26),
+                                          ),
+                                          child: Text(label, style: TextStyle(color: fg, fontWeight: FontWeight.bold)),
+                                        );
+                                      }).toList(),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              },
+            );
+          }
+
           Widget tile = Card(
             margin: const EdgeInsets.only(bottom: 12),
             elevation: 0,
@@ -687,6 +839,12 @@ class _CompetitionParticipantsScreenState extends State<CompetitionParticipantsS
                       color: colorScheme.primary,
                       fontWeight: FontWeight.bold,
                     ),
+                  ),
+                  const SizedBox(width: 8),
+                  IconButton(
+                    onPressed: _openSetsDrawer,
+                    icon: const Icon(Icons.arrow_forward_ios, size: 16),
+                    tooltip: AppLocalizations.of(context)!.scoreEntryTitle,
                   ),
                 ],
               ),

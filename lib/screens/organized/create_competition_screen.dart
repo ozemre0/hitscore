@@ -247,7 +247,10 @@ class _CreateCompetitionScreenState extends State<CreateCompetitionScreen> {
               decoration: InputDecoration(
                 labelText: l10n.competitionNameLabel,
                 border: const OutlineInputBorder(),
-                prefixIcon: const Icon(Icons.emoji_events),
+                prefixIcon: Icon(
+                  Icons.emoji_events,
+                  color: Theme.of(context).colorScheme.onSurface,
+                ),
               ),
             ),
             const SizedBox(height: 16),
@@ -256,7 +259,10 @@ class _CreateCompetitionScreenState extends State<CreateCompetitionScreen> {
               decoration: InputDecoration(
                 labelText: l10n.competitionDescriptionLabel,
                 border: const OutlineInputBorder(),
-                prefixIcon: const Icon(Icons.description),
+                prefixIcon: Icon(
+                  Icons.description,
+                  color: Theme.of(context).colorScheme.onSurface,
+                ),
               ),
               minLines: 1,
               maxLines: 4,
@@ -268,7 +274,10 @@ class _CreateCompetitionScreenState extends State<CreateCompetitionScreen> {
               title: Text(l10n.registrationAllowedLabel),
               secondary: IconButton(
                 tooltip: l10n.registrationAllowedDesc,
-                icon: const Icon(Icons.info_outline),
+                icon: Icon(
+                  Icons.info_outline,
+                  color: Theme.of(context).colorScheme.onSurface,
+                ),
                 onPressed: () => _showInfo(
                   title: l10n.registrationAllowedLabel,
                   message: l10n.registrationAllowedDesc,
@@ -282,7 +291,10 @@ class _CreateCompetitionScreenState extends State<CreateCompetitionScreen> {
               title: Text(l10n.scoreAllowedLabel),
               secondary: IconButton(
                 tooltip: l10n.scoreAllowedDesc,
-                icon: const Icon(Icons.info_outline),
+                icon: Icon(
+                  Icons.info_outline,
+                  color: Theme.of(context).colorScheme.onSurface,
+                ),
                 onPressed: () => _showInfo(
                   title: l10n.scoreAllowedLabel,
                   message: l10n.scoreAllowedDesc,
@@ -307,7 +319,10 @@ class _CreateCompetitionScreenState extends State<CreateCompetitionScreen> {
                   decoration: InputDecoration(
                     labelText: l10n.startDate,
                     border: const OutlineInputBorder(),
-                    prefixIcon: const Icon(Icons.start),
+                    prefixIcon: Icon(
+                      Icons.start,
+                      color: Theme.of(context).colorScheme.onSurface,
+                    ),
                     hintText: l10n.competitionDateHint,
                   ),
                   readOnly: true,
@@ -319,7 +334,10 @@ class _CreateCompetitionScreenState extends State<CreateCompetitionScreen> {
                   decoration: InputDecoration(
                     labelText: l10n.endDate,
                     border: const OutlineInputBorder(),
-                    prefixIcon: const Icon(Icons.event),
+                    prefixIcon: Icon(
+                      Icons.event,
+                      color: Theme.of(context).colorScheme.onSurface,
+                    ),
                     hintText: l10n.competitionDateHint,
                   ),
                   readOnly: true,

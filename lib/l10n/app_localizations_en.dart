@@ -672,6 +672,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get addToCompetition => 'Add to competition';
 
   @override
+  String get searchCompetitionHint => 'Search competitions';
+
+  @override
   String pendingRequestsCount(int count) {
     return 'Pending requests: $count';
   }
@@ -854,4 +857,43 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get ok => 'OK';
+
+  @override
+  String get filters => 'Filters';
+
+  @override
+  String get filter => 'Filter';
+
+  @override
+  String get apply => 'Apply';
+
+  @override
+  String get clear => 'Clear';
+
+  @override
+  String get dateFrom => 'Start date';
+
+  @override
+  String get dateTo => 'End date';
+
+  @override
+  String get dateRange => 'Date range';
+
+  @override
+  String get presetToday => 'Today';
+
+  @override
+  String get presetThisWeek => 'This week';
+
+  @override
+  String get presetThisMonth => 'This month';
+
+  @override
+  String get scorePermission => 'Score permission';
+
+  @override
+  String get scoreAllowed => 'Allowed';
+
+  @override
+  String get scoreNotAllowed => 'Not allowed';
 }

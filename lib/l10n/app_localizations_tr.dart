@@ -672,6 +672,9 @@ class AppLocalizationsTr extends AppLocalizations {
   String get addToCompetition => 'Yarışmaya ekle';
 
   @override
+  String get searchCompetitionHint => 'Yarışma ara';
+
+  @override
   String pendingRequestsCount(int count) {
     return 'Bekleyen istek: $count';
   }
@@ -854,4 +857,43 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get ok => 'Tamam';
+
+  @override
+  String get filters => 'Filtreler';
+
+  @override
+  String get filter => 'Filtre';
+
+  @override
+  String get apply => 'Uygula';
+
+  @override
+  String get clear => 'Temizle';
+
+  @override
+  String get dateFrom => 'Başlangıç tarihi';
+
+  @override
+  String get dateTo => 'Bitiş tarihi';
+
+  @override
+  String get dateRange => 'Tarih aralığı';
+
+  @override
+  String get presetToday => 'Bugün';
+
+  @override
+  String get presetThisWeek => 'Bu hafta';
+
+  @override
+  String get presetThisMonth => 'Bu ay';
+
+  @override
+  String get scorePermission => 'Skor izni';
+
+  @override
+  String get scoreAllowed => 'Açık';
+
+  @override
+  String get scoreNotAllowed => 'Kapalı';
 }

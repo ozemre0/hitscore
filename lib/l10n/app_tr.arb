@@ -246,6 +246,8 @@
   "addedSuccessfully": "Başarıyla eklendi",
   "addToCompetition": "Yarışmaya ekle"
   ,
+  "searchCompetitionHint": "Yarışma ara",
+  
   "pendingRequestsCount": "Bekleyen istek: {count}",
   "@pendingRequestsCount": {"placeholders": {"count": {"type": "int"}}},
   "acceptedParticipantsCount": "Kabul edilen: {count}",
@@ -329,6 +331,24 @@
   "availableScoreButtonsDescription": "Bu klasman için hangi skor butonlarının kullanılacağını seçin",
   "scoreEntryNotAllowedTitle": "Skor Girişi Mevcut Değil",
   "scoreEntryNotAllowedMessage": "Bu yarışma için şu an için skor girişi yapılamamaktadır. Organizatör açtığı zaman skor girebileceksiniz.",
-  "ok": "Tamam"
+  "ok": "Tamam",
+  "filters": "Filtreler",
+  "filter": "Filtre",
+  "apply": "Uygula",
+  "clear": "Temizle",
+  "dateFrom": "Başlangıç tarihi",
+  "dateTo": "Bitiş tarihi",
+  "dateRange": "Tarih aralığı",
+  "presetToday": "Bugün",
+  "presetThisWeek": "Bu hafta",
+  "presetThisMonth": "Bu ay",
+  "scorePermission": "Skor izni",
+  "scoreAllowed": "Açık",
+  "scoreNotAllowed": "Kapalı"
+  ,
+  "sets": "Seriler",
+  "setLabel": "Seri {setNumber}",
+  "@setLabel": {"placeholders": {"setNumber": {"type": "int"}}},
+  "arrows": "Oklar"
 }
 

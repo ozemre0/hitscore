@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'dart:async';
 import '../l10n/app_localizations.dart';
 import '../services/supabase_config.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -17,13 +18,71 @@ class _ActiveCompetitionsScreenState extends State<ActiveCompetitionsScreen> {
   bool _isLoading = false;
   String? _error;
   List<Map<String, dynamic>> _competitions = [];
+  List<Map<String, dynamic>> _filteredCompetitions = [];
+  final TextEditingController _searchController = TextEditingController();
+  Timer? _debounce;
   final Set<String> _pendingCompetitionIds = <String>{};
   final Map<String, String> _pendingClassificationNameByCompetitionId = <String, String>{};
+
+  // Filters
+  DateTime? _fromDate;
+  DateTime? _toDate;
 
   @override
   void initState() {
     super.initState();
+    _searchController.addListener(_onSearchChangedImmediate);
     _loadCompetitions();
+  }
+
+  @override
+  void dispose() {
+    _debounce?.cancel();
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  void _onSearchChangedImmediate() {
+    _debounce?.cancel();
+    _debounce = Timer(const Duration(milliseconds: 250), () {
+      if (!mounted) return;
+      _applyFilters();
+    });
+  }
+
+  void _applyFilters() {
+    final query = _searchController.text.trim().toLowerCase();
+    List<Map<String, dynamic>> list = _competitions;
+
+    // Date range filter (by start_date)
+    if (_fromDate != null || _toDate != null) {
+      list = list.where((c) {
+        final startStr = c['start_date'] as String?;
+        if (startStr == null) return false;
+        DateTime d;
+        try {
+          d = DateTime.parse(startStr);
+        } catch (_) {
+          return false;
+        }
+        if (_fromDate != null && d.isBefore(DateTime(_fromDate!.year, _fromDate!.month, _fromDate!.day))) return false;
+        if (_toDate != null && d.isAfter(DateTime(_toDate!.year, _toDate!.month, _toDate!.day, 23, 59, 59))) return false;
+        return true;
+      }).toList(growable: false);
+    }
+
+    // Search
+    if (query.isNotEmpty) {
+      list = list.where((c) {
+        final name = (c['name'] ?? '').toString().toLowerCase();
+        final visibleId = c['competition_visible_id']?.toString().toLowerCase() ?? '';
+        return name.contains(query) || visibleId.contains(query);
+      }).toList(growable: false);
+    }
+
+    setState(() {
+      _filteredCompetitions = list;
+    });
   }
 
   Future<void> _loadCompetitions() async {
@@ -34,7 +93,7 @@ class _ActiveCompetitionsScreenState extends State<ActiveCompetitionsScreen> {
     try {
       final response = await SupabaseConfig.client
           .from('organized_competitions')
-          .select('organized_competition_id,name,description,start_date,end_date,competition_visible_id,registration_allowed,status')
+          .select('organized_competition_id,name,description,start_date,end_date,competition_visible_id,registration_allowed,status,score_allowed')
           .eq('is_deleted', false)
           .eq('status', 'active')
           .eq('registration_allowed', true)
@@ -43,12 +102,14 @@ class _ActiveCompetitionsScreenState extends State<ActiveCompetitionsScreen> {
       final competitions = List<Map<String, dynamic>>.from(response);
       setState(() {
         _competitions = competitions;
+        _filteredCompetitions = competitions;
       });
       await _loadUserPendingStatuses(competitions);
       if (mounted) {
         setState(() {
           _isLoading = false;
         });
+        _applyFilters();
       }
     } catch (e) {
       setState(() {
@@ -382,6 +443,11 @@ class _ActiveCompetitionsScreenState extends State<ActiveCompetitionsScreen> {
             icon: const Icon(Icons.refresh),
             tooltip: l10n.refresh,
           ),
+          IconButton(
+            onPressed: _openFiltersSheet,
+            icon: const Icon(Icons.filter_list),
+            tooltip: l10n.filter,
+          ),
         ],
       ),
       body: LayoutBuilder(
@@ -395,6 +461,168 @@ class _ActiveCompetitionsScreenState extends State<ActiveCompetitionsScreen> {
           );
         },
       ),
+    );
+  }
+
+  Future<void> _openFiltersSheet() async {
+    final l10n = AppLocalizations.of(context)!;
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      barrierColor: Colors.black54.withOpacity(0.3),
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (modalCtx, setModalState) {
+            return SafeArea(
+              child: Padding(
+                padding: EdgeInsets.only(
+                  left: 16,
+                  right: 16,
+                  top: 12,
+                  bottom: 16 + MediaQuery.of(modalCtx).viewPadding.bottom,
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            l10n.filters,
+                            style: Theme.of(modalCtx).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
+                          ),
+                        ),
+                        TextButton(
+                          onPressed: () {
+                            setState(() {
+                              _fromDate = null;
+                              _toDate = null;
+                            });
+                            setModalState(() {});
+                            _applyFilters();
+                          },
+                          child: Text(l10n.clear),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    const SizedBox(height: 8),
+                    Text(l10n.dateRange, style: Theme.of(modalCtx).textTheme.labelLarge),
+                    const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 8,
+                      children: [
+                        OutlinedButton(
+                          onPressed: () {
+                            final now = DateTime.now();
+                            final start = DateTime(now.year, now.month, now.day);
+                            final end = DateTime(now.year, now.month, now.day, 23, 59, 59);
+                            setState(() {
+                              _fromDate = start;
+                              _toDate = end;
+                            });
+                            setModalState(() {});
+                            _applyFilters();
+                          },
+                          child: Text(l10n.presetToday),
+                        ),
+                        OutlinedButton(
+                          onPressed: () {
+                            final now = DateTime.now();
+                            final weekday = now.weekday; // Mon=1
+                            final start = DateTime(now.year, now.month, now.day).subtract(Duration(days: weekday - 1));
+                            final endBase = start.add(const Duration(days: 6));
+                            final end = DateTime(endBase.year, endBase.month, endBase.day, 23, 59, 59);
+                            setState(() {
+                              _fromDate = start;
+                              _toDate = end;
+                            });
+                            setModalState(() {});
+                            _applyFilters();
+                          },
+                          child: Text(l10n.presetThisWeek),
+                        ),
+                        OutlinedButton(
+                          onPressed: () {
+                            final now = DateTime.now();
+                            final start = DateTime(now.year, now.month, 1);
+                            final nextMonth = DateTime(now.year, now.month + 1, 1);
+                            final endBase = nextMonth.subtract(const Duration(days: 1));
+                            final end = DateTime(endBase.year, endBase.month, endBase.day, 23, 59, 59);
+                            setState(() {
+                              _fromDate = start;
+                              _toDate = end;
+                            });
+                            setModalState(() {});
+                            _applyFilters();
+                          },
+                          child: Text(l10n.presetThisMonth),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    OutlinedButton(
+                      onPressed: () async {
+                        final initStart = _fromDate ?? DateTime.now();
+                        final initEnd = _toDate ?? initStart;
+                        final picked = await showDateRangePicker(
+                          context: modalCtx,
+                          firstDate: DateTime(DateTime.now().year - 5),
+                          lastDate: DateTime(DateTime.now().year + 5),
+                          initialDateRange: DateTimeRange(start: initStart, end: initEnd),
+                        );
+                        if (picked != null) {
+                          final start = DateTime(picked.start.year, picked.start.month, picked.start.day);
+                          final end = DateTime(picked.end.year, picked.end.month, picked.end.day, 23, 59, 59);
+                          setState(() {
+                            _fromDate = start;
+                            _toDate = end;
+                          });
+                          setModalState(() {});
+                          _applyFilters();
+                        }
+                      },
+                      child: Align(
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          _fromDate == null || _toDate == null
+                              ? '${l10n.dateFrom} • ${l10n.dateTo}'
+                              : '${_fromDate!.day.toString().padLeft(2, '0')}.${_fromDate!.month.toString().padLeft(2, '0')}.${_fromDate!.year} – ${_toDate!.day.toString().padLeft(2, '0')}.${_toDate!.month.toString().padLeft(2, '0')}.${_toDate!.year}',
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Builder(
+                            builder: (buttonCtx) {
+                              final cancelColor = Theme.of(buttonCtx).brightness == Brightness.dark
+                                  ? Colors.redAccent
+                                  : Colors.red.shade700;
+                              return OutlinedButton(
+                                onPressed: () {
+                                  Navigator.of(modalCtx).pop();
+                                },
+                                style: OutlinedButton.styleFrom(
+                                  foregroundColor: cancelColor,
+                                  side: BorderSide(color: cancelColor, width: 1),
+                                ),
+                                child: Text(l10n.cancel),
+                              );
+                            },
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
     );
   }
 
@@ -446,13 +674,84 @@ class _ActiveCompetitionsScreenState extends State<ActiveCompetitionsScreen> {
       );
     }
 
-    return RefreshIndicator(
-      onRefresh: _loadCompetitions,
-      child: ListView.builder(
-        padding: const EdgeInsets.all(16.0),
-        itemCount: _competitions.length,
-        itemBuilder: (context, index) {
-          final c = _competitions[index];
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+          child: TextField(
+            controller: _searchController,
+            textInputAction: TextInputAction.search,
+            decoration: InputDecoration(
+              prefixIcon: const Icon(Icons.search),
+              hintText: l10n.searchCompetitionHint,
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+              isDense: true,
+            ),
+          ),
+        ),
+        const SizedBox(height: 8),
+        if (_fromDate != null || _toDate != null)
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16.0),
+            child: Row(
+              children: [
+                Icon(Icons.date_range, size: 16, color: colorScheme.onSurfaceVariant),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    _fromDate != null && _toDate != null
+                        ? '${l10n.dateRange}: '
+                          '${_fromDate!.day.toString().padLeft(2, '0')}.${_fromDate!.month.toString().padLeft(2, '0')}.${_fromDate!.year} – '
+                          '${_toDate!.day.toString().padLeft(2, '0')}.${_toDate!.month.toString().padLeft(2, '0')}.${_toDate!.year}'
+                        : _fromDate != null
+                            ? '${l10n.dateFrom}: '
+                              '${_fromDate!.day.toString().padLeft(2, '0')}.${_fromDate!.month.toString().padLeft(2, '0')}.${_fromDate!.year}'
+                            : '${l10n.dateTo}: '
+                              '${_toDate!.day.toString().padLeft(2, '0')}.${_toDate!.month.toString().padLeft(2, '0')}.${_toDate!.year}',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(color: colorScheme.onSurfaceVariant),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                OutlinedButton(
+                  onPressed: () {
+                    setState(() {
+                      _fromDate = null;
+                      _toDate = null;
+                    });
+                    _applyFilters();
+                  },
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                  ),
+                  child: Text(l10n.clear),
+                ),
+              ],
+            ),
+          ),
+        Expanded(
+          child: RefreshIndicator(
+            onRefresh: _loadCompetitions,
+            child: _filteredCompetitions.isEmpty
+                ? ListView(
+                    padding: const EdgeInsets.all(16.0),
+                    children: [
+                      Center(
+                        child: Padding(
+                          padding: const EdgeInsets.all(24.0),
+                          child: Text(
+                            l10n.noResults,
+                            style: Theme.of(context).textTheme.bodyLarge?.copyWith(color: colorScheme.onSurfaceVariant),
+                          ),
+                        ),
+                      ),
+                    ],
+                  )
+                : ListView.builder(
+                    padding: const EdgeInsets.all(16.0),
+                    itemCount: _filteredCompetitions.length,
+                    itemBuilder: (context, index) {
+                      final c = _filteredCompetitions[index];
           final bool canRegister = (c['registration_allowed'] as bool?) ?? false;
           return Card(
             margin: const EdgeInsets.only(bottom: 12),
@@ -597,8 +896,11 @@ class _ActiveCompetitionsScreenState extends State<ActiveCompetitionsScreen> {
               ]),
             ),
           );
-        },
-      ),
+                    },
+                  ),
+          ),
+        ),
+      ],
     );
   }
 }

@@ -33,6 +33,45 @@ class _EditCompetitionScreenState extends State<EditCompetitionScreen> {
     _initializeForm();
   }
 
+  Future<void> _showInfo({required String title, required String message}) async {
+    await showDialog<void>(
+      context: context,
+      builder: (ctx) {
+        final theme = Theme.of(ctx);
+        final media = MediaQuery.of(ctx);
+        return AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+          titlePadding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+          contentPadding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
+          actionsPadding: const EdgeInsets.fromLTRB(20, 8, 20, 12),
+          title: Text(
+            title,
+            style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w600),
+          ),
+          content: ConstrainedBox(
+            constraints: BoxConstraints(maxHeight: media.size.height * 0.6),
+            child: SingleChildScrollView(
+              child: SelectableText(
+                message,
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ),
+          ),
+          actionsAlignment: MainAxisAlignment.end,
+          actions: [
+            OutlinedButton(
+              onPressed: () => Navigator.of(ctx).maybePop(),
+              child: Text(MaterialLocalizations.of(ctx).closeButtonLabel),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   void _initializeForm() {
     _nameController.text = widget.competition['name'] ?? '';
     _descriptionController.text = widget.competition['description'] ?? '';
@@ -299,7 +338,17 @@ class _EditCompetitionScreenState extends State<EditCompetitionScreen> {
                       },
                       title: Text(l10n.registrationAllowedLabel),
                       subtitle: Text(l10n.registrationAllowedDesc),
-                      secondary: const Icon(Icons.how_to_reg),
+                      secondary: IconButton(
+                        tooltip: l10n.registrationAllowedDesc,
+                        icon: Icon(
+                          Icons.info_outline,
+                          color: Theme.of(context).colorScheme.onSurface,
+                        ),
+                        onPressed: () => _showInfo(
+                          title: l10n.registrationAllowedLabel,
+                          message: l10n.registrationAllowedDesc,
+                        ),
+                      ),
                     ),
                     const SizedBox(height: 8),
                     SwitchListTile(
@@ -312,7 +361,17 @@ class _EditCompetitionScreenState extends State<EditCompetitionScreen> {
                       },
                       title: Text(l10n.scoreAllowedLabel),
                       subtitle: Text(l10n.scoreAllowedDesc),
-                      secondary: const Icon(Icons.score),
+                      secondary: IconButton(
+                        tooltip: l10n.scoreAllowedDesc,
+                        icon: Icon(
+                          Icons.info_outline,
+                          color: Theme.of(context).colorScheme.onSurface,
+                        ),
+                        onPressed: () => _showInfo(
+                          title: l10n.scoreAllowedLabel,
+                          message: l10n.scoreAllowedDesc,
+                        ),
+                      ),
                     ),
                     const SizedBox(height: 16),
                     Text(
@@ -359,7 +418,10 @@ class _EditCompetitionScreenState extends State<EditCompetitionScreen> {
                           children: [
                             Row(
                               children: [
-                                Icon(Icons.category, color: Theme.of(context).primaryColor),
+                                Icon(
+                                  Icons.category,
+                                  color: Theme.of(context).colorScheme.onSurface,
+                                ),
                                 const SizedBox(width: 8),
                                 Expanded(
                                   child: Text(
