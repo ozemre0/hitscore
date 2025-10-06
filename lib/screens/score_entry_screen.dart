@@ -71,6 +71,8 @@ class _ScoreEntryContent extends ConsumerStatefulWidget {
 
 class _ScoreEntryContentState extends ConsumerState<_ScoreEntryContent> {
   List<int> _currentArrows = [];
+  // Raw representations to persist (e.g., keep 'X' instead of 10, 'M' instead of 0)
+  List<dynamic> _currentArrowsRaw = [];
   int _currentSet = 1;
   int _totalScore = 0;
   int _currentSetScore = 0;
@@ -130,12 +132,14 @@ class _ScoreEntryContentState extends ConsumerState<_ScoreEntryContent> {
       
       print('Loading existing data for user: ${user.id}, competition: ${widget.competitionId}');
       
-      // Find participant_id for this competition
+      // Find the latest participant_id for this competition
       final participantResponse = await SupabaseConfig.client
           .from('organized_competition_participants')
           .select('participant_id')
           .eq('user_id', user.id)
           .eq('organized_competition_id', widget.competitionId)
+          .order('created_at', ascending: false)
+          .limit(1)
           .maybeSingle();
       
       print('Participant response: $participantResponse');
@@ -149,11 +153,14 @@ class _ScoreEntryContentState extends ConsumerState<_ScoreEntryContent> {
       final participantId = participantResponse['participant_id'] as String;
       print('Found participant_id: $participantId');
       
-      // Load existing qualification data
+      // Load latest existing qualification data (if multiple rows exist, use the newest)
       final qualificationResponse = await SupabaseConfig.client
           .from('organized_qualifications')
-          .select('qualification_sets_data, qualification_total_score')
+          .select('id, qualification_sets_data, qualification_total_score, updated_at, created_at')
           .eq('participant_id', participantId)
+          .order('updated_at', ascending: false, nullsFirst: false)
+          .order('created_at', ascending: false)
+          .limit(1)
           .maybeSingle();
       
       print('Qualification response: $qualificationResponse');
@@ -180,12 +187,21 @@ class _ScoreEntryContentState extends ConsumerState<_ScoreEntryContent> {
         for (final setData in setsData) {
           if (setData is List && setData.length >= 2) {
             final setNumber = setData[0] as int;
-            final arrows = List<int>.from(setData[1] as List);
+            final dynamicList = List<dynamic>.from(setData[1] as List);
+            final arrows = dynamicList.map<int>((v) {
+              if (v is String) {
+                if (v == 'X') return 10;
+                if (v == 'M') return 0;
+                return int.tryParse(v) ?? 0;
+              }
+              return (v as num).toInt();
+            }).toList();
             final setScore = arrows.fold<int>(0, (sum, arrow) => sum + arrow);
             
             completedSets.add({
               'setNumber': setNumber,
               'arrows': arrows,
+              'rawArrows': dynamicList,
               'totalScore': setScore,
             });
             
@@ -215,10 +231,11 @@ class _ScoreEntryContentState extends ConsumerState<_ScoreEntryContent> {
     }
   }
 
-  void _addScore(int score) {
+  void _addArrow(int score, {String? label}) {
     if (_currentArrows.length < _arrowsPerSet) {
       setState(() {
         _currentArrows.add(score);
+        _currentArrowsRaw.add(label == 'X' || label == 'M' ? label! : score);
         _currentSetScore += score;
         _totalScore += score;
       });
@@ -229,6 +246,9 @@ class _ScoreEntryContentState extends ConsumerState<_ScoreEntryContent> {
     if (_currentArrows.isNotEmpty) {
       setState(() {
         final lastScore = _currentArrows.removeLast();
+        if (_currentArrowsRaw.isNotEmpty) {
+          _currentArrowsRaw.removeLast();
+        }
         _currentSetScore -= lastScore;
         _totalScore -= lastScore;
       });
@@ -239,6 +259,7 @@ class _ScoreEntryContentState extends ConsumerState<_ScoreEntryContent> {
     setState(() {
       _totalScore -= _currentSetScore;
       _currentArrows.clear();
+      _currentArrowsRaw.clear();
       _currentSetScore = 0;
     });
   }
@@ -251,6 +272,7 @@ class _ScoreEntryContentState extends ConsumerState<_ScoreEntryContent> {
           _completedSets.add({
             'setNumber': _overwritingSetNumber,
             'arrows': List<int>.from(_currentArrows),
+            'rawArrows': List<dynamic>.from(_currentArrowsRaw),
             'totalScore': _currentSetScore,
           });
           // Overwrite modundan çık ve doğru seri numarasını ayarla
@@ -268,6 +290,7 @@ class _ScoreEntryContentState extends ConsumerState<_ScoreEntryContent> {
           _completedSets.add({
             'setNumber': _currentSet,
             'arrows': List<int>.from(_currentArrows),
+            'rawArrows': List<dynamic>.from(_currentArrowsRaw),
             'totalScore': _currentSetScore,
           });
           
@@ -278,6 +301,7 @@ class _ScoreEntryContentState extends ConsumerState<_ScoreEntryContent> {
         // Yeni set için hazırla
         _currentArrows.clear();
         _currentSetScore = 0;
+        _currentArrowsRaw.clear();
         
         // Serileri seri numarasına göre sırala
         _completedSets.sort((a, b) => (a['setNumber'] as int).compareTo(b['setNumber'] as int));
@@ -326,7 +350,7 @@ class _ScoreEntryContentState extends ConsumerState<_ScoreEntryContent> {
       // Format data as requested: [[1, [10, 10, 10, 10, 7, 7]], [2, [7, 7, 7, 7, 7, 7]]]
       final setsData = _completedSets.map((set) => [
         set['setNumber'],
-        set['arrows']
+        (set['rawArrows'] as List<dynamic>? ?? (set['arrows'] as List<int>).toList()),
       ]).toList();
       
       print('Saving qualification_sets_data: $setsData');
@@ -335,12 +359,14 @@ class _ScoreEntryContentState extends ConsumerState<_ScoreEntryContent> {
       final user = SupabaseConfig.client.auth.currentUser;
       if (user == null) return;
       
-      // Find participant_id for this competition
+      // Find the latest participant_id for this competition
       final participantResponse = await SupabaseConfig.client
           .from('organized_competition_participants')
           .select('participant_id')
           .eq('user_id', user.id)
           .eq('organized_competition_id', widget.competitionId)
+          .order('created_at', ascending: false)
+          .limit(1)
           .maybeSingle();
       
       if (participantResponse == null) {
@@ -353,23 +379,47 @@ class _ScoreEntryContentState extends ConsumerState<_ScoreEntryContent> {
       // Calculate total score
       final totalScore = _completedSets.fold<int>(0, (sum, set) => sum + (set['totalScore'] as int));
       
-      // Update existing qualification record
-      await SupabaseConfig.client
+      // Try to load latest qualification row id to update a single row
+      final latestQualification = await SupabaseConfig.client
           .from('organized_qualifications')
-          .update({
-            'qualification_sets_data': setsData,
-            'qualification_total_score': totalScore,
-            'updated_at': DateTime.now().toIso8601String(),
-          })
-          .eq('participant_id', participantId);
+          .select('id')
+          .eq('participant_id', participantId)
+          .order('updated_at', ascending: false, nullsFirst: false)
+          .order('created_at', ascending: false)
+          .limit(1)
+          .maybeSingle();
+
+      if (latestQualification != null && latestQualification['id'] != null) {
+        // Update only that row
+        await SupabaseConfig.client
+            .from('organized_qualifications')
+            .update({
+              'qualification_sets_data': jsonEncode(setsData),
+              'qualification_total_score': totalScore,
+              'updated_at': DateTime.now().toIso8601String(),
+            })
+            .eq('id', latestQualification['id']);
+      } else {
+        // Insert a new row if none exists
+        await SupabaseConfig.client
+            .from('organized_qualifications')
+            .insert({
+              'participant_id': participantId,
+              'qualification_sets_data': jsonEncode(setsData),
+              'qualification_total_score': totalScore,
+              'created_at': DateTime.now().toIso8601String(),
+              'updated_at': DateTime.now().toIso8601String(),
+            });
+      }
       
       print('Score saved successfully: $totalScore points');
       print('Supabase e gönderildi: qualification_sets_data=$setsData, qualification_total_score=$totalScore');
     } catch (e) {
       print('Error saving score: $e');
       if (mounted) {
+        final l10n = AppLocalizations.of(context)!;
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error saving score: $e')),
+          SnackBar(content: Text(l10n.errorGeneric)),
         );
       }
     }
@@ -469,25 +519,32 @@ class _ScoreEntryContentState extends ConsumerState<_ScoreEntryContent> {
                       )
                     else
                       Row(
-                        children: _currentArrows.map((score) => Container(
-                          width: 42,
-                          height: 42,
-                          margin: const EdgeInsets.only(right: 8),
-                          decoration: BoxDecoration(
-                            color: _getColorForScore(score),
-                            shape: BoxShape.circle,
-                            border: Border.all(color: Colors.black26),
-                          ),
-                          alignment: Alignment.center,
-                          child: Text(
-                            score == 0 ? 'M' : score.toString(),
-                            style: TextStyle(
-                              color: _getTextColorForScore(score),
-                              fontSize: 19,
-                              fontWeight: FontWeight.bold,
+                        children: List.generate(_currentArrows.length, (index) {
+                          final score = _currentArrows[index];
+                          final raw = index < _currentArrowsRaw.length ? _currentArrowsRaw[index] : null;
+                          final label = (raw == 'X' || raw == 'M')
+                              ? raw as String
+                              : (score == 0 ? 'M' : score.toString());
+                          return Container(
+                            width: 42,
+                            height: 42,
+                            margin: const EdgeInsets.only(right: 8),
+                            decoration: BoxDecoration(
+                              color: _getColorForScore(score),
+                              shape: BoxShape.circle,
+                              border: Border.all(color: Colors.black26),
                             ),
-                          ),
-                        )).toList(),
+                            alignment: Alignment.center,
+                            child: Text(
+                              label,
+                              style: TextStyle(
+                                color: _getTextColorForScore(score),
+                                fontSize: 19,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          );
+                        }),
                       ),
                   ],
                 ),
@@ -584,25 +641,36 @@ class _ScoreEntryContentState extends ConsumerState<_ScoreEntryContent> {
                                              ),
                                            ),
                                            Row(
-                                             children: (set['arrows'] as List<int>).map((score) => Container(
-                                               width: 32,
-                                               height: 32,
-                                               margin: const EdgeInsets.only(left: 4),
-                                               decoration: BoxDecoration(
-                                                 color: _getColorForScore(score),
-                                                 shape: BoxShape.circle,
-                                                 border: Border.all(color: Colors.black26),
-                                               ),
-                                               alignment: Alignment.center,
-                                               child: Text(
-                                                 score == 0 ? 'M' : score.toString(),
-                                                 style: TextStyle(
-                                                   color: _getTextColorForScore(score),
-                                                   fontSize: 15,
-                                                   fontWeight: FontWeight.bold,
-                                                 ),
-                                               ),
-                                             )).toList(),
+                                             children: () {
+                                               final arrows = (set['arrows'] as List<int>);
+                                               final rawArrows = (set['rawArrows'] as List<dynamic>?) ?? arrows;
+                                               return List.generate(arrows.length, (i) {
+                                                 final score = arrows[i];
+                                                 final raw = i < rawArrows.length ? rawArrows[i] : null;
+                                                 final label = (raw == 'X' || raw == 'M')
+                                                     ? raw as String
+                                                     : (score == 0 ? 'M' : score.toString());
+                                                 return Container(
+                                                   width: 32,
+                                                   height: 32,
+                                                   margin: const EdgeInsets.only(left: 4),
+                                                   decoration: BoxDecoration(
+                                                     color: _getColorForScore(score),
+                                                     shape: BoxShape.circle,
+                                                     border: Border.all(color: Colors.black26),
+                                                   ),
+                                                   alignment: Alignment.center,
+                                                   child: Text(
+                                                     label,
+                                                     style: TextStyle(
+                                                       color: _getTextColorForScore(score),
+                                                       fontSize: 15,
+                                                       fontWeight: FontWeight.bold,
+                                                     ),
+                                                   ),
+                                                 );
+                                               });
+                                             }(),
                                            ),
                                          ],
                                        ),
@@ -671,7 +739,7 @@ class _ScoreEntryContentState extends ConsumerState<_ScoreEntryContent> {
                             colors['text']!, 
                             label: label, 
                             size: clampedButtonSize, 
-                            onTap: _canAddMoreSets ? () => _addScore(score) : null
+                            onTap: _canAddMoreSets ? () => _addArrow(score, label: label) : null
                           );
                         }).toList(),
                       ),
@@ -691,7 +759,7 @@ class _ScoreEntryContentState extends ConsumerState<_ScoreEntryContent> {
                               colors['text']!, 
                               label: label, 
                               size: clampedButtonSize, 
-                              onTap: _canAddMoreSets ? () => _addScore(score) : null
+                              onTap: _canAddMoreSets ? () => _addArrow(score, label: label) : null
                             );
                           }).toList(),
                         ),
@@ -907,6 +975,7 @@ class _ScoreEntryContentState extends ConsumerState<_ScoreEntryContent> {
                       _overwritingSetNumber = set['setNumber'];
                       // Edit edilen serinin oklarını yukarıdaki alana koy
                       _currentArrows = List<int>.from(set['arrows']);
+                      _currentArrowsRaw = List<dynamic>.from(set['rawArrows'] ?? set['arrows']);
                       _currentSetScore = set['totalScore'];
                       // İlgili seti geçici olarak gizle
                       _completedSets.removeWhere((s) => s['setNumber'] == set['setNumber']);
