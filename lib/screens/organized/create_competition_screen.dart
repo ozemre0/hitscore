@@ -24,6 +24,45 @@ class _CreateCompetitionScreenState extends State<CreateCompetitionScreen> {
   // Registration window removed; using flags instead
   bool _isLoading = false;
 
+  Future<void> _showInfo({required String title, required String message}) async {
+    await showDialog<void>(
+      context: context,
+      builder: (ctx) {
+        final theme = Theme.of(ctx);
+        final media = MediaQuery.of(ctx);
+        return AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+          titlePadding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+          contentPadding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
+          actionsPadding: const EdgeInsets.fromLTRB(20, 8, 20, 12),
+          title: Text(
+            title,
+            style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w600),
+          ),
+          content: ConstrainedBox(
+            constraints: BoxConstraints(maxHeight: media.size.height * 0.6),
+            child: SingleChildScrollView(
+              child: SelectableText(
+                message,
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ),
+          ),
+          actionsAlignment: MainAxisAlignment.end,
+          actions: [
+            OutlinedButton(
+              onPressed: () => Navigator.of(ctx).maybePop(),
+              child: Text(MaterialLocalizations.of(ctx).closeButtonLabel),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   String _normalizeNameToPrefix(String name) {
     String lower = name.toLowerCase();
     const Map<String, String> trMap = {
@@ -182,24 +221,16 @@ class _CreateCompetitionScreenState extends State<CreateCompetitionScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Card(
+              shape: RoundedRectangleBorder(
+                side: BorderSide(color: Theme.of(context).colorScheme.outline),
+                borderRadius: BorderRadius.circular(12),
+              ),
               child: Padding(
                 padding: const EdgeInsets.all(16.0),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Row(
-                      children: [
-                        Icon(Icons.info_outline, color: Theme.of(context).primaryColor),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            l10n.competitionGeneralInfo,
-                            style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
+                    // Title removed as requested; keeping only the description below
                     Text(
                       l10n.competitionGeneralInfoDesc,
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
@@ -235,16 +266,28 @@ class _CreateCompetitionScreenState extends State<CreateCompetitionScreen> {
               value: _registrationAllowed,
               onChanged: (v) => setState(() => _registrationAllowed = v),
               title: Text(l10n.registrationAllowedLabel),
-              subtitle: Text(l10n.registrationAllowedDesc),
-              secondary: const Icon(Icons.how_to_reg),
+              secondary: IconButton(
+                tooltip: l10n.registrationAllowedDesc,
+                icon: const Icon(Icons.info_outline),
+                onPressed: () => _showInfo(
+                  title: l10n.registrationAllowedLabel,
+                  message: l10n.registrationAllowedDesc,
+                ),
+              ),
             ),
             const SizedBox(height: 8),
             SwitchListTile(
               value: _scoreAllowed,
               onChanged: (v) => setState(() => _scoreAllowed = v),
               title: Text(l10n.scoreAllowedLabel),
-              subtitle: Text(l10n.scoreAllowedDesc),
-              secondary: const Icon(Icons.score),
+              secondary: IconButton(
+                tooltip: l10n.scoreAllowedDesc,
+                icon: const Icon(Icons.info_outline),
+                onPressed: () => _showInfo(
+                  title: l10n.scoreAllowedLabel,
+                  message: l10n.scoreAllowedDesc,
+                ),
+              ),
             ),
             const SizedBox(height: 24),
             Text(

@@ -222,7 +222,7 @@
   "registrationAllowedLabel": "Allow registration",
   "registrationAllowedDesc": "If enabled, users can send join requests. You can change this later.",
   "scoreAllowedLabel": "Allow score entry",
-  "scoreAllowedDesc": "If enabled, participants can enter scores. Typically enable right before the competition starts; you can change this later.",
+  "scoreAllowedDesc": "Lets participants enter scores. Enable before the competition; you can change this later.",
   "requestSent": "Request sent",
   "pending": "Pending"
   ,
@@ -230,6 +230,7 @@
   "cancelRequestConfirm": "Do you want to cancel your join request?",
   "requestCancelled": "Request cancelled"
   ,
+  "pendingClassificationLabel": "Requested classification",
   "selectClassificationTitle": "Select classification",
   "selectClassificationInstruction": "Choose your classification to join",
   "noClassificationsAvailable": "No classifications available for this competition"

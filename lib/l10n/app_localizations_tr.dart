@@ -616,7 +616,7 @@ class AppLocalizationsTr extends AppLocalizations {
   String get scoreAllowedLabel => 'Skor girişine izin ver';
 
   @override
-  String get scoreAllowedDesc => 'Açık olduğunda katılımcılar skor girişi yapabilir. Genellikle yarışma başlamadan hemen önce açın; bunu daha sonra değiştirebilirsiniz.';
+  String get scoreAllowedDesc => 'Katılımcılar skor girişi yapabilir. Yarışma başlamadan önce açın; bunu daha sonra değiştirebilirsiniz.';
 
   @override
   String get requestSent => 'İstek gönderildi';

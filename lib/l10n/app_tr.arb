@@ -222,7 +222,7 @@
   "registrationAllowedLabel": "Kayda izin ver",
   "registrationAllowedDesc": "Açık olduğunda kullanıcılar katılım isteği gönderebilir. Bunu daha sonra değiştirebilirsiniz.",
   "scoreAllowedLabel": "Skor girişine izin ver",
-  "scoreAllowedDesc": "Açık olduğunda katılımcılar skor girişi yapabilir. Genellikle yarışma başlamadan hemen önce açın; bunu daha sonra değiştirebilirsiniz.",
+  "scoreAllowedDesc": "Katılımcılar skor girişi yapabilir. Yarışma başlamadan önce açın; bunu daha sonra değiştirebilirsiniz.",
   "requestSent": "İstek gönderildi",
   "pending": "Beklemede"
   ,
@@ -230,6 +230,7 @@
   "cancelRequestConfirm": "Katılım isteğini iptal etmek istiyor musun?",
   "requestCancelled": "İstek iptal edildi"
   ,
+  "pendingClassificationLabel": "İstenen klasman",
   "selectClassificationTitle": "Klasman seç",
   "selectClassificationInstruction": "Katılmak için klasmanını seç",
   "noClassificationsAvailable": "Bu yarışma için klasman yok"

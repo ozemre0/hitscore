@@ -616,7 +616,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get scoreAllowedLabel => 'Allow score entry';
 
   @override
-  String get scoreAllowedDesc => 'If enabled, participants can enter scores. Typically enable right before the competition starts; you can change this later.';
+  String get scoreAllowedDesc => 'Lets participants enter scores. Enable before the competition; you can change this later.';
 
   @override
   String get requestSent => 'Request sent';

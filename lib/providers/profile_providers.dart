@@ -2,11 +2,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../services/supabase_config.dart';
+import 'auth_provider.dart';
 import 'dart:async';
 
 /// Returns a best-effort display name for the current user from the `profiles` table.
 /// Prefers `first_name + last_name`, falls back to `visible_id`, otherwise empty string.
 final profileDisplayNameProvider = FutureProvider<String>((ref) async {
+  // Recompute whenever auth state changes (user switches, signs in/out)
+  ref.watch(authStateProvider);
   final User? currentUser = SupabaseConfig.client.auth.currentUser;
   if (currentUser == null) return '';
 
@@ -45,6 +48,8 @@ final profileDisplayNameProvider = FutureProvider<String>((ref) async {
 /// Returns only the user's `first_name` for lightweight displays (like welcome banner).
 /// Falls back to `visible_id` if `first_name` is missing, otherwise empty string.
 final profileFirstNameProvider = FutureProvider<String>((ref) async {
+  // Recompute whenever auth state changes (user switches, signs in/out)
+  ref.watch(authStateProvider);
   final User? currentUser = SupabaseConfig.client.auth.currentUser;
   if (currentUser == null) return '';
 

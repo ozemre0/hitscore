@@ -18,6 +18,7 @@ class _ActiveCompetitionsScreenState extends State<ActiveCompetitionsScreen> {
   String? _error;
   List<Map<String, dynamic>> _competitions = [];
   final Set<String> _pendingCompetitionIds = <String>{};
+  final Map<String, String> _pendingClassificationNameByCompetitionId = <String, String>{};
 
   @override
   void initState() {
@@ -65,15 +66,42 @@ class _ActiveCompetitionsScreenState extends State<ActiveCompetitionsScreen> {
       if (visibleIds.isEmpty) return;
       final rows = await SupabaseConfig.client
           .from('organized_competition_participants')
-          .select('organized_competition_id')
-          .eq('athlete_id', user.id)
+          .select('organized_competition_id, classification_id')
+          .eq('user_id', user.id)
           .eq('status', 'pending');
       final fetchedPending = rows.map<String>((r) => r['organized_competition_id'] as String).toSet();
       final pendingIds = fetchedPending.intersection(visibleIds);
+      // Fetch classification names for those pending rows
+      final classificationIds = rows
+          .where((r) => r['classification_id'] != null && pendingIds.contains(r['organized_competition_id']))
+          .map<String>((r) => r['classification_id'].toString())
+          .toSet();
+      Map<String, String> idToName = {};
+      if (classificationIds.isNotEmpty) {
+        final orFilter = classificationIds.map((id) => 'id.eq.$id').join(',');
+        final clsRows = await SupabaseConfig.client
+            .from('organized_competitions_classifications')
+            .select('id, name')
+            .or(orFilter);
+        for (final cl in List<Map<String, dynamic>>.from(clsRows)) {
+          idToName[cl['id'].toString()] = (cl['name'] ?? '').toString();
+        }
+      }
       setState(() {
         _pendingCompetitionIds
           ..clear()
           ..addAll(pendingIds);
+        _pendingClassificationNameByCompetitionId.clear();
+        for (final r in rows) {
+          final cid = r['organized_competition_id'] as String?;
+          final clid = r['classification_id']?.toString();
+          if (cid != null && pendingIds.contains(cid) && clid != null) {
+            final name = idToName[clid];
+            if (name != null && name.isNotEmpty) {
+              _pendingClassificationNameByCompetitionId[cid] = name;
+            }
+          }
+        }
       });
     } catch (_) {
       // Ignore; not critical for initial render
@@ -127,6 +155,18 @@ class _ActiveCompetitionsScreenState extends State<ActiveCompetitionsScreen> {
         setState(() {
           _pendingCompetitionIds.add(competition['organized_competition_id'] as String);
         });
+        try {
+          final cl = await SupabaseConfig.client
+              .from('organized_competitions_classifications')
+              .select('id, name')
+              .eq('id', classificationId)
+              .maybeSingle();
+          if (cl != null) {
+            setState(() {
+              _pendingClassificationNameByCompetitionId[competition['organized_competition_id'] as String] = (cl['name'] ?? '').toString();
+            });
+          }
+        } catch (_) {}
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(l10n.requestSent)));
       }
     } on PostgrestException catch (e) {
@@ -138,6 +178,9 @@ class _ActiveCompetitionsScreenState extends State<ActiveCompetitionsScreen> {
         setState(() {
           _pendingCompetitionIds.add(competition['organized_competition_id'] as String);
         });
+        // Refresh pending statuses to fetch classification name
+        // ignore: discarded_futures
+        _loadUserPendingStatuses(_competitions);
       }
       
       String message;
@@ -217,7 +260,13 @@ class _ActiveCompetitionsScreenState extends State<ActiveCompetitionsScreen> {
                           if (cl['environment'] != null) cl['environment'],
                         ].where((e) => e != null && e.toString().isNotEmpty).join(' • ');
                         return ListTile(
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            side: BorderSide(
+                              color: Theme.of(ctx).colorScheme.outline.withOpacity(0.8),
+                              width: 1,
+                            ),
+                          ),
                           tileColor: Theme.of(ctx).colorScheme.surface,
                           title: Text(cl['name'] ?? '-'),
                           subtitle: subtitle.isNotEmpty
@@ -250,6 +299,8 @@ class _ActiveCompetitionsScreenState extends State<ActiveCompetitionsScreen> {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
+        title: null,
+        titlePadding: EdgeInsets.zero,
         contentPadding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
         content: Column(
           mainAxisSize: MainAxisSize.min,
@@ -290,12 +341,13 @@ class _ActiveCompetitionsScreenState extends State<ActiveCompetitionsScreen> {
           .update({'status': 'cancelled', 'updated_at': DateTime.now().toIso8601String()})
           .match({
         'organized_competition_id': competition['organized_competition_id'],
-        'athlete_id': user.id,
+        'user_id': user.id,
         'status': 'pending',
       });
       if (mounted) {
         setState(() {
           _pendingCompetitionIds.remove(competition['organized_competition_id'] as String);
+          _pendingClassificationNameByCompetitionId.remove(competition['organized_competition_id'] as String);
         });
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(l10n.requestCancelled)));
       }
@@ -502,15 +554,32 @@ class _ActiveCompetitionsScreenState extends State<ActiveCompetitionsScreen> {
                   Text(canRegister ? l10n.registrationOpen : l10n.registrationClosed, style: Theme.of(context).textTheme.bodySmall?.copyWith(color: colorScheme.onSurfaceVariant)),
                 ]),
                 const SizedBox(height: 12),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                if (_pendingCompetitionIds.contains(c['organized_competition_id'])) ...[
+                  Row(children: [
+                    Icon(Icons.info_outline, size: 16, color: colorScheme.primary),
+                    const SizedBox(width: 4),
+                    Expanded(
+                      child: Text(
+                        _pendingClassificationNameByCompetitionId[c['organized_competition_id']] ?? '-',
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(color: colorScheme.primary),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ]),
+                  const SizedBox(height: 8),
+                ],
+                Wrap(
+                  alignment: WrapAlignment.spaceBetween,
+                  runAlignment: WrapAlignment.start,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  spacing: 12,
+                  runSpacing: 8,
                   children: [
                     OutlinedButton.icon(
                       onPressed: () => _showParticipants(c),
                       icon: const Icon(Icons.people),
                       label: Text(l10n.participantsTitle),
                     ),
-                    // If not authenticated (guest), hide join/cancel and only show participants
                     if (SupabaseConfig.client.auth.currentUser != null)
                       (_pendingCompetitionIds.contains(c['organized_competition_id'])
                           ? OutlinedButton.icon(
