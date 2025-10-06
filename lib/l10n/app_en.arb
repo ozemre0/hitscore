@@ -189,7 +189,7 @@
   "participantsLoadError": "Failed to load participants",
   "participantsEmptyTitle": "No participants yet",
   "participantsEmptyDesc": "No one has registered for this competition yet.",
-  "participantAthleteId": "Athlete ID",
+  "participantAthleteId": "User ID",
   "participantGender": "Gender",
   "participantAgeGroup": "Age group",
   "participantEquipment": "Equipment",
@@ -214,9 +214,15 @@
   "competitionJoined": "You have joined the competition",
   "competitionJoinError": "Failed to join competition",
   "athleteProfileRequired": "Athlete profile required. Please complete your profile first.",
+  "athlete": "Athlete",
+  "coach": "Coach",
   "registrationOpen": "Registration open",
   "registrationClosed": "Registration closed"
   ,
+  "registrationAllowedLabel": "Allow registration",
+  "registrationAllowedDesc": "If enabled, users can send join requests. You can change this later.",
+  "scoreAllowedLabel": "Allow score entry",
+  "scoreAllowedDesc": "If enabled, participants can enter scores. Typically enable right before the competition starts; you can change this later.",
   "requestSent": "Request sent",
   "pending": "Pending"
   ,
@@ -227,5 +233,102 @@
   "selectClassificationTitle": "Select classification",
   "selectClassificationInstruction": "Choose your classification to join",
   "noClassificationsAvailable": "No classifications available for this competition"
+  ,
+  "addAthletes": "Add Athletes",
+  "searchAthleteHint": "Search athletes",
+  "add": "Add",
+  "selectedCount": "{count} selected",
+  "@selectedCount": {"placeholders": {"count": {"type": "int"}}},
+  "onlyEligible": "Only eligible",
+  "noResults": "No results",
+  "operationFailed": "Operation failed",
+  "addedSuccessfully": "Added successfully",
+  "addToCompetition": "Add to competition"
+  ,
+  "pendingRequestsCount": "Pending requests: {count}",
+  "@pendingRequestsCount": {"placeholders": {"count": {"type": "int"}}},
+  "acceptedParticipantsCount": "Accepted participants: {count}",
+  "@acceptedParticipantsCount": {"placeholders": {"count": {"type": "int"}}},
+  "all": "All",
+  "classification": "Classification",
+  "participantClassification": "Classification",
+  "participantCompetitionsTitle": "My Participations",
+  "participantCompetitionsSubtitle": "View competitions you're participating in.",
+  "participantCompetitionsEmptyTitle": "No participations yet",
+  "participantCompetitionsEmptyDesc": "You haven't joined any competitions yet.",
+  "participantCompetitionsLoadError": "Failed to load participations",
+  "competitionStatus": "Status",
+  "joinedOn": "Joined on",
+  "leaveCompetition": "Leave",
+  "leaveCompetitionConfirm": "Do you want to leave this competition?",
+  "competitionLeft": "You have left the competition",
+  "leaveCompetitionError": "Failed to leave competition",
+  "scoreEntryTitle": "Score Entry",
+  "scoreEntrySubtitle": "Enter your scores for this competition",
+  "enterScore": "Enter Score",
+  "scoreEntryComingSoon": "Score entry feature coming soon",
+  "scoreEntryAllowed": "Score entry allowed",
+  "scoreEntryNotAllowed": "Score entry not allowed",
+  "classificationLabel": "Classification",
+  "roundCountLabel": "Round count",
+  "arrowsPerSetLabel": "Arrows per set",
+  "setsPerRoundLabel": "Sets per round",
+  "myOrganizedCompetitionsTitle": "My Organized Competitions",
+  "myOrganizedCompetitionsSubtitle": "Manage competitions you have created.",
+  "participantClub": "Club",
+  "noClub": "No Club",
+  "currentSet": "Current Set",
+  "totalScore": "Total Score",
+  "tapScoreToContinue": "Tap the score buttons below to continue training. You are now writing Set {setNumber}.",
+  "@tapScoreToContinue": {
+    "placeholders": {
+      "setNumber": {
+        "type": "int"
+      }
+    }
+  },
+  "editSet": "Edit - Set {setNumber}",
+  "@editSet": {
+    "placeholders": {
+      "setNumber": {
+        "type": "int"
+      }
+    }
+  },
+  "cancel": "Cancel",
+  "edit": "Edit",
+  "delete": "Delete",
+  "overwritingSet": "You are overwriting Set {setNumber}. Tap the score buttons below to continue.",
+  "@overwritingSet": {
+    "placeholders": {
+      "setNumber": {
+        "type": "int"
+      }
+    }
+  }
+  ,
+  "guestTitle": "Welcome",
+  "guestSubtitle": "Explore active competitions or sign in to continue.",
+  "goToLogin": "Go to Login",
+  "browseActiveCompetitions": "Active Competitions"
+  ,
+  "onboardingWelcomeTitle": "Welcome",
+  "onboardingWelcomeSubtitle": "Choose your language and explore HitScore",
+  "onboardingLanguageNext": "Next",
+  "onboardingGetStarted": "Get Started",
+  "onboardingIntroTitle": "Manage competitions with ease",
+  "onboardingIntroDescription": "Join competitions, organize events, and track scores seamlessly.",
+  "onboardingFeaturesTitle": "What you can do",
+  "onboardingFeatureSessionsTitle": "Participate",
+  "onboardingFeatureSessionsDescription": "Browse active competitions and send join requests.",
+  "onboardingFeatureCoachTitle": "Organize",
+  "onboardingFeatureCoachDescription": "Create competitions, manage participants and classifications.",
+  "onboardingFeatureToolsTitle": "Track Scores",
+  "onboardingFeatureToolsDescription": "Enter and follow scores with clear, responsive screens.",
+  "availableScoreButtonsLabel": "Available Score Buttons",
+  "availableScoreButtonsDescription": "Select which score buttons will be available for this classification",
+  "scoreEntryNotAllowedTitle": "Score Entry Not Available",
+  "scoreEntryNotAllowedMessage": "Score entry is not currently available for this competition. You will be able to enter scores when the organizer opens it.",
+  "ok": "OK"
 }
 

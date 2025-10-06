@@ -1,0 +1,764 @@
+schema,table,column,data_type,enum_allowed_values,is_nullable,column_default,is_identity,generated_kind,is_primary_key,is_unique,fk_schema,fk_table,fk_column,check_expression
+auth,audit_log_entries,instance_id,uuid,null,true,null,false,null,false,false,null,null,null,null
+auth,audit_log_entries,id,uuid,null,false,null,false,null,true,false,null,null,null,null
+auth,audit_log_entries,payload,json,null,true,null,false,null,false,false,null,null,null,null
+auth,audit_log_entries,created_at,timestamp with time zone,null,true,null,false,null,false,false,null,null,null,null
+auth,audit_log_entries,ip_address,character varying(64),null,false,''::character varying,false,null,false,false,null,null,null,null
+auth,flow_state,id,uuid,null,false,null,false,null,true,false,null,null,null,null
+auth,flow_state,user_id,uuid,null,true,null,false,null,false,false,null,null,null,null
+auth,flow_state,auth_code,text,null,false,null,false,null,false,false,null,null,null,null
+auth,flow_state,code_challenge_method,auth.code_challenge_method,"s256, plain",false,null,false,null,false,false,null,null,null,null
+auth,flow_state,code_challenge,text,null,false,null,false,null,false,false,null,null,null,null
+auth,flow_state,provider_type,text,null,false,null,false,null,false,false,null,null,null,null
+auth,flow_state,provider_access_token,text,null,true,null,false,null,false,false,null,null,null,null
+auth,flow_state,provider_refresh_token,text,null,true,null,false,null,false,false,null,null,null,null
+auth,flow_state,created_at,timestamp with time zone,null,true,null,false,null,false,false,null,null,null,null
+auth,flow_state,updated_at,timestamp with time zone,null,true,null,false,null,false,false,null,null,null,null
+auth,flow_state,authentication_method,text,null,false,null,false,null,false,false,null,null,null,null
+auth,flow_state,auth_code_issued_at,timestamp with time zone,null,true,null,false,null,false,false,null,null,null,null
+auth,identities,provider_id,text,null,false,null,false,null,false,true,null,null,null,null
+auth,identities,user_id,uuid,null,false,null,false,null,false,false,auth,users,id,null
+auth,identities,identity_data,jsonb,null,false,null,false,null,false,false,null,null,null,null
+auth,identities,provider,text,null,false,null,false,null,false,true,null,null,null,null
+auth,identities,last_sign_in_at,timestamp with time zone,null,true,null,false,null,false,false,null,null,null,null
+auth,identities,created_at,timestamp with time zone,null,true,null,false,null,false,false,null,null,null,null
+auth,identities,updated_at,timestamp with time zone,null,true,null,false,null,false,false,null,null,null,null
+auth,identities,email,text,null,true,lower((identity_data ->> 'email'::text)),false,s,false,false,null,null,null,null
+auth,identities,id,uuid,null,false,gen_random_uuid(),false,null,true,false,null,null,null,null
+auth,instances,id,uuid,null,false,null,false,null,true,false,null,null,null,null
+auth,instances,uuid,uuid,null,true,null,false,null,false,false,null,null,null,null
+auth,instances,raw_base_config,text,null,true,null,false,null,false,false,null,null,null,null
+auth,instances,created_at,timestamp with time zone,null,true,null,false,null,false,false,null,null,null,null
+auth,instances,updated_at,timestamp with time zone,null,true,null,false,null,false,false,null,null,null,null
+auth,mfa_amr_claims,session_id,uuid,null,false,null,false,null,false,true,auth,sessions,id,null
+auth,mfa_amr_claims,created_at,timestamp with time zone,null,false,null,false,null,false,false,null,null,null,null
+auth,mfa_amr_claims,updated_at,timestamp with time zone,null,false,null,false,null,false,false,null,null,null,null
+auth,mfa_amr_claims,authentication_method,text,null,false,null,false,null,false,true,null,null,null,null
+auth,mfa_amr_claims,id,uuid,null,false,null,false,null,true,false,null,null,null,null
+auth,mfa_challenges,id,uuid,null,false,null,false,null,true,false,null,null,null,null
+auth,mfa_challenges,factor_id,uuid,null,false,null,false,null,false,false,auth,mfa_factors,id,null
+auth,mfa_challenges,created_at,timestamp with time zone,null,false,null,false,null,false,false,null,null,null,null
+auth,mfa_challenges,verified_at,timestamp with time zone,null,true,null,false,null,false,false,null,null,null,null
+auth,mfa_challenges,ip_address,inet,null,false,null,false,null,false,false,null,null,null,null
+auth,mfa_challenges,otp_code,text,null,true,null,false,null,false,false,null,null,null,null
+auth,mfa_challenges,web_authn_session_data,jsonb,null,true,null,false,null,false,false,null,null,null,null
+auth,mfa_factors,id,uuid,null,false,null,false,null,true,false,null,null,null,null
+auth,mfa_factors,user_id,uuid,null,false,null,false,null,false,true,auth,users,id,null
+auth,mfa_factors,friendly_name,text,null,true,null,false,null,false,true,null,null,null,null
+auth,mfa_factors,factor_type,auth.factor_type,"totp, webauthn, phone",false,null,false,null,false,false,null,null,null,null
+auth,mfa_factors,status,auth.factor_status,"unverified, verified",false,null,false,null,false,false,null,null,null,null
+auth,mfa_factors,created_at,timestamp with time zone,null,false,null,false,null,false,false,null,null,null,null
+auth,mfa_factors,updated_at,timestamp with time zone,null,false,null,false,null,false,false,null,null,null,null
+auth,mfa_factors,secret,text,null,true,null,false,null,false,false,null,null,null,null
+auth,mfa_factors,phone,text,null,true,null,false,null,false,true,null,null,null,null
+auth,mfa_factors,last_challenged_at,timestamp with time zone,null,true,null,false,null,false,true,null,null,null,null
+auth,mfa_factors,web_authn_credential,jsonb,null,true,null,false,null,false,false,null,null,null,null
+auth,mfa_factors,web_authn_aaguid,uuid,null,true,null,false,null,false,false,null,null,null,null
+auth,oauth_clients,id,uuid,null,false,null,false,null,true,false,null,null,null,CHECK ((char_length(client_name) <= 1024)) AND CHECK ((char_length(client_uri) <= 2048)) AND CHECK ((char_length(logo_uri) <= 2048))
+auth,oauth_clients,client_id,text,null,false,null,false,null,false,true,null,null,null,CHECK ((char_length(client_name) <= 1024)) AND CHECK ((char_length(client_uri) <= 2048)) AND CHECK ((char_length(logo_uri) <= 2048))
+auth,oauth_clients,client_secret_hash,text,null,false,null,false,null,false,false,null,null,null,CHECK ((char_length(client_name) <= 1024)) AND CHECK ((char_length(client_uri) <= 2048)) AND CHECK ((char_length(logo_uri) <= 2048))
+auth,oauth_clients,registration_type,auth.oauth_registration_type,"dynamic, manual",false,null,false,null,false,false,null,null,null,CHECK ((char_length(client_name) <= 1024)) AND CHECK ((char_length(client_uri) <= 2048)) AND CHECK ((char_length(logo_uri) <= 2048))
+auth,oauth_clients,redirect_uris,text,null,false,null,false,null,false,false,null,null,null,CHECK ((char_length(client_name) <= 1024)) AND CHECK ((char_length(client_uri) <= 2048)) AND CHECK ((char_length(logo_uri) <= 2048))
+auth,oauth_clients,grant_types,text,null,false,null,false,null,false,false,null,null,null,CHECK ((char_length(client_name) <= 1024)) AND CHECK ((char_length(client_uri) <= 2048)) AND CHECK ((char_length(logo_uri) <= 2048))
+auth,oauth_clients,client_name,text,null,true,null,false,null,false,false,null,null,null,CHECK ((char_length(client_name) <= 1024)) AND CHECK ((char_length(client_uri) <= 2048)) AND CHECK ((char_length(logo_uri) <= 2048))
+auth,oauth_clients,client_uri,text,null,true,null,false,null,false,false,null,null,null,CHECK ((char_length(client_name) <= 1024)) AND CHECK ((char_length(client_uri) <= 2048)) AND CHECK ((char_length(logo_uri) <= 2048))
+auth,oauth_clients,logo_uri,text,null,true,null,false,null,false,false,null,null,null,CHECK ((char_length(client_name) <= 1024)) AND CHECK ((char_length(client_uri) <= 2048)) AND CHECK ((char_length(logo_uri) <= 2048))
+auth,oauth_clients,created_at,timestamp with time zone,null,false,now(),false,null,false,false,null,null,null,CHECK ((char_length(client_name) <= 1024)) AND CHECK ((char_length(client_uri) <= 2048)) AND CHECK ((char_length(logo_uri) <= 2048))
+auth,oauth_clients,updated_at,timestamp with time zone,null,false,now(),false,null,false,false,null,null,null,CHECK ((char_length(client_name) <= 1024)) AND CHECK ((char_length(client_uri) <= 2048)) AND CHECK ((char_length(logo_uri) <= 2048))
+auth,oauth_clients,deleted_at,timestamp with time zone,null,true,null,false,null,false,false,null,null,null,CHECK ((char_length(client_name) <= 1024)) AND CHECK ((char_length(client_uri) <= 2048)) AND CHECK ((char_length(logo_uri) <= 2048))
+auth,one_time_tokens,id,uuid,null,false,null,false,null,true,false,null,null,null,CHECK ((char_length(token_hash) > 0))
+auth,one_time_tokens,user_id,uuid,null,false,null,false,null,false,true,auth,users,id,CHECK ((char_length(token_hash) > 0))
+auth,one_time_tokens,token_type,auth.one_time_token_type,"confirmation_token, reauthentication_token, recovery_token, email_change_token_new, email_change_token_current, phone_change_token",false,null,false,null,false,true,null,null,null,CHECK ((char_length(token_hash) > 0))
+auth,one_time_tokens,token_hash,text,null,false,null,false,null,false,false,null,null,null,CHECK ((char_length(token_hash) > 0))
+auth,one_time_tokens,relates_to,text,null,false,null,false,null,false,false,null,null,null,CHECK ((char_length(token_hash) > 0))
+auth,one_time_tokens,created_at,timestamp without time zone,null,false,now(),false,null,false,false,null,null,null,CHECK ((char_length(token_hash) > 0))
+auth,one_time_tokens,updated_at,timestamp without time zone,null,false,now(),false,null,false,false,null,null,null,CHECK ((char_length(token_hash) > 0))
+auth,refresh_tokens,instance_id,uuid,null,true,null,false,null,false,false,null,null,null,null
+auth,refresh_tokens,id,bigint,null,false,nextval('auth.refresh_tokens_id_seq'::regclass),false,null,true,false,null,null,null,null
+auth,refresh_tokens,token,character varying(255),null,true,null,false,null,false,true,null,null,null,null
+auth,refresh_tokens,user_id,character varying(255),null,true,null,false,null,false,false,null,null,null,null
+auth,refresh_tokens,revoked,boolean,null,true,null,false,null,false,false,null,null,null,null
+auth,refresh_tokens,created_at,timestamp with time zone,null,true,null,false,null,false,false,null,null,null,null
+auth,refresh_tokens,updated_at,timestamp with time zone,null,true,null,false,null,false,false,null,null,null,null
+auth,refresh_tokens,parent,character varying(255),null,true,null,false,null,false,false,null,null,null,null
+auth,refresh_tokens,session_id,uuid,null,true,null,false,null,false,false,auth,sessions,id,null
+auth,saml_providers,id,uuid,null,false,null,false,null,true,false,null,null,null,CHECK ((char_length(metadata_xml) > 0)) AND CHECK (((metadata_url = NULL::text) OR (char_length(metadata_url) > 0))) AND CHECK ((char_length(entity_id) > 0))
+auth,saml_providers,sso_provider_id,uuid,null,false,null,false,null,false,false,auth,sso_providers,id,CHECK ((char_length(metadata_xml) > 0)) AND CHECK (((metadata_url = NULL::text) OR (char_length(metadata_url) > 0))) AND CHECK ((char_length(entity_id) > 0))
+auth,saml_providers,entity_id,text,null,false,null,false,null,false,true,null,null,null,CHECK ((char_length(metadata_xml) > 0)) AND CHECK (((metadata_url = NULL::text) OR (char_length(metadata_url) > 0))) AND CHECK ((char_length(entity_id) > 0))
+auth,saml_providers,metadata_xml,text,null,false,null,false,null,false,false,null,null,null,CHECK ((char_length(metadata_xml) > 0)) AND CHECK (((metadata_url = NULL::text) OR (char_length(metadata_url) > 0))) AND CHECK ((char_length(entity_id) > 0))
+auth,saml_providers,metadata_url,text,null,true,null,false,null,false,false,null,null,null,CHECK ((char_length(metadata_xml) > 0)) AND CHECK (((metadata_url = NULL::text) OR (char_length(metadata_url) > 0))) AND CHECK ((char_length(entity_id) > 0))
+auth,saml_providers,attribute_mapping,jsonb,null,true,null,false,null,false,false,null,null,null,CHECK ((char_length(metadata_xml) > 0)) AND CHECK (((metadata_url = NULL::text) OR (char_length(metadata_url) > 0))) AND CHECK ((char_length(entity_id) > 0))
+auth,saml_providers,created_at,timestamp with time zone,null,true,null,false,null,false,false,null,null,null,CHECK ((char_length(metadata_xml) > 0)) AND CHECK (((metadata_url = NULL::text) OR (char_length(metadata_url) > 0))) AND CHECK ((char_length(entity_id) > 0))
+auth,saml_providers,updated_at,timestamp with time zone,null,true,null,false,null,false,false,null,null,null,CHECK ((char_length(metadata_xml) > 0)) AND CHECK (((metadata_url = NULL::text) OR (char_length(metadata_url) > 0))) AND CHECK ((char_length(entity_id) > 0))
+auth,saml_providers,name_id_format,text,null,true,null,false,null,false,false,null,null,null,CHECK ((char_length(metadata_xml) > 0)) AND CHECK (((metadata_url = NULL::text) OR (char_length(metadata_url) > 0))) AND CHECK ((char_length(entity_id) > 0))
+auth,saml_relay_states,id,uuid,null,false,null,false,null,true,false,null,null,null,CHECK ((char_length(request_id) > 0))
+auth,saml_relay_states,sso_provider_id,uuid,null,false,null,false,null,false,false,auth,sso_providers,id,CHECK ((char_length(request_id) > 0))
+auth,saml_relay_states,request_id,text,null,false,null,false,null,false,false,null,null,null,CHECK ((char_length(request_id) > 0))
+auth,saml_relay_states,for_email,text,null,true,null,false,null,false,false,null,null,null,CHECK ((char_length(request_id) > 0))
+auth,saml_relay_states,redirect_to,text,null,true,null,false,null,false,false,null,null,null,CHECK ((char_length(request_id) > 0))
+auth,saml_relay_states,created_at,timestamp with time zone,null,true,null,false,null,false,false,null,null,null,CHECK ((char_length(request_id) > 0))
+auth,saml_relay_states,updated_at,timestamp with time zone,null,true,null,false,null,false,false,null,null,null,CHECK ((char_length(request_id) > 0))
+auth,saml_relay_states,flow_state_id,uuid,null,true,null,false,null,false,false,auth,flow_state,id,CHECK ((char_length(request_id) > 0))
+auth,schema_migrations,version,character varying(255),null,false,null,false,null,true,false,null,null,null,null
+auth,sessions,id,uuid,null,false,null,false,null,true,false,null,null,null,null
+auth,sessions,user_id,uuid,null,false,null,false,null,false,false,auth,users,id,null
+auth,sessions,created_at,timestamp with time zone,null,true,null,false,null,false,false,null,null,null,null
+auth,sessions,updated_at,timestamp with time zone,null,true,null,false,null,false,false,null,null,null,null
+auth,sessions,factor_id,uuid,null,true,null,false,null,false,false,null,null,null,null
+auth,sessions,aal,auth.aal_level,"aal1, aal2, aal3",true,null,false,null,false,false,null,null,null,null
+auth,sessions,not_after,timestamp with time zone,null,true,null,false,null,false,false,null,null,null,null
+auth,sessions,refreshed_at,timestamp without time zone,null,true,null,false,null,false,false,null,null,null,null
+auth,sessions,user_agent,text,null,true,null,false,null,false,false,null,null,null,null
+auth,sessions,ip,inet,null,true,null,false,null,false,false,null,null,null,null
+auth,sessions,tag,text,null,true,null,false,null,false,false,null,null,null,null
+auth,sso_domains,id,uuid,null,false,null,false,null,true,false,null,null,null,CHECK ((char_length(domain) > 0))
+auth,sso_domains,sso_provider_id,uuid,null,false,null,false,null,false,false,auth,sso_providers,id,CHECK ((char_length(domain) > 0))
+auth,sso_domains,domain,text,null,false,null,false,null,false,false,null,null,null,CHECK ((char_length(domain) > 0))
+auth,sso_domains,created_at,timestamp with time zone,null,true,null,false,null,false,false,null,null,null,CHECK ((char_length(domain) > 0))
+auth,sso_domains,updated_at,timestamp with time zone,null,true,null,false,null,false,false,null,null,null,CHECK ((char_length(domain) > 0))
+auth,sso_providers,id,uuid,null,false,null,false,null,true,false,null,null,null,CHECK (((resource_id = NULL::text) OR (char_length(resource_id) > 0)))
+auth,sso_providers,resource_id,text,null,true,null,false,null,false,false,null,null,null,CHECK (((resource_id = NULL::text) OR (char_length(resource_id) > 0)))
+auth,sso_providers,created_at,timestamp with time zone,null,true,null,false,null,false,false,null,null,null,CHECK (((resource_id = NULL::text) OR (char_length(resource_id) > 0)))
+auth,sso_providers,updated_at,timestamp with time zone,null,true,null,false,null,false,false,null,null,null,CHECK (((resource_id = NULL::text) OR (char_length(resource_id) > 0)))
+auth,sso_providers,disabled,boolean,null,true,null,false,null,false,false,null,null,null,CHECK (((resource_id = NULL::text) OR (char_length(resource_id) > 0)))
+auth,users,instance_id,uuid,null,true,null,false,null,false,false,null,null,null,CHECK (((email_change_confirm_status >= 0) AND (email_change_confirm_status <= 2)))
+auth,users,id,uuid,null,false,null,false,null,true,false,null,null,null,CHECK (((email_change_confirm_status >= 0) AND (email_change_confirm_status <= 2)))
+auth,users,aud,character varying(255),null,true,null,false,null,false,false,null,null,null,CHECK (((email_change_confirm_status >= 0) AND (email_change_confirm_status <= 2)))
+auth,users,role,character varying(255),null,true,null,false,null,false,false,null,null,null,CHECK (((email_change_confirm_status >= 0) AND (email_change_confirm_status <= 2)))
+auth,users,email,character varying(255),null,true,null,false,null,false,true,null,null,null,CHECK (((email_change_confirm_status >= 0) AND (email_change_confirm_status <= 2)))
+auth,users,encrypted_password,character varying(255),null,true,null,false,null,false,false,null,null,null,CHECK (((email_change_confirm_status >= 0) AND (email_change_confirm_status <= 2)))
+auth,users,email_confirmed_at,timestamp with time zone,null,true,null,false,null,false,false,null,null,null,CHECK (((email_change_confirm_status >= 0) AND (email_change_confirm_status <= 2)))
+auth,users,invited_at,timestamp with time zone,null,true,null,false,null,false,false,null,null,null,CHECK (((email_change_confirm_status >= 0) AND (email_change_confirm_status <= 2)))
+auth,users,confirmation_token,character varying(255),null,true,null,false,null,false,true,null,null,null,CHECK (((email_change_confirm_status >= 0) AND (email_change_confirm_status <= 2)))
+auth,users,confirmation_sent_at,timestamp with time zone,null,true,null,false,null,false,false,null,null,null,CHECK (((email_change_confirm_status >= 0) AND (email_change_confirm_status <= 2)))
+auth,users,recovery_token,character varying(255),null,true,null,false,null,false,true,null,null,null,CHECK (((email_change_confirm_status >= 0) AND (email_change_confirm_status <= 2)))
+auth,users,recovery_sent_at,timestamp with time zone,null,true,null,false,null,false,false,null,null,null,CHECK (((email_change_confirm_status >= 0) AND (email_change_confirm_status <= 2)))
+auth,users,email_change_token_new,character varying(255),null,true,null,false,null,false,true,null,null,null,CHECK (((email_change_confirm_status >= 0) AND (email_change_confirm_status <= 2)))
+auth,users,email_change,character varying(255),null,true,null,false,null,false,false,null,null,null,CHECK (((email_change_confirm_status >= 0) AND (email_change_confirm_status <= 2)))
+auth,users,email_change_sent_at,timestamp with time zone,null,true,null,false,null,false,false,null,null,null,CHECK (((email_change_confirm_status >= 0) AND (email_change_confirm_status <= 2)))
+auth,users,last_sign_in_at,timestamp with time zone,null,true,null,false,null,false,false,null,null,null,CHECK (((email_change_confirm_status >= 0) AND (email_change_confirm_status <= 2)))
+auth,users,raw_app_meta_data,jsonb,null,true,null,false,null,false,false,null,null,null,CHECK (((email_change_confirm_status >= 0) AND (email_change_confirm_status <= 2)))
+auth,users,raw_user_meta_data,jsonb,null,true,null,false,null,false,false,null,null,null,CHECK (((email_change_confirm_status >= 0) AND (email_change_confirm_status <= 2)))
+auth,users,is_super_admin,boolean,null,true,null,false,null,false,false,null,null,null,CHECK (((email_change_confirm_status >= 0) AND (email_change_confirm_status <= 2)))
+auth,users,created_at,timestamp with time zone,null,true,null,false,null,false,false,null,null,null,CHECK (((email_change_confirm_status >= 0) AND (email_change_confirm_status <= 2)))
+auth,users,updated_at,timestamp with time zone,null,true,null,false,null,false,false,null,null,null,CHECK (((email_change_confirm_status >= 0) AND (email_change_confirm_status <= 2)))
+auth,users,phone,text,null,true,NULL::character varying,false,null,false,true,null,null,null,CHECK (((email_change_confirm_status >= 0) AND (email_change_confirm_status <= 2)))
+auth,users,phone_confirmed_at,timestamp with time zone,null,true,null,false,null,false,false,null,null,null,CHECK (((email_change_confirm_status >= 0) AND (email_change_confirm_status <= 2)))
+auth,users,phone_change,text,null,true,''::character varying,false,null,false,false,null,null,null,CHECK (((email_change_confirm_status >= 0) AND (email_change_confirm_status <= 2)))
+auth,users,phone_change_token,character varying(255),null,true,''::character varying,false,null,false,false,null,null,null,CHECK (((email_change_confirm_status >= 0) AND (email_change_confirm_status <= 2)))
+auth,users,phone_change_sent_at,timestamp with time zone,null,true,null,false,null,false,false,null,null,null,CHECK (((email_change_confirm_status >= 0) AND (email_change_confirm_status <= 2)))
+auth,users,confirmed_at,timestamp with time zone,null,true,"LEAST(email_confirmed_at, phone_confirmed_at)",false,s,false,false,null,null,null,CHECK (((email_change_confirm_status >= 0) AND (email_change_confirm_status <= 2)))
+auth,users,email_change_token_current,character varying(255),null,true,''::character varying,false,null,false,true,null,null,null,CHECK (((email_change_confirm_status >= 0) AND (email_change_confirm_status <= 2)))
+auth,users,email_change_confirm_status,smallint,null,true,0,false,null,false,false,null,null,null,CHECK (((email_change_confirm_status >= 0) AND (email_change_confirm_status <= 2)))
+auth,users,banned_until,timestamp with time zone,null,true,null,false,null,false,false,null,null,null,CHECK (((email_change_confirm_status >= 0) AND (email_change_confirm_status <= 2)))
+auth,users,reauthentication_token,character varying(255),null,true,''::character varying,false,null,false,true,null,null,null,CHECK (((email_change_confirm_status >= 0) AND (email_change_confirm_status <= 2)))
+auth,users,reauthentication_sent_at,timestamp with time zone,null,true,null,false,null,false,false,null,null,null,CHECK (((email_change_confirm_status >= 0) AND (email_change_confirm_status <= 2)))
+auth,users,is_sso_user,boolean,null,false,false,false,null,false,false,null,null,null,CHECK (((email_change_confirm_status >= 0) AND (email_change_confirm_status <= 2)))
+auth,users,deleted_at,timestamp with time zone,null,true,null,false,null,false,false,null,null,null,CHECK (((email_change_confirm_status >= 0) AND (email_change_confirm_status <= 2)))
+auth,users,is_anonymous,boolean,null,false,false,false,null,false,false,null,null,null,CHECK (((email_change_confirm_status >= 0) AND (email_change_confirm_status <= 2)))
+pgsodium,key,id,uuid,null,false,gen_random_uuid(),false,null,true,false,null,null,null,"CHECK ((length(key_context) = 8)) AND CHECK (
+CASE
+    WHEN (raw_key IS NOT NULL) THEN ((key_id IS NULL) AND (key_context IS NULL) AND (parent_key IS NOT NULL))
+    ELSE ((key_id IS NOT NULL) AND (key_context IS NOT NULL) AND (parent_key IS NULL))
+END)"
+pgsodium,key,status,pgsodium.key_status,"default, valid, invalid, expired",true,'valid'::pgsodium.key_status,false,null,false,true,null,null,null,"CHECK ((length(key_context) = 8)) AND CHECK (
+CASE
+    WHEN (raw_key IS NOT NULL) THEN ((key_id IS NULL) AND (key_context IS NULL) AND (parent_key IS NOT NULL))
+    ELSE ((key_id IS NOT NULL) AND (key_context IS NOT NULL) AND (parent_key IS NULL))
+END)"
+pgsodium,key,created,timestamp with time zone,null,false,CURRENT_TIMESTAMP,false,null,false,false,null,null,null,"CHECK ((length(key_context) = 8)) AND CHECK (
+CASE
+    WHEN (raw_key IS NOT NULL) THEN ((key_id IS NULL) AND (key_context IS NULL) AND (parent_key IS NOT NULL))
+    ELSE ((key_id IS NOT NULL) AND (key_context IS NOT NULL) AND (parent_key IS NULL))
+END)"
+pgsodium,key,expires,timestamp with time zone,null,true,null,false,null,false,false,null,null,null,"CHECK ((length(key_context) = 8)) AND CHECK (
+CASE
+    WHEN (raw_key IS NOT NULL) THEN ((key_id IS NULL) AND (key_context IS NULL) AND (parent_key IS NOT NULL))
+    ELSE ((key_id IS NOT NULL) AND (key_context IS NOT NULL) AND (parent_key IS NULL))
+END)"
+pgsodium,key,key_type,pgsodium.key_type,"aead-ietf, aead-det, hmacsha512, hmacsha256, auth, shorthash, generichash, kdf, secretbox, secretstream, stream_xchacha20",true,null,false,null,false,true,null,null,null,"CHECK ((length(key_context) = 8)) AND CHECK (
+CASE
+    WHEN (raw_key IS NOT NULL) THEN ((key_id IS NULL) AND (key_context IS NULL) AND (parent_key IS NOT NULL))
+    ELSE ((key_id IS NOT NULL) AND (key_context IS NOT NULL) AND (parent_key IS NULL))
+END)"
+pgsodium,key,key_id,bigint,null,true,nextval('pgsodium.key_key_id_seq'::regclass),false,null,false,true,null,null,null,"CHECK ((length(key_context) = 8)) AND CHECK (
+CASE
+    WHEN (raw_key IS NOT NULL) THEN ((key_id IS NULL) AND (key_context IS NULL) AND (parent_key IS NOT NULL))
+    ELSE ((key_id IS NOT NULL) AND (key_context IS NOT NULL) AND (parent_key IS NULL))
+END)"
+pgsodium,key,key_context,bytea,null,true,'\x7067736f6469756d'::bytea,false,null,false,true,null,null,null,"CHECK ((length(key_context) = 8)) AND CHECK (
+CASE
+    WHEN (raw_key IS NOT NULL) THEN ((key_id IS NULL) AND (key_context IS NULL) AND (parent_key IS NOT NULL))
+    ELSE ((key_id IS NOT NULL) AND (key_context IS NOT NULL) AND (parent_key IS NULL))
+END)"
+pgsodium,key,name,text,null,true,null,false,null,false,true,null,null,null,"CHECK ((length(key_context) = 8)) AND CHECK (
+CASE
+    WHEN (raw_key IS NOT NULL) THEN ((key_id IS NULL) AND (key_context IS NULL) AND (parent_key IS NOT NULL))
+    ELSE ((key_id IS NOT NULL) AND (key_context IS NOT NULL) AND (parent_key IS NULL))
+END)"
+pgsodium,key,associated_data,text,null,true,'associated'::text,false,null,false,false,null,null,null,"CHECK ((length(key_context) = 8)) AND CHECK (
+CASE
+    WHEN (raw_key IS NOT NULL) THEN ((key_id IS NULL) AND (key_context IS NULL) AND (parent_key IS NOT NULL))
+    ELSE ((key_id IS NOT NULL) AND (key_context IS NOT NULL) AND (parent_key IS NULL))
+END)"
+pgsodium,key,raw_key,bytea,null,true,null,false,null,false,false,null,null,null,"CHECK ((length(key_context) = 8)) AND CHECK (
+CASE
+    WHEN (raw_key IS NOT NULL) THEN ((key_id IS NULL) AND (key_context IS NULL) AND (parent_key IS NOT NULL))
+    ELSE ((key_id IS NOT NULL) AND (key_context IS NOT NULL) AND (parent_key IS NULL))
+END)"
+pgsodium,key,raw_key_nonce,bytea,null,true,null,false,null,false,false,null,null,null,"CHECK ((length(key_context) = 8)) AND CHECK (
+CASE
+    WHEN (raw_key IS NOT NULL) THEN ((key_id IS NULL) AND (key_context IS NULL) AND (parent_key IS NOT NULL))
+    ELSE ((key_id IS NOT NULL) AND (key_context IS NOT NULL) AND (parent_key IS NULL))
+END)"
+pgsodium,key,parent_key,uuid,null,true,null,false,null,false,false,pgsodium,key,id,"CHECK ((length(key_context) = 8)) AND CHECK (
+CASE
+    WHEN (raw_key IS NOT NULL) THEN ((key_id IS NULL) AND (key_context IS NULL) AND (parent_key IS NOT NULL))
+    ELSE ((key_id IS NOT NULL) AND (key_context IS NOT NULL) AND (parent_key IS NULL))
+END)"
+pgsodium,key,comment,text,null,true,null,false,null,false,false,null,null,null,"CHECK ((length(key_context) = 8)) AND CHECK (
+CASE
+    WHEN (raw_key IS NOT NULL) THEN ((key_id IS NULL) AND (key_context IS NULL) AND (parent_key IS NOT NULL))
+    ELSE ((key_id IS NOT NULL) AND (key_context IS NOT NULL) AND (parent_key IS NULL))
+END)"
+pgsodium,key,user_data,text,null,true,null,false,null,false,false,null,null,null,"CHECK ((length(key_context) = 8)) AND CHECK (
+CASE
+    WHEN (raw_key IS NOT NULL) THEN ((key_id IS NULL) AND (key_context IS NULL) AND (parent_key IS NOT NULL))
+    ELSE ((key_id IS NOT NULL) AND (key_context IS NOT NULL) AND (parent_key IS NULL))
+END)"
+public,about_page,id,bigint,null,false,null,true,null,true,false,null,null,null,null
+public,about_page,appname,text,null,false,null,false,null,false,false,null,null,null,null
+public,about_page,appdescription_en,text,null,false,null,false,null,false,false,null,null,null,null
+public,about_page,appdescription_tr,text,null,false,null,false,null,false,false,null,null,null,null
+public,about_page,is_active,boolean,null,false,true,false,null,false,false,null,null,null,null
+public,about_page,created_at,timestamp with time zone,null,false,now(),false,null,false,false,null,null,null,null
+public,about_page,updated_at,timestamp with time zone,null,false,now(),false,null,false,false,null,null,null,null
+public,about_page,developer_en,text,null,true,null,false,null,false,false,null,null,null,null
+public,about_page,developer_tr,text,null,true,null,false,null,false,false,null,null,null,null
+public,age_groups,age_group_tr,text,null,true,null,false,null,false,false,null,null,null,null
+public,age_groups,age_group_id,smallint,null,false,null,true,null,true,true,null,null,null,null
+public,age_groups,age_group_en,text,null,true,null,false,null,false,false,null,null,null,null
+public,app_config,id,uuid,null,false,gen_random_uuid(),false,null,true,false,null,null,null,null
+public,app_config,platform,app_platform,"all, web, android, ios",false,'all'::app_platform,false,null,false,true,null,null,null,null
+public,app_config,key,text,null,false,null,false,null,false,true,null,null,null,null
+public,app_config,value_text,text,null,true,null,false,null,false,false,null,null,null,null
+public,app_config,value_json,jsonb,null,true,null,false,null,false,false,null,null,null,null
+public,app_config,is_active,boolean,null,false,true,false,null,false,false,null,null,null,null
+public,app_config,starts_at,timestamp with time zone,null,true,null,false,null,false,false,null,null,null,null
+public,app_config,ends_at,timestamp with time zone,null,true,null,false,null,false,false,null,null,null,null
+public,app_config,updated_at,timestamp with time zone,null,false,now(),false,null,false,false,null,null,null,null
+public,app_config,updated_by,uuid,null,true,null,false,null,false,false,auth,users,id,null
+public,athlete_coach,athlete_id,uuid,null,false,null,false,null,true,false,public,athletes,athlete_id,null
+public,athlete_coach,athlete_id,uuid,null,false,null,false,null,true,false,public,athletes,athlete_id,null
+public,athlete_coach,coach_id,uuid,null,false,null,false,null,true,false,public,coaches,coach_id,null
+public,athlete_coach,coach_id,uuid,null,false,null,false,null,true,false,public,coaches,coach_id,null
+public,athlete_coach,created_at,timestamp with time zone,null,true,now(),false,null,false,false,null,null,null,null
+public,athlete_coach,updated_at,timestamp with time zone,null,true,now(),false,null,false,false,null,null,null,null
+public,athlete_coach,status,text,null,true,'pending'::text,false,null,false,false,null,null,null,null
+public,athlete_coach,requester_id,uuid,null,true,null,false,null,false,false,null,null,null,null
+public,athletes,athlete_id,uuid,null,false,null,false,null,true,false,null,null,null,null
+public,athletes,first_name,text,null,true,null,false,null,false,false,null,null,null,null
+public,athletes,last_name,text,null,true,null,false,null,false,false,null,null,null,null
+public,athletes,date_of_birth,date,null,true,null,false,null,false,false,null,null,null,null
+public,athletes,gender,text,null,true,null,false,null,false,false,null,null,null,null
+public,athletes,nationality,text,null,true,null,false,null,false,false,null,null,null,null
+public,athletes,email,text,null,true,null,false,null,false,false,null,null,null,null
+public,athletes,address,text,null,true,null,false,null,false,false,null,null,null,null
+public,athletes,city,text,null,true,null,false,null,false,false,null,null,null,null
+public,athletes,country,text,null,true,null,false,null,false,false,null,null,null,null
+public,athletes,phone_number,text,null,true,null,false,null,false,false,null,null,null,null
+public,athletes,notes,text,null,true,null,false,null,false,false,null,null,null,null
+public,athletes,photo,text,null,true,null,false,null,false,false,null,null,null,null
+public,athletes,parent_id,uuid,null,true,null,false,null,false,false,public,xxx_parents,parent_id,null
+public,athletes,parent_id,uuid,null,true,null,false,null,false,false,public,xxx_parents,parent_id,null
+public,athletes,club_id,uuid,null,true,null,false,null,false,false,public,clubs,club_id,null
+public,athletes,club_id,uuid,null,true,null,false,null,false,false,public,clubs,club_id,null
+public,athletes,user_id,uuid,null,true,null,false,null,false,false,auth,users,id,null
+public,athletes,user_id,uuid,null,true,null,false,null,false,false,auth,users,id,null
+public,athletes,profile_id,uuid,null,true,null,false,null,false,false,public,profiles,id,null
+public,clubs,club_id,uuid,null,false,gen_random_uuid(),false,null,true,false,null,null,null,null
+public,clubs,club_name,text,null,true,null,false,null,false,false,null,null,null,null
+public,clubs,logo,text,null,true,null,false,null,false,false,null,null,null,null
+public,clubs,address,text,null,true,null,false,null,false,false,null,null,null,null
+public,clubs,city,text,null,true,null,false,null,false,false,null,null,null,null
+public,clubs,country,text,null,true,null,false,null,false,false,null,null,null,null
+public,clubs,established_date,date,null,true,null,false,null,false,false,null,null,null,null
+public,coaches,coach_id,uuid,null,false,null,false,null,true,false,public,profiles,id,null
+public,coaches,first_name,text,null,true,null,false,null,false,false,null,null,null,null
+public,coaches,last_name,text,null,true,null,false,null,false,false,null,null,null,null
+public,coaches,email,text,null,true,null,false,null,false,false,null,null,null,null
+public,coaches,phone_number,text,null,true,null,false,null,false,false,null,null,null,null
+public,coaches,address,text,null,true,null,false,null,false,false,null,null,null,null
+public,coaches,city,text,null,true,null,false,null,false,false,null,null,null,null
+public,coaches,country,text,null,true,null,false,null,false,false,null,null,null,null
+public,coaches,photo,text,null,true,null,false,null,false,false,null,null,null,null
+public,coaches,profile_id,uuid,null,true,null,false,null,false,false,public,profiles,id,null
+public,coaches,coach_code,text,null,true,null,false,null,false,true,null,null,null,null
+public,competition_records,competition_id,uuid,null,false,null,false,null,true,false,null,null,null,null
+public,competition_records,athlete_id,uuid,null,true,null,false,null,false,false,public,athletes,athlete_id,null
+public,competition_records,athlete_id,uuid,null,true,null,false,null,false,false,public,athletes,athlete_id,null
+public,competition_records,competition_date,date,null,true,null,false,null,false,false,null,null,null,null
+public,competition_records,competition_name,text,null,false,null,false,null,false,false,null,null,null,null
+public,competition_records,distance,integer,null,true,null,false,null,false,false,null,null,null,null
+public,competition_records,qualification_rank,integer,null,true,null,false,null,false,false,null,null,null,null
+public,competition_records,final_rank,integer,null,true,null,false,null,false,false,null,null,null,null
+public,competition_records,location,text,null,true,null,false,null,false,false,null,null,null,null
+public,competition_records,competition_type,text,null,true,null,false,null,false,false,null,null,null,null
+public,competition_records,environment,text,null,true,null,false,null,false,false,null,null,null,null
+public,competition_records,bow_type,text,null,true,null,false,null,false,false,null,null,null,null
+public,competition_records,logo,text,null,true,null,false,null,false,false,null,null,null,null
+public,competition_records,max_score,integer,null,true,null,false,null,false,false,null,null,null,null
+public,competition_records,created_at,timestamp with time zone,null,true,now(),false,null,false,false,null,null,null,null
+public,competition_records,updated_at,timestamp with time zone,null,true,now(),false,null,false,false,null,null,null,null
+public,competition_records,qualification_score,integer,null,false,null,false,null,false,false,null,null,null,null
+public,competition_records,is_deleted,boolean,null,false,false,false,null,false,false,null,null,null,null
+public,competition_records,age_group,smallint,null,true,null,false,null,false,false,public,age_groups,age_group_id,null
+public,competition_records,team_result,integer,null,true,null,false,null,false,false,null,null,null,null
+public,competition_records,team_type,integer,null,true,null,false,null,false,false,null,null,null,null
+public,daily_quotes,id,bigint,null,false,null,true,null,true,false,null,null,null,null
+public,daily_quotes,dailyQuote_en,text,null,false,null,false,null,false,false,null,null,null,null
+public,daily_quotes,dailyQuote_tr,text,null,false,null,false,null,false,false,null,null,null,null
+public,daily_quotes,author,text,null,true,null,false,null,false,false,null,null,null,null
+public,daily_quotes,author_visible,boolean,null,false,false,false,null,false,false,null,null,null,null
+public,daily_quotes,quote_visible,boolean,null,false,true,false,null,false,false,null,null,null,null
+public,faqs,id,uuid,null,false,gen_random_uuid(),false,null,true,false,null,null,null,"CHECK ((category = ANY (ARRAY['general'::text, 'athlete'::text, 'coach'::text])))"
+public,faqs,category,text,null,false,null,false,null,false,false,null,null,null,"CHECK ((category = ANY (ARRAY['general'::text, 'athlete'::text, 'coach'::text])))"
+public,faqs,question_tr,text,null,false,null,false,null,false,false,null,null,null,"CHECK ((category = ANY (ARRAY['general'::text, 'athlete'::text, 'coach'::text])))"
+public,faqs,question_en,text,null,false,null,false,null,false,false,null,null,null,"CHECK ((category = ANY (ARRAY['general'::text, 'athlete'::text, 'coach'::text])))"
+public,faqs,answer_tr,text,null,false,null,false,null,false,false,null,null,null,"CHECK ((category = ANY (ARRAY['general'::text, 'athlete'::text, 'coach'::text])))"
+public,faqs,answer_en,text,null,false,null,false,null,false,false,null,null,null,"CHECK ((category = ANY (ARRAY['general'::text, 'athlete'::text, 'coach'::text])))"
+public,faqs,icon,text,null,false,null,false,null,false,false,null,null,null,"CHECK ((category = ANY (ARRAY['general'::text, 'athlete'::text, 'coach'::text])))"
+public,faqs,is_visible,boolean,null,true,true,false,null,false,false,null,null,null,"CHECK ((category = ANY (ARRAY['general'::text, 'athlete'::text, 'coach'::text])))"
+public,faqs,created_at,timestamp with time zone,null,true,now(),false,null,false,false,null,null,null,"CHECK ((category = ANY (ARRAY['general'::text, 'athlete'::text, 'coach'::text])))"
+public,faqs,updated_at,timestamp with time zone,null,true,now(),false,null,false,false,null,null,null,"CHECK ((category = ANY (ARRAY['general'::text, 'athlete'::text, 'coach'::text])))"
+public,organized_competition_participants,participant_id,uuid,null,false,gen_random_uuid(),false,null,true,false,null,null,null,null
+public,organized_competition_participants,organized_competition_id,uuid,null,true,null,false,null,false,false,public,organized_competitions,organized_competition_id,null
+public,organized_competition_participants,organized_competition_id,uuid,null,true,null,false,null,false,false,public,organized_competitions,organized_competition_id,null
+public,organized_competition_participants,gender,text,null,true,null,false,null,false,false,null,null,null,null
+public,organized_competition_participants,equipment,text,null,true,null,false,null,false,false,null,null,null,null
+public,organized_competition_participants,created_at,timestamp without time zone,null,true,now(),false,null,false,false,null,null,null,null
+public,organized_competition_participants,updated_at,timestamp without time zone,null,true,now(),false,null,false,false,null,null,null,null
+public,organized_competition_participants,age_group,smallint,null,true,null,false,null,false,false,public,age_groups,age_group_id,null
+public,organized_competition_participants,status,text,null,false,'pending'::text,false,null,false,false,null,null,null,null
+public,organized_competition_participants,classification_id,uuid,null,true,null,false,null,false,false,public,organized_competitions_classifications,id,null
+public,organized_competition_participants,visible_id,text,null,true,null,false,null,false,false,public,profiles,visible_id,null
+public,organized_competition_participants,first_name,text,null,true,null,false,null,false,false,null,null,null,null
+public,organized_competition_participants,last_name,text,null,true,null,false,null,false,false,null,null,null,null
+public,organized_competition_participants,user_id,uuid,null,false,null,false,null,false,false,public,profiles,id,null
+public,organized_competition_participants,participant_role,character varying(20),null,true,'athlete'::character varying,false,null,false,false,null,null,null,null
+public,organized_competition_participants_duplicate,participant_id,uuid,null,false,gen_random_uuid(),false,null,true,false,null,null,null,null
+public,organized_competition_participants_duplicate,organized_competition_id,uuid,null,true,null,false,null,false,false,public,organized_competitions,organized_competition_id,null
+public,organized_competition_participants_duplicate,organized_competition_id,uuid,null,true,null,false,null,false,false,public,organized_competitions,organized_competition_id,null
+public,organized_competition_participants_duplicate,athlete_id,uuid,null,true,null,false,null,false,false,public,athletes,athlete_id,null
+public,organized_competition_participants_duplicate,athlete_id,uuid,null,true,null,false,null,false,false,public,athletes,athlete_id,null
+public,organized_competition_participants_duplicate,gender,text,null,true,null,false,null,false,false,null,null,null,null
+public,organized_competition_participants_duplicate,equipment,text,null,true,null,false,null,false,false,null,null,null,null
+public,organized_competition_participants_duplicate,created_at,timestamp without time zone,null,true,now(),false,null,false,false,null,null,null,null
+public,organized_competition_participants_duplicate,updated_at,timestamp without time zone,null,true,now(),false,null,false,false,null,null,null,null
+public,organized_competition_participants_duplicate,age_group,smallint,null,true,null,false,null,false,false,public,age_groups,age_group_id,null
+public,organized_competition_participants_duplicate,status,text,null,false,'pending'::text,false,null,false,false,null,null,null,null
+public,organized_competition_participants_duplicate,classification_id,uuid,null,true,null,false,null,false,false,public,organized_competitions_classifications,id,null
+public,organized_competition_participants_duplicate,visible_id,text,null,true,null,false,null,false,false,public,profiles,visible_id,null
+public,organized_competition_participants_duplicate,first_name,text,null,true,null,false,null,false,false,null,null,null,null
+public,organized_competition_participants_duplicate,last_name,text,null,true,null,false,null,false,false,null,null,null,null
+public,organized_competitions,organized_competition_id,uuid,null,false,null,false,null,true,false,null,null,null,"CHECK ((status = ANY (ARRAY['draft'::text, 'active'::text, 'completed'::text, 'cancelled'::text])))"
+public,organized_competitions,name,text,null,true,null,false,null,false,false,null,null,null,"CHECK ((status = ANY (ARRAY['draft'::text, 'active'::text, 'completed'::text, 'cancelled'::text])))"
+public,organized_competitions,type,text,null,true,null,false,null,false,false,null,null,null,"CHECK ((status = ANY (ARRAY['draft'::text, 'active'::text, 'completed'::text, 'cancelled'::text])))"
+public,organized_competitions,distance,integer,null,true,null,false,null,false,false,null,null,null,"CHECK ((status = ANY (ARRAY['draft'::text, 'active'::text, 'completed'::text, 'cancelled'::text])))"
+public,organized_competitions,environment,text,null,true,null,false,null,false,false,null,null,null,"CHECK ((status = ANY (ARRAY['draft'::text, 'active'::text, 'completed'::text, 'cancelled'::text])))"
+public,organized_competitions,start_date,date,null,true,null,false,null,false,false,null,null,null,"CHECK ((status = ANY (ARRAY['draft'::text, 'active'::text, 'completed'::text, 'cancelled'::text])))"
+public,organized_competitions,end_date,date,null,true,null,false,null,false,false,null,null,null,"CHECK ((status = ANY (ARRAY['draft'::text, 'active'::text, 'completed'::text, 'cancelled'::text])))"
+public,organized_competitions,created_by,uuid,null,true,null,false,null,false,false,auth,users,id,"CHECK ((status = ANY (ARRAY['draft'::text, 'active'::text, 'completed'::text, 'cancelled'::text])))"
+public,organized_competitions,created_by,uuid,null,true,null,false,null,false,false,auth,users,id,"CHECK ((status = ANY (ARRAY['draft'::text, 'active'::text, 'completed'::text, 'cancelled'::text])))"
+public,organized_competitions,organizing_club_id,uuid,null,true,null,false,null,false,false,public,clubs,club_id,"CHECK ((status = ANY (ARRAY['draft'::text, 'active'::text, 'completed'::text, 'cancelled'::text])))"
+public,organized_competitions,organizing_club_id,uuid,null,true,null,false,null,false,false,public,clubs,club_id,"CHECK ((status = ANY (ARRAY['draft'::text, 'active'::text, 'completed'::text, 'cancelled'::text])))"
+public,organized_competitions,created_at,timestamp without time zone,null,true,now(),false,null,false,false,null,null,null,"CHECK ((status = ANY (ARRAY['draft'::text, 'active'::text, 'completed'::text, 'cancelled'::text])))"
+public,organized_competitions,updated_at,timestamp without time zone,null,true,now(),false,null,false,false,null,null,null,"CHECK ((status = ANY (ARRAY['draft'::text, 'active'::text, 'completed'::text, 'cancelled'::text])))"
+public,organized_competitions,description,text,null,true,null,false,null,false,false,null,null,null,"CHECK ((status = ANY (ARRAY['draft'::text, 'active'::text, 'completed'::text, 'cancelled'::text])))"
+public,organized_competitions,competition_date,date,null,true,null,false,null,false,false,null,null,null,"CHECK ((status = ANY (ARRAY['draft'::text, 'active'::text, 'completed'::text, 'cancelled'::text])))"
+public,organized_competitions,registration_start_date,date,null,true,null,false,null,false,false,null,null,null,"CHECK ((status = ANY (ARRAY['draft'::text, 'active'::text, 'completed'::text, 'cancelled'::text])))"
+public,organized_competitions,registration_end_date,date,null,true,null,false,null,false,false,null,null,null,"CHECK ((status = ANY (ARRAY['draft'::text, 'active'::text, 'completed'::text, 'cancelled'::text])))"
+public,organized_competitions,status,text,null,true,'draft'::text,false,null,false,false,null,null,null,"CHECK ((status = ANY (ARRAY['draft'::text, 'active'::text, 'completed'::text, 'cancelled'::text])))"
+public,organized_competitions,is_deleted,boolean,null,false,false,false,null,false,false,null,null,null,"CHECK ((status = ANY (ARRAY['draft'::text, 'active'::text, 'completed'::text, 'cancelled'::text])))"
+public,organized_competitions,competition_visible_id,text,null,true,null,false,null,false,false,null,null,null,"CHECK ((status = ANY (ARRAY['draft'::text, 'active'::text, 'completed'::text, 'cancelled'::text])))"
+public,organized_competitions_classifications,id,uuid,null,false,gen_random_uuid(),false,null,true,false,null,null,null,null
+public,organized_competitions_classifications,competition_id,uuid,null,true,null,false,null,false,false,public,organized_competitions,organized_competition_id,null
+public,organized_competitions_classifications,name,text,null,false,null,false,null,false,false,null,null,null,null
+public,organized_competitions_classifications,bow_type,text,null,false,null,false,null,false,false,null,null,null,null
+public,organized_competitions_classifications,environment,text,null,false,null,false,null,false,false,null,null,null,null
+public,organized_competitions_classifications,distance,integer,null,false,null,false,null,false,false,null,null,null,null
+public,organized_competitions_classifications,created_at,timestamp with time zone,null,true,now(),false,null,false,false,null,null,null,null
+public,organized_competitions_classifications,updated_at,timestamp with time zone,null,true,now(),false,null,false,false,null,null,null,null
+public,organized_competitions_classifications,gender,text,null,false,null,false,null,false,false,null,null,null,null
+public,organized_competitions_classifications,age_group_id,integer,null,true,null,false,null,false,false,public,age_groups,age_group_id,null
+public,organized_qualifications,id,bigint,null,false,null,true,null,true,false,null,null,null,null
+public,organized_qualifications,created_at,timestamp with time zone,null,false,now(),false,null,false,false,null,null,null,null
+public,organized_qualifications,updated_at,timestamp with time zone,null,true,'2025-10-04 17:03:37.553673+00'::timestamp with time zone,false,null,false,false,null,null,null,null
+public,organized_qualifications,qualification_sets_data,text,null,true,null,false,null,false,false,null,null,null,null
+public,organized_qualifications,qualification_total_score,bigint,null,true,null,false,null,false,false,null,null,null,null
+public,organized_qualifications,participant_id,uuid,null,true,null,false,null,false,false,public,organized_competition_participants,participant_id,null
+public,profiles,id,uuid,null,false,null,false,null,true,false,auth,users,id,null
+public,profiles,first_name,text,null,true,null,false,null,false,false,null,null,null,null
+public,profiles,last_name,text,null,true,null,false,null,false,false,null,null,null,null
+public,profiles,role,user_role,"athlete, coach, viewer, admin, staff",true,null,false,null,false,false,null,null,null,null
+public,profiles,created_at,timestamp without time zone,null,true,now(),false,null,false,false,null,null,null,null
+public,profiles,updated_at,timestamp without time zone,null,true,now(),false,null,false,false,null,null,null,null
+public,profiles,birth_date,date,null,true,null,false,null,false,false,null,null,null,null
+public,profiles,photo_url,text,null,true,null,false,null,false,false,null,null,null,null
+public,profiles,address,text,null,true,null,false,null,false,false,null,null,null,null
+public,profiles,phone_number,text,null,true,null,false,null,false,false,null,null,null,null
+public,profiles,gender,text,null,false,null,false,null,false,false,null,null,null,null
+public,profiles,visible_id,character varying(12),null,true,null,false,null,false,true,null,null,null,null
+public,profiles,nationality,text,null,true,null,false,null,false,false,null,null,null,null
+public,profiles,city,text,null,true,null,false,null,false,false,null,null,null,null
+public,profiles,country,text,null,true,null,false,null,false,false,null,null,null,null
+public,profiles,notes,text,null,true,null,false,null,false,false,null,null,null,null
+public,profiles,club_id,uuid,null,true,null,false,null,false,false,public,clubs,club_id,null
+public,profiles,valid_days,integer,null,true,100,false,null,false,false,null,null,null,null
+public,profiles,last_valid_days_decrement_date,date,null,true,null,false,null,false,false,null,null,null,null
+public,team_types,team_type_id,integer,null,false,null,true,null,true,false,null,null,null,null
+public,team_types,team_type_en,text,null,true,null,false,null,false,false,null,null,null,null
+public,team_types,team_type_tr,text,null,true,null,false,null,false,false,null,null,null,null
+public,terms_and_conditions,id,uuid,null,false,gen_random_uuid(),false,null,true,false,null,null,null,null
+public,terms_and_conditions,version,character varying(10),null,false,null,false,null,false,false,null,null,null,null
+public,terms_and_conditions,language_code,character varying(5),null,false,null,false,null,false,false,null,null,null,null
+public,terms_and_conditions,title,text,null,false,null,false,null,false,false,null,null,null,null
+public,terms_and_conditions,content,text,null,false,null,false,null,false,false,null,null,null,null
+public,terms_and_conditions,effective_date,timestamp with time zone,null,false,now(),false,null,false,false,null,null,null,null
+public,terms_and_conditions,is_active,boolean,null,true,true,false,null,false,false,null,null,null,null
+public,terms_and_conditions,created_at,timestamp with time zone,null,true,now(),false,null,false,false,null,null,null,null
+public,terms_and_conditions,updated_at,timestamp with time zone,null,true,now(),false,null,false,false,null,null,null,null
+public,training_sessions,id,uuid,null,false,uuid_generate_v4(),false,null,true,false,null,null,null,null
+public,training_sessions,user_id,uuid,null,false,null,false,null,false,true,auth,users,id,null
+public,training_sessions,date,timestamp with time zone,null,false,now(),false,null,false,false,null,null,null,null
+public,training_sessions,distance,integer,null,false,null,false,null,false,false,null,null,null,null
+public,training_sessions,bow_type,text,null,false,null,false,null,false,false,null,null,null,null
+public,training_sessions,is_indoor,boolean,null,false,true,false,null,false,false,null,null,null,null
+public,training_sessions,notes,text,null,true,null,false,null,false,false,null,null,null,null
+public,training_sessions,total_arrows,integer,null,false,0,false,null,false,false,null,null,null,null
+public,training_sessions,total_score,integer,null,true,0,false,null,false,false,null,null,null,null
+public,training_sessions,average,"numeric(5,2)",null,true,0,false,null,false,false,null,null,null,null
+public,training_sessions,created_at,timestamp with time zone,null,false,now(),false,null,false,true,null,null,null,null
+public,training_sessions,updated_at,timestamp with time zone,null,false,now(),false,null,false,false,null,null,null,null
+public,training_sessions,x_count,integer,null,false,0,false,null,false,false,null,null,null,null
+public,training_sessions,training_session_name,text,null,true,null,false,null,false,false,null,null,null,null
+public,training_sessions,arrows_per_series,integer,null,true,null,false,null,false,false,null,null,null,null
+public,training_sessions,coach_seen,boolean,null,true,false,false,null,false,false,null,null,null,null
+public,training_sessions,is_deleted,boolean,null,false,false,false,null,false,false,null,null,null,null
+public,training_sessions,training_type,training_type,"strength, endurance, technique, score, target",true,'score'::training_type,false,null,false,false,null,null,null,null
+public,training_sessions,duration,bigint,null,true,null,false,null,false,false,null,null,null,null
+public,training_sessions,arrows,smallint[],null,true,null,false,null,false,false,null,null,null,null
+public,training_sessions,series_data,text,null,true,null,false,null,false,false,null,null,null,null
+public,training_sessions,ten_count,integer,null,true,null,false,null,false,false,null,null,null,null
+public,training_sessions,target_face,text,null,true,null,false,null,false,false,null,null,null,null
+public,user_terms_acceptances,id,uuid,null,false,gen_random_uuid(),false,null,true,false,null,null,null,null
+public,user_terms_acceptances,user_id,uuid,null,false,null,false,null,false,true,auth,users,id,null
+public,user_terms_acceptances,terms_id,uuid,null,false,null,false,null,false,true,public,terms_and_conditions,id,null
+public,user_terms_acceptances,accepted_at,timestamp with time zone,null,true,now(),false,null,false,false,null,null,null,null
+public,user_terms_acceptances,ip_address,inet,null,true,null,false,null,false,false,null,null,null,null
+public,user_terms_acceptances,user_agent,text,null,true,null,false,null,false,false,null,null,null,null
+public,xxx_admins,admin_id,uuid,null,false,null,false,null,true,false,null,null,null,null
+public,xxx_admins,user_id,uuid,null,true,null,false,null,false,false,auth,users,id,null
+public,xxx_admins,created_at,timestamp without time zone,null,true,now(),false,null,false,false,null,null,null,null
+public,xxx_admins,updated_at,timestamp without time zone,null,true,now(),false,null,false,false,null,null,null,null
+public,xxx_app_subscription_payments,payment_id,uuid,null,false,null,false,null,true,false,null,null,null,null
+public,xxx_app_subscription_payments,subscription_id,uuid,null,true,null,false,null,false,false,public,xxx_app_subscriptions,subscription_id,null
+public,xxx_app_subscription_payments,subscription_id,uuid,null,true,null,false,null,false,false,public,xxx_app_subscriptions,subscription_id,null
+public,xxx_app_subscription_payments,payment_date,date,null,true,null,false,null,false,false,null,null,null,null
+public,xxx_app_subscription_payments,amount,numeric,null,true,null,false,null,false,false,null,null,null,null
+public,xxx_app_subscription_payments,status,text,null,true,null,false,null,false,false,null,null,null,null
+public,xxx_app_subscription_payments,created_at,timestamp without time zone,null,true,now(),false,null,false,false,null,null,null,null
+public,xxx_app_subscription_payments,updated_at,timestamp without time zone,null,true,now(),false,null,false,false,null,null,null,null
+public,xxx_app_subscriptions,subscription_id,uuid,null,false,null,false,null,true,false,null,null,null,null
+public,xxx_app_subscriptions,user_id,uuid,null,true,null,false,null,false,false,auth,users,id,null
+public,xxx_app_subscriptions,user_id,uuid,null,true,null,false,null,false,false,auth,users,id,null
+public,xxx_app_subscriptions,start_date,date,null,true,null,false,null,false,false,null,null,null,null
+public,xxx_app_subscriptions,end_date,date,null,true,null,false,null,false,false,null,null,null,null
+public,xxx_app_subscriptions,monthly_fee,numeric,null,true,null,false,null,false,false,null,null,null,null
+public,xxx_app_subscriptions,status,text,null,true,null,false,null,false,false,null,null,null,null
+public,xxx_app_subscriptions,created_at,timestamp without time zone,null,true,now(),false,null,false,false,null,null,null,null
+public,xxx_app_subscriptions,updated_at,timestamp without time zone,null,true,now(),false,null,false,false,null,null,null,null
+public,xxx_club_coach,club_id,uuid,null,false,null,false,null,true,false,public,clubs,club_id,null
+public,xxx_club_coach,club_id,uuid,null,false,null,false,null,true,false,public,clubs,club_id,null
+public,xxx_club_coach,coach_id,uuid,null,false,null,false,null,true,false,public,coaches,coach_id,null
+public,xxx_club_coach,coach_id,uuid,null,false,null,false,null,true,false,public,coaches,coach_id,null
+public,xxx_club_membership_payments,payment_id,uuid,null,false,null,false,null,true,false,null,null,null,null
+public,xxx_club_membership_payments,membership_id,uuid,null,true,null,false,null,false,false,public,xxx_club_memberships,membership_id,null
+public,xxx_club_membership_payments,membership_id,uuid,null,true,null,false,null,false,false,public,xxx_club_memberships,membership_id,null
+public,xxx_club_membership_payments,payment_date,date,null,true,null,false,null,false,false,null,null,null,null
+public,xxx_club_membership_payments,amount,numeric,null,true,null,false,null,false,false,null,null,null,null
+public,xxx_club_membership_payments,status,text,null,true,null,false,null,false,false,null,null,null,null
+public,xxx_club_membership_payments,created_at,timestamp without time zone,null,true,now(),false,null,false,false,null,null,null,null
+public,xxx_club_membership_payments,updated_at,timestamp without time zone,null,true,now(),false,null,false,false,null,null,null,null
+public,xxx_club_memberships,membership_id,uuid,null,false,null,false,null,true,false,null,null,null,null
+public,xxx_club_memberships,athlete_id,uuid,null,true,null,false,null,false,false,public,athletes,athlete_id,null
+public,xxx_club_memberships,athlete_id,uuid,null,true,null,false,null,false,false,public,athletes,athlete_id,null
+public,xxx_club_memberships,club_id,uuid,null,true,null,false,null,false,false,public,clubs,club_id,null
+public,xxx_club_memberships,club_id,uuid,null,true,null,false,null,false,false,public,clubs,club_id,null
+public,xxx_club_memberships,start_date,date,null,true,null,false,null,false,false,null,null,null,null
+public,xxx_club_memberships,end_date,date,null,true,null,false,null,false,false,null,null,null,null
+public,xxx_club_memberships,monthly_fee,numeric,null,true,null,false,null,false,false,null,null,null,null
+public,xxx_club_memberships,status,text,null,true,null,false,null,false,false,null,null,null,null
+public,xxx_club_memberships,created_at,timestamp without time zone,null,true,now(),false,null,false,false,null,null,null,null
+public,xxx_club_memberships,updated_at,timestamp without time zone,null,true,now(),false,null,false,false,null,null,null,null
+public,xxx_club_staff,staff_id,uuid,null,false,null,false,null,true,false,null,null,null,null
+public,xxx_club_staff,first_name,text,null,true,null,false,null,false,false,null,null,null,null
+public,xxx_club_staff,last_name,text,null,true,null,false,null,false,false,null,null,null,null
+public,xxx_club_staff,email,text,null,true,null,false,null,false,false,null,null,null,null
+public,xxx_club_staff,phone_number,text,null,true,null,false,null,false,false,null,null,null,null
+public,xxx_club_staff,address,text,null,true,null,false,null,false,false,null,null,null,null
+public,xxx_club_staff,city,text,null,true,null,false,null,false,false,null,null,null,null
+public,xxx_club_staff,country,text,null,true,null,false,null,false,false,null,null,null,null
+public,xxx_club_staff,photo,text,null,true,null,false,null,false,false,null,null,null,null
+public,xxx_club_staff,role,text,null,true,null,false,null,false,false,null,null,null,null
+public,xxx_club_staff,club_id,uuid,null,true,null,false,null,false,false,public,clubs,club_id,null
+public,xxx_club_staff,club_id,uuid,null,true,null,false,null,false,false,public,clubs,club_id,null
+public,xxx_force_update,id,bigint,null,false,null,true,null,true,false,null,null,null,null
+public,xxx_force_update,update_required,boolean,null,true,null,false,null,false,false,null,null,null,null
+public,xxx_group_members,group_id,uuid,null,false,null,false,null,true,false,public,xxx_groups,group_id,null
+public,xxx_group_members,group_id,uuid,null,false,null,false,null,true,false,public,xxx_groups,group_id,null
+public,xxx_group_members,user_id,uuid,null,false,null,false,null,true,false,auth,users,id,null
+public,xxx_group_members,user_id,uuid,null,false,null,false,null,true,false,auth,users,id,null
+public,xxx_groups,group_id,uuid,null,false,null,false,null,true,false,null,null,null,null
+public,xxx_groups,group_name,text,null,true,null,false,null,false,false,null,null,null,null
+public,xxx_groups,created_by,uuid,null,true,null,false,null,false,false,auth,users,id,null
+public,xxx_groups,created_by,uuid,null,true,null,false,null,false,false,auth,users,id,null
+public,xxx_groups,created_at,timestamp without time zone,null,true,now(),false,null,false,false,null,null,null,null
+public,xxx_groups,updated_at,timestamp without time zone,null,true,now(),false,null,false,false,null,null,null,null
+public,xxx_messages,message_id,uuid,null,false,null,false,null,true,false,null,null,null,null
+public,xxx_messages,sender_id,uuid,null,true,null,false,null,false,false,auth,users,id,null
+public,xxx_messages,sender_id,uuid,null,true,null,false,null,false,false,auth,users,id,null
+public,xxx_messages,group_id,uuid,null,true,null,false,null,false,false,public,xxx_groups,group_id,null
+public,xxx_messages,group_id,uuid,null,true,null,false,null,false,false,public,xxx_groups,group_id,null
+public,xxx_messages,title,text,null,true,null,false,null,false,false,null,null,null,null
+public,xxx_messages,content,text,null,true,null,false,null,false,false,null,null,null,null
+public,xxx_messages,created_at,timestamp without time zone,null,true,now(),false,null,false,false,null,null,null,null
+public,xxx_messages,updated_at,timestamp without time zone,null,true,now(),false,null,false,false,null,null,null,null
+public,xxx_news,news_id,uuid,null,false,null,false,null,true,false,null,null,null,null
+public,xxx_news,title,text,null,true,null,false,null,false,false,null,null,null,null
+public,xxx_news,content,text,null,true,null,false,null,false,false,null,null,null,null
+public,xxx_news,photo,text,null,true,null,false,null,false,false,null,null,null,null
+public,xxx_news,source_link,text,null,true,null,false,null,false,false,null,null,null,null
+public,xxx_news,created_by,uuid,null,true,null,false,null,false,false,public,xxx_admins,admin_id,null
+public,xxx_news,created_by,uuid,null,true,null,false,null,false,false,public,xxx_admins,admin_id,null
+public,xxx_news,created_at,timestamp without time zone,null,true,now(),false,null,false,false,null,null,null,null
+public,xxx_news,updated_at,timestamp without time zone,null,true,now(),false,null,false,false,null,null,null,null
+public,xxx_news_target_audience,news_id,uuid,null,false,null,false,null,true,false,public,xxx_news,news_id,null
+public,xxx_news_target_audience,news_id,uuid,null,false,null,false,null,true,false,public,xxx_news,news_id,null
+public,xxx_news_target_audience,target_group,text,null,false,null,false,null,true,false,null,null,null,null
+public,xxx_organized_elimination_matches,match_id,uuid,null,false,null,false,null,true,false,null,null,null,null
+public,xxx_organized_elimination_matches,organized_competition_id,uuid,null,true,null,false,null,false,false,public,organized_competitions,organized_competition_id,null
+public,xxx_organized_elimination_matches,organized_competition_id,uuid,null,true,null,false,null,false,false,public,organized_competitions,organized_competition_id,null
+public,xxx_organized_elimination_matches,round_number,integer,null,true,null,false,null,false,false,null,null,null,null
+public,xxx_organized_elimination_matches,match_type,text,null,true,null,false,null,false,false,null,null,null,null
+public,xxx_organized_elimination_matches,athlete1_id,uuid,null,true,null,false,null,false,false,public,athletes,athlete_id,null
+public,xxx_organized_elimination_matches,athlete1_id,uuid,null,true,null,false,null,false,false,public,athletes,athlete_id,null
+public,xxx_organized_elimination_matches,athlete2_id,uuid,null,true,null,false,null,false,false,public,athletes,athlete_id,null
+public,xxx_organized_elimination_matches,athlete2_id,uuid,null,true,null,false,null,false,false,public,athletes,athlete_id,null
+public,xxx_organized_elimination_matches,team1_id,uuid,null,true,null,false,null,false,false,public,clubs,club_id,null
+public,xxx_organized_elimination_matches,team1_id,uuid,null,true,null,false,null,false,false,public,clubs,club_id,null
+public,xxx_organized_elimination_matches,team2_id,uuid,null,true,null,false,null,false,false,public,clubs,club_id,null
+public,xxx_organized_elimination_matches,team2_id,uuid,null,true,null,false,null,false,false,public,clubs,club_id,null
+public,xxx_organized_elimination_matches,score_athlete1,integer,null,true,null,false,null,false,false,null,null,null,null
+public,xxx_organized_elimination_matches,score_athlete2,integer,null,true,null,false,null,false,false,null,null,null,null
+public,xxx_organized_elimination_matches,score_team1,integer,null,true,null,false,null,false,false,null,null,null,null
+public,xxx_organized_elimination_matches,score_team2,integer,null,true,null,false,null,false,false,null,null,null,null
+public,xxx_organized_elimination_matches,winner_id,uuid,null,true,null,false,null,false,false,public,athletes,athlete_id,null
+public,xxx_organized_elimination_matches,winner_id,uuid,null,true,null,false,null,false,false,public,athletes,athlete_id,null
+public,xxx_organized_elimination_matches,winner_team_id,uuid,null,true,null,false,null,false,false,public,clubs,club_id,null
+public,xxx_organized_elimination_matches,winner_team_id,uuid,null,true,null,false,null,false,false,public,clubs,club_id,null
+public,xxx_organized_elimination_matches,target_photo,text,null,true,null,false,null,false,false,null,null,null,null
+public,xxx_organized_elimination_matches,created_at,timestamp without time zone,null,true,now(),false,null,false,false,null,null,null,null
+public,xxx_organized_elimination_matches,updated_at,timestamp without time zone,null,true,now(),false,null,false,false,null,null,null,null
+public,xxx_organized_scores,score_id,uuid,null,false,null,false,null,true,false,null,null,null,null
+public,xxx_organized_scores,organized_competition_id,uuid,null,true,null,false,null,false,false,public,organized_competitions,organized_competition_id,null
+public,xxx_organized_scores,organized_competition_id,uuid,null,true,null,false,null,false,false,public,organized_competitions,organized_competition_id,null
+public,xxx_organized_scores,athlete_id,uuid,null,true,null,false,null,false,false,public,athletes,athlete_id,null
+public,xxx_organized_scores,athlete_id,uuid,null,true,null,false,null,false,false,public,athletes,athlete_id,null
+public,xxx_organized_scores,round_number,integer,null,true,null,false,null,false,false,null,null,null,null
+public,xxx_organized_scores,score,integer,null,true,null,false,null,false,false,null,null,null,null
+public,xxx_organized_scores,total_score,integer,null,true,null,false,null,false,false,null,null,null,null
+public,xxx_organized_scores,average_score,integer,null,true,null,false,null,false,false,null,null,null,null
+public,xxx_organized_scores,target_photo,text,null,true,null,false,null,false,false,null,null,null,null
+public,xxx_organized_scores,created_at,timestamp without time zone,null,true,now(),false,null,false,false,null,null,null,null
+public,xxx_organized_scores,updated_at,timestamp without time zone,null,true,now(),false,null,false,false,null,null,null,null
+public,xxx_parents,parent_id,uuid,null,false,null,false,null,true,false,null,null,null,null
+public,xxx_parents,first_name,text,null,true,null,false,null,false,false,null,null,null,null
+public,xxx_parents,last_name,text,null,true,null,false,null,false,false,null,null,null,null
+public,xxx_parents,phone_number,text,null,true,null,false,null,false,false,null,null,null,null
+public,xxx_parents,email,text,null,true,null,false,null,false,false,null,null,null,null
+public,xxx_parents,address,text,null,true,null,false,null,false,false,null,null,null,null
+public,xxx_parents,city,text,null,true,null,false,null,false,false,null,null,null,null
+public,xxx_parents,country,text,null,true,null,false,null,false,false,null,null,null,null
+public,xxx_parents,notes,text,null,true,null,false,null,false,false,null,null,null,null
+public,xxx_roles,role_id,smallint,null,false,null,true,null,true,false,null,null,null,null
+public,xxx_roles,role_name,character varying,null,true,null,false,null,false,false,null,null,null,null
+public,xxx_roles,is_public,boolean,null,true,null,false,null,false,false,null,null,null,null
+public,xxx_settings,key,text,null,false,null,false,null,true,false,null,null,null,null
+public,xxx_settings,value,text,null,true,null,false,null,false,false,null,null,null,null
+public,xxx_training_records,training_id,uuid,null,false,null,false,null,true,false,null,null,null,null
+public,xxx_training_records,athlete_id,uuid,null,true,null,false,null,false,false,public,athletes,athlete_id,null
+public,xxx_training_records,athlete_id,uuid,null,true,null,false,null,false,false,public,athletes,athlete_id,null
+public,xxx_training_records,training_date,date,null,true,null,false,null,false,false,null,null,null,null
+public,xxx_training_records,training_time,time without time zone,null,true,null,false,null,false,false,null,null,null,null
+public,xxx_training_records,duration,integer,null,true,null,false,null,false,false,null,null,null,null
+public,xxx_training_records,type,text,null,true,null,false,null,false,false,null,null,null,null
+public,xxx_training_records,distance,integer,null,true,null,false,null,false,false,null,null,null,null
+public,xxx_training_records,arrows_shot,integer,null,true,null,false,null,false,false,null,null,null,null
+public,xxx_training_records,score,integer,null,true,null,false,null,false,false,null,null,null,null
+public,xxx_training_records,bow_type,text,null,true,null,false,null,false,false,null,null,null,null
+public,xxx_training_records,notes,text,null,true,null,false,null,false,false,null,null,null,null
+public,xxx_training_records,target_photo,text,null,true,null,false,null,false,false,null,null,null,null
+public,xxx_training_records,created_at,timestamp without time zone,null,true,now(),false,null,false,false,null,null,null,null
+public,xxx_training_records,updated_at,timestamp without time zone,null,true,now(),false,null,false,false,null,null,null,null
+public,xxx_training_series,id,uuid,null,false,uuid_generate_v4(),false,null,true,false,null,null,null,null
+public,xxx_training_series,training_id,uuid,null,false,null,false,null,false,false,public,training_sessions,id,null
+public,xxx_training_series,series_number,integer,null,false,null,false,null,false,false,null,null,null,null
+public,xxx_training_series,arrows,integer[],null,false,null,false,null,false,false,null,null,null,null
+public,xxx_training_series,total_score,integer,null,false,null,false,null,false,false,null,null,null,null
+public,xxx_training_series,created_at,timestamp with time zone,null,false,now(),false,null,false,false,null,null,null,null
+public,xxx_training_series,updated_at,timestamp with time zone,null,false,now(),false,null,false,false,null,null,null,null
+public,xxx_training_series,x_count,integer,null,false,0,false,null,false,false,null,null,null,null
+public,xxx_training_series,coach_seen,boolean,null,true,false,false,null,false,false,null,null,null,null
+public,xxx_training_series,is_deleted,boolean,null,true,false,false,null,false,false,null,null,null,null
+public,xxx_training_types,training_type_id,bigint,null,false,null,true,null,true,false,null,null,null,null
+public,xxx_training_types,training_type_name_en,text,null,true,null,false,null,false,false,null,null,null,null
+public,xxx_training_types,training_type_name_tr,text,null,true,null,false,null,false,false,null,null,null,null
+realtime,messages,topic,text,null,false,null,false,null,false,false,null,null,null,null
+realtime,messages,extension,text,null,false,null,false,null,false,false,null,null,null,null
+realtime,messages,payload,jsonb,null,true,null,false,null,false,false,null,null,null,null
+realtime,messages,event,text,null,true,null,false,null,false,false,null,null,null,null
+realtime,messages,private,boolean,null,true,false,false,null,false,false,null,null,null,null
+realtime,messages,updated_at,timestamp without time zone,null,false,now(),false,null,false,false,null,null,null,null
+realtime,messages,inserted_at,timestamp without time zone,null,false,now(),false,null,true,false,null,null,null,null
+realtime,messages,id,uuid,null,false,gen_random_uuid(),false,null,true,false,null,null,null,null
+realtime,messages_2025_10_02,topic,text,null,false,null,false,null,false,false,null,null,null,null
+realtime,messages_2025_10_02,extension,text,null,false,null,false,null,false,false,null,null,null,null
+realtime,messages_2025_10_02,payload,jsonb,null,true,null,false,null,false,false,null,null,null,null
+realtime,messages_2025_10_02,event,text,null,true,null,false,null,false,false,null,null,null,null
+realtime,messages_2025_10_02,private,boolean,null,true,false,false,null,false,false,null,null,null,null
+realtime,messages_2025_10_02,updated_at,timestamp without time zone,null,false,now(),false,null,false,false,null,null,null,null
+realtime,messages_2025_10_02,inserted_at,timestamp without time zone,null,false,now(),false,null,true,false,null,null,null,null
+realtime,messages_2025_10_02,id,uuid,null,false,gen_random_uuid(),false,null,true,false,null,null,null,null
+realtime,messages_2025_10_03,topic,text,null,false,null,false,null,false,false,null,null,null,null
+realtime,messages_2025_10_03,extension,text,null,false,null,false,null,false,false,null,null,null,null
+realtime,messages_2025_10_03,payload,jsonb,null,true,null,false,null,false,false,null,null,null,null
+realtime,messages_2025_10_03,event,text,null,true,null,false,null,false,false,null,null,null,null
+realtime,messages_2025_10_03,private,boolean,null,true,false,false,null,false,false,null,null,null,null
+realtime,messages_2025_10_03,updated_at,timestamp without time zone,null,false,now(),false,null,false,false,null,null,null,null
+realtime,messages_2025_10_03,inserted_at,timestamp without time zone,null,false,now(),false,null,true,false,null,null,null,null
+realtime,messages_2025_10_03,id,uuid,null,false,gen_random_uuid(),false,null,true,false,null,null,null,null
+realtime,messages_2025_10_04,topic,text,null,false,null,false,null,false,false,null,null,null,null
+realtime,messages_2025_10_04,extension,text,null,false,null,false,null,false,false,null,null,null,null
+realtime,messages_2025_10_04,payload,jsonb,null,true,null,false,null,false,false,null,null,null,null
+realtime,messages_2025_10_04,event,text,null,true,null,false,null,false,false,null,null,null,null
+realtime,messages_2025_10_04,private,boolean,null,true,false,false,null,false,false,null,null,null,null
+realtime,messages_2025_10_04,updated_at,timestamp without time zone,null,false,now(),false,null,false,false,null,null,null,null
+realtime,messages_2025_10_04,inserted_at,timestamp without time zone,null,false,now(),false,null,true,false,null,null,null,null
+realtime,messages_2025_10_04,id,uuid,null,false,gen_random_uuid(),false,null,true,false,null,null,null,null
+realtime,messages_2025_10_05,topic,text,null,false,null,false,null,false,false,null,null,null,null
+realtime,messages_2025_10_05,extension,text,null,false,null,false,null,false,false,null,null,null,null
+realtime,messages_2025_10_05,payload,jsonb,null,true,null,false,null,false,false,null,null,null,null
+realtime,messages_2025_10_05,event,text,null,true,null,false,null,false,false,null,null,null,null
+realtime,messages_2025_10_05,private,boolean,null,true,false,false,null,false,false,null,null,null,null
+realtime,messages_2025_10_05,updated_at,timestamp without time zone,null,false,now(),false,null,false,false,null,null,null,null
+realtime,messages_2025_10_05,inserted_at,timestamp without time zone,null,false,now(),false,null,true,false,null,null,null,null
+realtime,messages_2025_10_05,id,uuid,null,false,gen_random_uuid(),false,null,true,false,null,null,null,null
+realtime,messages_2025_10_06,topic,text,null,false,null,false,null,false,false,null,null,null,null
+realtime,messages_2025_10_06,extension,text,null,false,null,false,null,false,false,null,null,null,null
+realtime,messages_2025_10_06,payload,jsonb,null,true,null,false,null,false,false,null,null,null,null
+realtime,messages_2025_10_06,event,text,null,true,null,false,null,false,false,null,null,null,null
+realtime,messages_2025_10_06,private,boolean,null,true,false,false,null,false,false,null,null,null,null
+realtime,messages_2025_10_06,updated_at,timestamp without time zone,null,false,now(),false,null,false,false,null,null,null,null
+realtime,messages_2025_10_06,inserted_at,timestamp without time zone,null,false,now(),false,null,true,false,null,null,null,null
+realtime,messages_2025_10_06,id,uuid,null,false,gen_random_uuid(),false,null,true,false,null,null,null,null
+realtime,messages_2025_10_07,topic,text,null,false,null,false,null,false,false,null,null,null,null
+realtime,messages_2025_10_07,extension,text,null,false,null,false,null,false,false,null,null,null,null
+realtime,messages_2025_10_07,payload,jsonb,null,true,null,false,null,false,false,null,null,null,null
+realtime,messages_2025_10_07,event,text,null,true,null,false,null,false,false,null,null,null,null
+realtime,messages_2025_10_07,private,boolean,null,true,false,false,null,false,false,null,null,null,null
+realtime,messages_2025_10_07,updated_at,timestamp without time zone,null,false,now(),false,null,false,false,null,null,null,null
+realtime,messages_2025_10_07,inserted_at,timestamp without time zone,null,false,now(),false,null,true,false,null,null,null,null
+realtime,messages_2025_10_07,id,uuid,null,false,gen_random_uuid(),false,null,true,false,null,null,null,null
+realtime,messages_2025_10_08,topic,text,null,false,null,false,null,false,false,null,null,null,null
+realtime,messages_2025_10_08,extension,text,null,false,null,false,null,false,false,null,null,null,null
+realtime,messages_2025_10_08,payload,jsonb,null,true,null,false,null,false,false,null,null,null,null
+realtime,messages_2025_10_08,event,text,null,true,null,false,null,false,false,null,null,null,null
+realtime,messages_2025_10_08,private,boolean,null,true,false,false,null,false,false,null,null,null,null
+realtime,messages_2025_10_08,updated_at,timestamp without time zone,null,false,now(),false,null,false,false,null,null,null,null
+realtime,messages_2025_10_08,inserted_at,timestamp without time zone,null,false,now(),false,null,true,false,null,null,null,null
+realtime,messages_2025_10_08,id,uuid,null,false,gen_random_uuid(),false,null,true,false,null,null,null,null
+realtime,schema_migrations,version,bigint,null,false,null,false,null,true,false,null,null,null,null
+realtime,schema_migrations,inserted_at,timestamp(0) without time zone,null,true,null,false,null,false,false,null,null,null,null
+realtime,subscription,id,bigint,null,false,null,true,null,true,false,null,null,null,null
+realtime,subscription,subscription_id,uuid,null,false,null,false,null,false,true,null,null,null,null
+realtime,subscription,entity,regclass,null,false,null,false,null,false,true,null,null,null,null
+realtime,subscription,filters,realtime.user_defined_filter[],null,false,'{}'::realtime.user_defined_filter[],false,null,false,true,null,null,null,null
+realtime,subscription,claims,jsonb,null,false,null,false,null,false,false,null,null,null,null
+realtime,subscription,claims_role,regrole,null,false,realtime.to_regrole((claims ->> 'role'::text)),false,s,false,false,null,null,null,null
+realtime,subscription,created_at,timestamp without time zone,null,false,"timezone('utc'::text, now())",false,null,false,false,null,null,null,null
+storage,buckets,id,text,null,false,null,false,null,true,false,null,null,null,null
+storage,buckets,name,text,null,false,null,false,null,false,true,null,null,null,null
+storage,buckets,owner,uuid,null,true,null,false,null,false,false,null,null,null,null
+storage,buckets,created_at,timestamp with time zone,null,true,now(),false,null,false,false,null,null,null,null
+storage,buckets,updated_at,timestamp with time zone,null,true,now(),false,null,false,false,null,null,null,null
+storage,buckets,public,boolean,null,true,false,false,null,false,false,null,null,null,null
+storage,buckets,avif_autodetection,boolean,null,true,false,false,null,false,false,null,null,null,null
+storage,buckets,file_size_limit,bigint,null,true,null,false,null,false,false,null,null,null,null
+storage,buckets,allowed_mime_types,text[],null,true,null,false,null,false,false,null,null,null,null
+storage,buckets,owner_id,text,null,true,null,false,null,false,false,null,null,null,null
+storage,buckets,type,storage.buckettype,"STANDARD, ANALYTICS",false,'STANDARD'::storage.buckettype,false,null,false,false,null,null,null,null
+storage,buckets_analytics,id,text,null,false,null,false,null,true,false,null,null,null,null
+storage,buckets_analytics,type,storage.buckettype,"STANDARD, ANALYTICS",false,'ANALYTICS'::storage.buckettype,false,null,false,false,null,null,null,null
+storage,buckets_analytics,format,text,null,false,'ICEBERG'::text,false,null,false,false,null,null,null,null
+storage,buckets_analytics,created_at,timestamp with time zone,null,false,now(),false,null,false,false,null,null,null,null
+storage,buckets_analytics,updated_at,timestamp with time zone,null,false,now(),false,null,false,false,null,null,null,null
+storage,migrations,id,integer,null,false,null,false,null,true,false,null,null,null,null
+storage,migrations,name,character varying(100),null,false,null,false,null,false,true,null,null,null,null
+storage,migrations,hash,character varying(40),null,false,null,false,null,false,false,null,null,null,null
+storage,migrations,executed_at,timestamp without time zone,null,true,CURRENT_TIMESTAMP,false,null,false,false,null,null,null,null
+storage,objects,id,uuid,null,false,gen_random_uuid(),false,null,true,false,null,null,null,null
+storage,objects,bucket_id,text,null,true,null,false,null,false,true,storage,buckets,id,null
+storage,objects,name,text,null,true,null,false,null,false,true,null,null,null,null
+storage,objects,owner,uuid,null,true,null,false,null,false,false,null,null,null,null
+storage,objects,created_at,timestamp with time zone,null,true,now(),false,null,false,false,null,null,null,null
+storage,objects,updated_at,timestamp with time zone,null,true,now(),false,null,false,false,null,null,null,null
+storage,objects,last_accessed_at,timestamp with time zone,null,true,now(),false,null,false,false,null,null,null,null
+storage,objects,metadata,jsonb,null,true,null,false,null,false,false,null,null,null,null
+storage,objects,path_tokens,text[],null,true,"string_to_array(name, '/'::text)",false,s,false,false,null,null,null,null
+storage,objects,version,text,null,true,null,false,null,false,false,null,null,null,null
+storage,objects,owner_id,text,null,true,null,false,null,false,false,null,null,null,null
+storage,objects,user_metadata,jsonb,null,true,null,false,null,false,false,null,null,null,null
+storage,objects,level,integer,null,true,null,false,null,false,true,null,null,null,null
+storage,prefixes,bucket_id,text,null,false,null,false,null,true,false,storage,buckets,id,null
+storage,prefixes,name,text,null,false,null,false,null,true,false,null,null,null,null
+storage,prefixes,level,integer,null,false,storage.get_level(name),false,s,true,false,null,null,null,null
+storage,prefixes,created_at,timestamp with time zone,null,true,now(),false,null,false,false,null,null,null,null
+storage,prefixes,updated_at,timestamp with time zone,null,true,now(),false,null,false,false,null,null,null,null
+storage,s3_multipart_uploads,id,text,null,false,null,false,null,true,false,null,null,null,null
+storage,s3_multipart_uploads,in_progress_size,bigint,null,false,0,false,null,false,false,null,null,null,null
+storage,s3_multipart_uploads,upload_signature,text,null,false,null,false,null,false,false,null,null,null,null
+storage,s3_multipart_uploads,bucket_id,text,null,false,null,false,null,false,false,storage,buckets,id,null
+storage,s3_multipart_uploads,key,text,null,false,null,false,null,false,false,null,null,null,null
+storage,s3_multipart_uploads,version,text,null,false,null,false,null,false,false,null,null,null,null
+storage,s3_multipart_uploads,owner_id,text,null,true,null,false,null,false,false,null,null,null,null
+storage,s3_multipart_uploads,created_at,timestamp with time zone,null,false,now(),false,null,false,false,null,null,null,null
+storage,s3_multipart_uploads,user_metadata,jsonb,null,true,null,false,null,false,false,null,null,null,null
+storage,s3_multipart_uploads_parts,id,uuid,null,false,gen_random_uuid(),false,null,true,false,null,null,null,null
+storage,s3_multipart_uploads_parts,upload_id,text,null,false,null,false,null,false,false,storage,s3_multipart_uploads,id,null
+storage,s3_multipart_uploads_parts,size,bigint,null,false,0,false,null,false,false,null,null,null,null
+storage,s3_multipart_uploads_parts,part_number,integer,null,false,null,false,null,false,false,null,null,null,null
+storage,s3_multipart_uploads_parts,bucket_id,text,null,false,null,false,null,false,false,storage,buckets,id,null
+storage,s3_multipart_uploads_parts,key,text,null,false,null,false,null,false,false,null,null,null,null
+storage,s3_multipart_uploads_parts,etag,text,null,false,null,false,null,false,false,null,null,null,null
+storage,s3_multipart_uploads_parts,owner_id,text,null,true,null,false,null,false,false,null,null,null,null
+storage,s3_multipart_uploads_parts,version,text,null,false,null,false,null,false,false,null,null,null,null
+storage,s3_multipart_uploads_parts,created_at,timestamp with time zone,null,false,now(),false,null,false,false,null,null,null,null
+vault,secrets,id,uuid,null,false,gen_random_uuid(),false,null,true,false,null,null,null,null
+vault,secrets,name,text,null,true,null,false,null,false,true,null,null,null,null
+vault,secrets,description,text,null,false,''::text,false,null,false,false,null,null,null,null
+vault,secrets,secret,text,null,false,null,false,null,false,false,null,null,null,null
+vault,secrets,key_id,uuid,null,true,(pgsodium.create_key()).id,false,null,false,false,pgsodium,key,id,null
+vault,secrets,nonce,bytea,null,true,pgsodium.crypto_aead_det_noncegen(),false,null,false,false,null,null,null,null
+vault,secrets,created_at,timestamp with time zone,null,false,CURRENT_TIMESTAMP,false,null,false,false,null,null,null,null
+vault,secrets,updated_at,timestamp with time zone,null,false,CURRENT_TIMESTAMP,false,null,false,false,null,null,null,null

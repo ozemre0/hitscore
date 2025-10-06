@@ -520,7 +520,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get participantsEmptyDesc => 'No one has registered for this competition yet.';
 
   @override
-  String get participantAthleteId => 'Athlete ID';
+  String get participantAthleteId => 'User ID';
 
   @override
   String get participantGender => 'Gender';
@@ -595,10 +595,28 @@ class AppLocalizationsEn extends AppLocalizations {
   String get athleteProfileRequired => 'Athlete profile required. Please complete your profile first.';
 
   @override
+  String get athlete => 'Athlete';
+
+  @override
+  String get coach => 'Coach';
+
+  @override
   String get registrationOpen => 'Registration open';
 
   @override
   String get registrationClosed => 'Registration closed';
+
+  @override
+  String get registrationAllowedLabel => 'Allow registration';
+
+  @override
+  String get registrationAllowedDesc => 'If enabled, users can send join requests. You can change this later.';
+
+  @override
+  String get scoreAllowedLabel => 'Allow score entry';
+
+  @override
+  String get scoreAllowedDesc => 'If enabled, participants can enter scores. Typically enable right before the competition starts; you can change this later.';
 
   @override
   String get requestSent => 'Request sent';
@@ -623,4 +641,217 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get noClassificationsAvailable => 'No classifications available for this competition';
+
+  @override
+  String get addAthletes => 'Add Athletes';
+
+  @override
+  String get searchAthleteHint => 'Search athletes';
+
+  @override
+  String get add => 'Add';
+
+  @override
+  String selectedCount(int count) {
+    return '$count selected';
+  }
+
+  @override
+  String get onlyEligible => 'Only eligible';
+
+  @override
+  String get noResults => 'No results';
+
+  @override
+  String get operationFailed => 'Operation failed';
+
+  @override
+  String get addedSuccessfully => 'Added successfully';
+
+  @override
+  String get addToCompetition => 'Add to competition';
+
+  @override
+  String pendingRequestsCount(int count) {
+    return 'Pending requests: $count';
+  }
+
+  @override
+  String acceptedParticipantsCount(int count) {
+    return 'Accepted participants: $count';
+  }
+
+  @override
+  String get all => 'All';
+
+  @override
+  String get classification => 'Classification';
+
+  @override
+  String get participantClassification => 'Classification';
+
+  @override
+  String get participantCompetitionsTitle => 'My Participations';
+
+  @override
+  String get participantCompetitionsSubtitle => 'View competitions you\'re participating in.';
+
+  @override
+  String get participantCompetitionsEmptyTitle => 'No participations yet';
+
+  @override
+  String get participantCompetitionsEmptyDesc => 'You haven\'t joined any competitions yet.';
+
+  @override
+  String get participantCompetitionsLoadError => 'Failed to load participations';
+
+  @override
+  String get competitionStatus => 'Status';
+
+  @override
+  String get joinedOn => 'Joined on';
+
+  @override
+  String get leaveCompetition => 'Leave';
+
+  @override
+  String get leaveCompetitionConfirm => 'Do you want to leave this competition?';
+
+  @override
+  String get competitionLeft => 'You have left the competition';
+
+  @override
+  String get leaveCompetitionError => 'Failed to leave competition';
+
+  @override
+  String get scoreEntryTitle => 'Score Entry';
+
+  @override
+  String get scoreEntrySubtitle => 'Enter your scores for this competition';
+
+  @override
+  String get enterScore => 'Enter Score';
+
+  @override
+  String get scoreEntryComingSoon => 'Score entry feature coming soon';
+
+  @override
+  String get scoreEntryAllowed => 'Score entry allowed';
+
+  @override
+  String get scoreEntryNotAllowed => 'Score entry not allowed';
+
+  @override
+  String get classificationLabel => 'Classification';
+
+  @override
+  String get roundCountLabel => 'Round count';
+
+  @override
+  String get arrowsPerSetLabel => 'Arrows per set';
+
+  @override
+  String get setsPerRoundLabel => 'Sets per round';
+
+  @override
+  String get myOrganizedCompetitionsTitle => 'My Organized Competitions';
+
+  @override
+  String get myOrganizedCompetitionsSubtitle => 'Manage competitions you have created.';
+
+  @override
+  String get participantClub => 'Club';
+
+  @override
+  String get noClub => 'No Club';
+
+  @override
+  String get currentSet => 'Current Set';
+
+  @override
+  String get totalScore => 'Total Score';
+
+  @override
+  String tapScoreToContinue(int setNumber) {
+    return 'Tap the score buttons below to continue training. You are now writing Set $setNumber.';
+  }
+
+  @override
+  String editSet(int setNumber) {
+    return 'Edit - Set $setNumber';
+  }
+
+  @override
+  String get edit => 'Edit';
+
+  @override
+  String overwritingSet(int setNumber) {
+    return 'You are overwriting Set $setNumber. Tap the score buttons below to continue.';
+  }
+
+  @override
+  String get guestTitle => 'Welcome';
+
+  @override
+  String get guestSubtitle => 'Explore active competitions or sign in to continue.';
+
+  @override
+  String get goToLogin => 'Go to Login';
+
+  @override
+  String get browseActiveCompetitions => 'Active Competitions';
+
+  @override
+  String get onboardingWelcomeTitle => 'Welcome';
+
+  @override
+  String get onboardingWelcomeSubtitle => 'Choose your language and explore HitScore';
+
+  @override
+  String get onboardingLanguageNext => 'Next';
+
+  @override
+  String get onboardingGetStarted => 'Get Started';
+
+  @override
+  String get onboardingIntroTitle => 'Manage competitions with ease';
+
+  @override
+  String get onboardingIntroDescription => 'Join competitions, organize events, and track scores seamlessly.';
+
+  @override
+  String get onboardingFeaturesTitle => 'What you can do';
+
+  @override
+  String get onboardingFeatureSessionsTitle => 'Participate';
+
+  @override
+  String get onboardingFeatureSessionsDescription => 'Browse active competitions and send join requests.';
+
+  @override
+  String get onboardingFeatureCoachTitle => 'Organize';
+
+  @override
+  String get onboardingFeatureCoachDescription => 'Create competitions, manage participants and classifications.';
+
+  @override
+  String get onboardingFeatureToolsTitle => 'Track Scores';
+
+  @override
+  String get onboardingFeatureToolsDescription => 'Enter and follow scores with clear, responsive screens.';
+
+  @override
+  String get availableScoreButtonsLabel => 'Available Score Buttons';
+
+  @override
+  String get availableScoreButtonsDescription => 'Select which score buttons will be available for this classification';
+
+  @override
+  String get scoreEntryNotAllowedTitle => 'Score Entry Not Available';
+
+  @override
+  String get scoreEntryNotAllowedMessage => 'Score entry is not currently available for this competition. You will be able to enter scores when the organizer opens it.';
+
+  @override
+  String get ok => 'OK';
 }

@@ -1,0 +1,470 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+import 'package:smooth_page_indicator/smooth_page_indicator.dart';
+import 'package:auto_size_text/auto_size_text.dart';
+import '../services/onboarding_service.dart';
+import 'login_screen.dart';
+
+class OnboardingScreen extends StatefulWidget {
+  final Function(Locale)? onLanguageChanged;
+
+  const OnboardingScreen({super.key, this.onLanguageChanged});
+
+  @override
+  State<OnboardingScreen> createState() => _OnboardingScreenState();
+}
+
+class _OnboardingScreenState extends State<OnboardingScreen> {
+  final PageController _pageController = PageController();
+  int _currentPage = 0;
+  String? _selectedLanguageCode = 'en';
+
+  final List<Map<String, String>> _supportedLanguages = [
+    {'code': 'en', 'name': 'English', 'flag': '🇺🇸'},
+    {'code': 'tr', 'name': 'Türkçe', 'flag': '🇹🇷'},
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadSavedLanguage();
+  }
+
+  Future<void> _loadSavedLanguage() async {
+    final savedLanguage = await OnboardingService.getSavedLanguage();
+    
+    if (savedLanguage != null) {
+      setState(() {
+        _selectedLanguageCode = savedLanguage;
+      });
+    } else {
+      // Cihazın dilini kontrol et
+      final deviceLocale = WidgetsBinding.instance.platformDispatcher.locale;
+      final deviceLanguageCode = deviceLocale.languageCode;
+      
+      // Türkçe ise 'tr', diğer durumda 'en' seç
+      final initialLanguage = deviceLanguageCode == 'tr' ? 'tr' : 'en';
+      
+      setState(() {
+        _selectedLanguageCode = initialLanguage;
+      });
+    }
+  }
+
+  Future<void> _onLanguageSelected(String languageCode) async {
+    setState(() {
+      _selectedLanguageCode = languageCode;
+    });
+    
+    await OnboardingService.saveSelectedLanguage(languageCode);
+    
+    if (widget.onLanguageChanged != null) {
+      widget.onLanguageChanged!(Locale(languageCode));
+    }
+  }
+
+  Future<void> _completeOnboarding() async {
+    await OnboardingService.completeOnboarding();
+    
+    if (mounted) {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => const LoginScreen()),
+      );
+    }
+  }
+
+  void _nextPage() {
+    if (_currentPage < 2) {
+      _pageController.nextPage(
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeInOut,
+      );
+    } else {
+      _completeOnboarding();
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    
+    return Scaffold(
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      body: SafeArea(
+        child: Column(
+          children: [
+            const SizedBox(height: 20),
+            
+            // Page content
+            Expanded(
+              child: Container(
+                margin: const EdgeInsets.symmetric(horizontal: 20),
+                padding: const EdgeInsets.all(24),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).cardColor,
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.1),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: PageView(
+                  controller: _pageController,
+                  onPageChanged: (index) {
+                    setState(() {
+                      _currentPage = index;
+                    });
+                  },
+                  children: [
+                    _buildLanguageSelectionPage(l10n),
+                    _buildIntroductionPage(l10n),
+                    _buildFeaturesPage(l10n),
+                  ],
+                ),
+              ),
+            ),
+            
+            const SizedBox(height: 20),
+            
+            // Page indicator
+            SmoothPageIndicator(
+              controller: _pageController,
+              count: 3,
+              effect: WormEffect(
+                dotHeight: 8,
+                dotWidth: 8,
+                activeDotColor: Theme.of(context).colorScheme.primary,
+                dotColor: Colors.grey,
+              ),
+            ),
+            
+            const SizedBox(height: 20),
+            
+            // Next/Get Started button
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: SizedBox(
+                width: double.infinity,
+                height: 50,
+                child: OutlinedButton(
+                  onPressed: (_currentPage == 0 && _selectedLanguageCode == null) 
+                      ? null 
+                      : _nextPage,
+                  style: OutlinedButton.styleFrom(
+                    backgroundColor: Colors.transparent,
+                    foregroundColor: Theme.of(context).colorScheme.primary,
+                    side: BorderSide(color: Theme.of(context).colorScheme.primary, width: 1),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    textStyle: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  child: Text(
+                    _currentPage == 2 
+                        ? l10n.onboardingGetStarted 
+                        : l10n.onboardingLanguageNext,
+                  ),
+                ),
+              ),
+            ),
+            
+            const SizedBox(height: 20),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLanguageSelectionPage(AppLocalizations l10n) {
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Text(
+          l10n.onboardingWelcomeTitle,
+          style: TextStyle(
+            fontSize: 32,
+            fontWeight: FontWeight.bold,
+            color: Theme.of(context).colorScheme.primary,
+          ),
+        ),
+        const SizedBox(height: 16),
+        Text(
+          l10n.onboardingWelcomeSubtitle,
+          style: TextStyle(
+            fontSize: 18,
+            color: Theme.of(context).textTheme.bodyLarge?.color,
+          ),
+        ),
+        const SizedBox(height: 32),
+        
+        // Language selection buttons
+        Expanded(
+          child: GridView.builder(
+            shrinkWrap: true,
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 2,
+              childAspectRatio: 2.5,
+              crossAxisSpacing: 12,
+              mainAxisSpacing: 12,
+            ),
+            itemCount: _supportedLanguages.length,
+            itemBuilder: (context, index) {
+              final language = _supportedLanguages[index];
+              final isSelected = _selectedLanguageCode == language['code'];
+              
+              return GestureDetector(
+                onTap: () => _onLanguageSelected(language['code']!),
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: isSelected ? Theme.of(context).colorScheme.primary : Colors.grey[200],
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: isSelected ? Theme.of(context).colorScheme.primary : Colors.grey[400]!,
+                      width: 2,
+                    ),
+                  ),
+                  child: Center(
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          language['flag']!,
+                          style: const TextStyle(fontSize: 24),
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          language['name']!,
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w500,
+                            color: isSelected ? Colors.white : Theme.of(context).colorScheme.primary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+        
+        
+      ],
+    );
+  }
+
+  Widget _buildIntroductionPage(AppLocalizations l10n) {
+    return SingleChildScrollView(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const SizedBox(height: 20),
+          Text(
+            l10n.onboardingIntroTitle,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+              color: Theme.of(context).colorScheme.primary,
+            ),
+          ),
+          const SizedBox(height: 20),
+          Text(
+            l10n.onboardingIntroDescription,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 14,
+              color: Theme.of(context).textTheme.bodyMedium?.color,
+              height: 1.4,
+            ),
+          ),
+          const SizedBox(height: 30),
+          
+          // Illustration of archer and coach
+          Container(
+            height: 150,
+            width: double.infinity,
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.surface,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: Theme.of(context).colorScheme.outline.withOpacity(0.2),
+              ),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                // Archer illustration
+                Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      Icons.sports,
+                      size: 50,
+                      color: Theme.of(context).colorScheme.primary,
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Archer',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w500,
+                        color: Theme.of(context).textTheme.bodyMedium?.color,
+                      ),
+                    ),
+                  ],
+                ),
+                // Coach illustration
+                Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      Icons.person,
+                      size: 50,
+                      color: Theme.of(context).colorScheme.secondary,
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Coach',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w500,
+                        color: Theme.of(context).textTheme.bodyMedium?.color,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 20),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFeaturesPage(AppLocalizations l10n) {
+    final features = [
+      {
+        'icon': Icons.emoji_events,
+        'title': l10n.onboardingFeatureSessionsTitle,
+        'description': l10n.onboardingFeatureSessionsDescription,
+        'color': Theme.of(context).colorScheme.primary,
+      },
+      {
+        'icon': Icons.school,
+        'title': l10n.onboardingFeatureCoachTitle,
+        'description': l10n.onboardingFeatureCoachDescription,
+        'color': Theme.of(context).colorScheme.secondary,
+      },
+      {
+        'icon': Icons.build,
+        'title': l10n.onboardingFeatureToolsTitle,
+        'description': l10n.onboardingFeatureToolsDescription,
+        'color': Theme.of(context).colorScheme.tertiary,
+      },
+    ];
+
+    return Column(
+      children: [
+        Text(
+          l10n.onboardingFeaturesTitle,
+          style: TextStyle(
+            fontSize: 24,
+            fontWeight: FontWeight.bold,
+            color: Theme.of(context).colorScheme.primary,
+          ),
+        ),
+        const SizedBox(height: 24),
+        
+        Expanded(
+          child: ListView.builder(
+            itemCount: features.length,
+            itemBuilder: (context, index) {
+              final feature = features[index];
+              return Container(
+                margin: const EdgeInsets.only(bottom: 20),
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.surface,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: Theme.of(context).colorScheme.outline.withOpacity(0.2),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 60,
+                      height: 60,
+                      decoration: BoxDecoration(
+                        color: (feature['color'] as Color).withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Icon(
+                        feature['icon'] as IconData,
+                        color: feature['color'] as Color,
+                        size: 30,
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          AutoSizeText(
+                            feature['title'] as String,
+                            maxLines: 3,
+                            minFontSize: 12,
+                            stepGranularity: 0.5,
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: Theme.of(context).textTheme.titleMedium?.color,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                           LayoutBuilder(
+                             builder: (context, constraints) {
+                               return ConstrainedBox(
+                                 constraints: BoxConstraints(
+                                   maxWidth: constraints.maxWidth,
+                                 ),
+                                 child: AutoSizeText(
+                                   feature['description'] as String,
+                                   maxLines: 2,
+                                   minFontSize: 10,
+                                   stepGranularity: 0.5,
+                                   style: TextStyle(
+                                     fontSize: 14,
+                                     color: Theme.of(context).textTheme.bodySmall?.color,
+                                   ),
+                                 ),
+                               );
+                             },
+                           ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
+}

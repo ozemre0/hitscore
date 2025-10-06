@@ -1,0 +1,1078 @@
+import 'dart:async';
+
+import 'package:archeryozs/services/training_history_service.dart';
+import 'package:flutter/material.dart';
+import 'dart:convert'; // For jsonEncode
+import 'package:sqflite/sqflite.dart' if (dart.library.html) 'sqflite_web_stub.dart'; // Conditional import for ConflictAlgorithm
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:uuid/uuid.dart';
+import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
+import '../models/training_session_model.dart';
+import '../services/supabase_config.dart';
+import '../services/database_service.dart';
+
+/// Completely redesigned repository to work in offline-first mode
+/// All operations are done locally first, with Supabase operations
+/// done in the background only when explicitly requested
+/// Now using SQLite instead of Flutter Secure Storage for better data management
+class TrainingRepository {
+  final SupabaseClient _supabase = SupabaseConfig.client;
+  final _database = DatabaseService();
+  final Uuid _uuid = const Uuid();
+  // Track if a sync is already in progress
+  bool _isSyncing = false;
+  // Duplicate ID mapping cache (localId -> supabaseId)
+  final Map<String, String> _localToSupabaseIdMapping = {};
+
+  // Constructor
+  TrainingRepository();
+
+  /// Get synced session ID for a local session ID
+  String? getSyncedSessionId(String localSessionId) {
+    return _localToSupabaseIdMapping[localSessionId];
+  }
+
+  /// Get updated session after sync (checks mapping first)
+  Future<TrainingSession?> getUpdatedSessionAfterSync(String originalSessionId) async {
+    try {
+      // 5 defa dene, 200ms arayla
+      for (int attempt = 0; attempt < 5; attempt++) {
+        if (originalSessionId.startsWith('local_')) {
+          final mappedId = _localToSupabaseIdMapping[originalSessionId];
+          if (mappedId != null) {
+            print('🎯 Found mapped session ID: $originalSessionId -> $mappedId');
+            try {
+              final session = await getTrainingSession(mappedId);
+              if (session != null) return session;
+            } catch (_) {}
+          }
+        }
+        // Eğer mapping yoksa veya session bulunamadıysa bekle
+        await Future.delayed(const Duration(milliseconds: 200));
+      }
+      // Son çare: orijinal ID ile dene
+      return await getTrainingSession(originalSessionId);
+    } catch (e) {
+      print('Error getting updated session after sync: $e');
+      return null;
+    }
+  }
+
+  /// Create a new training session (ALWAYS local first)
+  Future<TrainingSession> createTrainingSession({
+    required String userId,
+    required DateTime date,
+    required int distance,
+    required String bowType,
+    required bool isIndoor,
+    String? notes,
+    String? training_session_name,
+    String trainingType = 'score',
+    int arrowsPerSeries = 3,
+    String? seriesData,
+    int seriesCount = 1,
+    String? targetFace,
+  }) async {
+    // DEBUG: createTrainingSession.targetFace
+    print('DEBUG: createTrainingSession.targetFace =  [35m$targetFace [0m');
+
+    // Generate a local ID with a prefix to identify it as a local session
+    final localId = 'local_${_uuid.v4()}';
+
+    if (trainingType == 'technique') {
+      // Teknik antrenman için skor/seri/puan alanlarını null/boş bırak
+      // Ama toplam ok sayısının hesaplanabilmesi için dummy seriler oluştur
+      List<List<dynamic>> dummySeries = List.generate(
+        seriesCount,
+        (i) => [i + 1, []], // Boş seriler - sadece seri numarası
+      );
+      String dummySeriesData = jsonEncode(dummySeries);
+      
+      final session = TrainingSession(
+        id: localId,
+        userId: userId,
+        date: date,
+        distance: distance,
+        bowType: bowType,
+        isIndoor: isIndoor,
+        notes: notes,
+        training_session_name: training_session_name,
+        trainingType: trainingType,
+        arrowsPerSeries: arrowsPerSeries,
+        seriesData: dummySeriesData, // Boş seriler ile toplam ok sayısı hesaplanabilir
+        is_deleted: false,
+        targetFace: targetFace,
+      );
+      await _database.saveTrainingSession(session);
+      return session;
+    }
+
+    // Create the training session with the local ID
+    final trainingSession = TrainingSession(
+      id: localId,
+      userId: userId,
+      date: date,
+      distance: distance,
+      bowType: bowType,
+      isIndoor: isIndoor,
+      notes: notes,
+      training_session_name: training_session_name,
+      trainingType: trainingType,
+      arrowsPerSeries: arrowsPerSeries, // Store arrows per series
+      seriesData: seriesData, // Yeni algoritma için
+      targetFace: targetFace,
+    );
+
+    // Web platformunda doğrudan Supabase kullan, diğer platformlarda SQLite
+    if (kIsWeb) {
+      try {
+        // Web platformunda doğrudan Supabase'e kaydet
+        // ÖNEMLİ: webSaveTrainingSession artık güncellenmiş TrainingSession döndürüyor
+        final updatedSession =
+            await _database.webSaveTrainingSession(trainingSession);
+        // |10n:web_training_session_created_with_series_data
+        print('|10n:web_training_session_created_with_series_data');
+        print('Web training session created with ID: ${updatedSession.id}');
+
+        // Supabase'in verdiği gerçek ID ile güncellenmiş session'ı döndür
+        return updatedSession;
+      } catch (e) {
+        print('|10n:web_platform_error_creating_training_session $e');
+        rethrow;
+      }
+    } else {
+      // Mobil platformlarda yerel SQLite veritabanına kaydet
+      await _database.saveTrainingSession(trainingSession);
+      
+      // **OPTİMİZE EDİLDİ:** İlk session creation'da sync tetikleme
+      // Sync sadece gerçek veri girildikten sonra yapılmalı (ilk seri tamamlandığında)
+      debugPrint('|10n:mobile_session_created_locally: ${trainingSession.id}');
+      debugPrint('|10n:will_sync_after_first_series_completion');
+      
+      // Future.microtask(() async {
+      //   try {
+      //     await syncPendingTrainingSessions();
+      //     debugPrint('|10n:mobile_sync_triggered_success');
+      //   } catch (e) {
+      //     debugPrint('|10n:mobile_sync_error: $e');
+      //   }
+      // });
+    }
+
+    return trainingSession;
+  }
+
+  /// Get all training sessions for a user (ALWAYS from local DB)
+  Future<List<TrainingSession>> getUserTrainingSessions(String userId, {bool force = false}) async {
+    try {
+      if (kIsWeb) {
+        return await _database.webGetUserTrainingSessions(userId, force: force);
+      }
+      // Mobilde: localde veri yoksa veya force ise Supabase'den sync et
+      var localSessions = await _database.getUserTrainingSessions(userId);
+      if (force || localSessions.isEmpty) {
+        // Supabase ile senkronizasyon yap
+        final trainingHistoryService = TrainingHistoryService();
+        await trainingHistoryService.syncTrainingHistoryWithSupabase(userId, force: true);
+        // Sync sonrası localden tekrar oku
+        localSessions = await _database.getUserTrainingSessions(userId);
+      }
+      return localSessions;
+    } catch (e) {
+      print('Error getting user training sessions: $e');
+      return [];
+    }
+  }
+
+  /// Get a specific training session from local DB
+  Future<TrainingSession> getTrainingSession(String trainingId) async {
+    try {
+      // Web platformunda direkt Supabase'den al
+      if (kIsWeb) {
+        final session = await _database.webGetTrainingSession(trainingId);
+        if (session != null) {
+          return session;
+        }
+        throw Exception('Training session not found in Supabase');
+      }
+
+      // Mobil platformlarda mevcut kodu kullan
+      // First try to get from local DB
+      final session = await _database.getTrainingSession(trainingId);
+
+      if (session != null) {
+        return session;
+      }
+
+      // If not found in local DB and it's not a local ID, try to fetch from Supabase
+      if (!trainingId.startsWith('local_')) {
+        try {
+          final connectivityResult = await Connectivity().checkConnectivity();
+
+          // Only attempt Supabase fetch if we have connectivity
+          if (connectivityResult != ConnectivityResult.none) {
+            print('Session not found locally, trying Supabase: $trainingId');
+
+            // Try to fetch from Supabase
+            final response = await _supabase
+                .from('training_sessions')
+                .select('*')
+                .eq('id', trainingId)
+                .single();
+
+            // Convert to model
+            final remoteSession =
+                await _convertSupabaseResponseToSession(response);
+
+            // Save to local database
+            await _database.saveTrainingSession(remoteSession, markForSync: false); // **FİX: Supabase'den çekilen kayıtları sync'e koyma**
+
+            return remoteSession;
+          }
+        } catch (e) {
+          print('Error fetching training session from Supabase: $e');
+        }
+      }
+
+      throw Exception('Training session not found');
+    } catch (e) {
+      print('Error getting training session: $e');
+      rethrow;
+    }
+  }
+
+  /// Helper method to convert Supabase response to TrainingSession object
+  Future<TrainingSession> _convertSupabaseResponseToSession(
+      Map<String, dynamic> response) async {
+    return TrainingSession(
+      id: response['id'],
+      userId: response['user_id'],
+      date: DateTime.parse(response['date']),
+      distance: response['distance'],
+      bowType: response['bow_type'],
+      isIndoor: response['is_indoor'],
+      notes: response['notes'],
+      training_session_name: response['training_session_name'], // |10n
+      trainingType: response['training_type'],
+      arrowsPerSeries: response['arrows_per_series'] ?? 3, // Include arrowsPerSeries from response or use default
+      is_deleted: (response['is_deleted'] == true || response['is_deleted'] == 1),
+      targetFace: response['target_face'] as String?,
+    );
+  }
+
+  /// Güncelleme yap
+  Future<TrainingSession> updateTrainingSession({
+    required String trainingId,
+    DateTime? date,
+    int? distance,
+    String? bowType,
+    bool? isIndoor,
+    String? notes,
+    String? training_session_name,
+    String? trainingType,
+    int? arrowsPerSeries,
+    String? seriesData,
+  }) async {
+    try {
+      // Mevcut oturumu al
+      final session = await getTrainingSession(trainingId);
+
+      // Create updated session
+      final updatedSession = session.copyWith(
+        date: date ?? session.date,
+        distance: distance ?? session.distance,
+        bowType: bowType ?? session.bowType,
+        isIndoor: isIndoor ?? session.isIndoor,
+        notes: notes ?? session.notes,
+        training_session_name:
+            training_session_name ?? session.training_session_name,
+        trainingType: trainingType ?? session.trainingType,
+        arrowsPerSeries: arrowsPerSeries ?? session.arrowsPerSeries,
+        seriesData: seriesData ?? session.seriesData,
+      );
+
+      // Güncellenmiş oturumu kaydet
+      await _database.saveTrainingSession(updatedSession);
+
+      // Eğer antrenman zaten Supabase'e kaydedildiyse güncelle
+      if (!trainingId.startsWith('local_')) {
+        final connectivityResult = await Connectivity().checkConnectivity();
+
+        if (connectivityResult != ConnectivityResult.none) {
+          try {
+            final sessionData = {
+              'date': updatedSession.date.toIso8601String(),
+              'distance': updatedSession.distance,
+              'bow_type': updatedSession.bowType,
+              'is_indoor': updatedSession.isIndoor,
+              'notes': updatedSession.notes,
+              'training_session_name': updatedSession.training_session_name,
+              'training_type': updatedSession.trainingType,
+              'arrows_per_series': updatedSession.arrowsPerSeries,
+              'series_data': updatedSession.seriesData, // |10n:series_data_update
+            };
+
+            await _supabase
+                .from('training_sessions')
+                .update(sessionData)
+                .eq('id', trainingId);
+
+            print('Updated training session on Supabase: $trainingId');
+          } catch (e) {
+            print('Error updating training session on Supabase: $e');
+          }
+        }
+      }
+
+      return updatedSession;
+    } catch (e) {
+      print('Error updating training session: $e');
+      rethrow;
+    }
+  }
+
+  /// Filter training sessions by date range (ALWAYS from local DB)
+  Future<List<TrainingSession>> getTrainingSessionsByDateRange(
+      String userId, DateTime startDate, DateTime endDate) async {
+    try {
+      // Web platformunda direkt Supabase'den al
+      if (kIsWeb) {
+        return await _database.webGetTrainingSessionsByDateRange(
+            userId, startDate, endDate);
+      }
+      // Mobil platformlarda yerel veritabanından al
+      return await _database.getTrainingSessionsByDateRange(
+          userId, startDate, endDate);
+    } catch (e) {
+      print('Error filtering sessions by date range: $e');
+      return [];
+    }
+  }
+
+  /// Filter training sessions by environment (indoor/outdoor) (ALWAYS from local DB)
+  Future<List<TrainingSession>> getTrainingSessionsByEnvironment(
+      String userId, bool isIndoor) async {
+    try {
+      // Web platformunda direkt Supabase'den al
+      if (kIsWeb) {
+        return await _database.webGetTrainingSessionsByEnvironment(
+            userId, isIndoor);
+      }
+      // Mobil platformlarda yerel veritabanından al
+      return await _database.getTrainingSessionsByEnvironment(userId, isIndoor);
+    } catch (e) {
+      print('Error filtering sessions by environment: $e');
+      return [];
+    }
+  }
+
+  /// Manuel sync tetikleme fonksiyonu (debug amaçlı)
+  Future<void> forceSyncNow() async {
+    debugPrint('|10n:force_sync_triggered');
+    await syncPendingTrainingSessions();
+  }
+
+  /// Pending sync durumunu kontrol et (debug amaçlı)
+  Future<void> checkPendingSyncStatus() async {
+    try {
+      final pendingSessions = await _database.getPendingTrainingSessions();
+      debugPrint('|10n:pending_sync_count: ${pendingSessions.length}');
+      for (final session in pendingSessions) {
+        debugPrint('|10n:pending_session: ${session.id} - ${session.date} - ${session.trainingType}');
+      }
+    } catch (e) {
+      debugPrint('|10n:pending_sync_check_error: $e');
+    }
+  }
+
+  /// Duplicate kayıtları Supabase'den temizle ve mapping ile tekrar duplicate oluşmasını engelle
+  Future<void> cleanupDuplicateTrainingSessions(String userId) async {
+    try {
+      final response = await _supabase
+          .from('training_sessions')
+          .select('id, date, distance, training_type, total_arrows, total_score, created_at')
+          .eq('user_id', userId)
+          .order('created_at', ascending: true);
+
+      if (response.length < 2) return;
+
+      final Map<String, List<Map<String, dynamic>>> duplicateGroups = {};
+      final Set<String> keptIds = {}; // mapping için
+      // Aynı tarih, mesafe, tip, skor ve ok sayısı olan kayıtları grupla
+      for (final record in response) {
+        final key = '${record['date']}_${record['distance']}_${record['training_type']}_${record['total_arrows']}_${record['total_score'] ?? 0}';
+        duplicateGroups[key] ??= [];
+        duplicateGroups[key]!.add(record);
+      }
+
+      int totalDeleted = 0;
+      // 2'den fazla kayıt olan grupları temizle (en son oluşturulanı koru)
+      for (final group in duplicateGroups.values) {
+        if (group.length > 1) {
+          // En son oluşturulanı koru, diğerlerini sil
+          group.sort((a, b) => DateTime.parse(a['created_at']).compareTo(DateTime.parse(b['created_at'])));
+          for (int i = 0; i < group.length - 1; i++) {
+            final recordToDelete = group[i];
+            await _supabase
+                .from('training_sessions')
+                .delete()
+                .eq('id', recordToDelete['id']);
+            keptIds.add(group.last['id']);
+            totalDeleted++;
+          }
+        } else if (group.isNotEmpty) {
+          keptIds.add(group.first['id']);
+        }
+      }
+      debugPrint('|10n:duplicate_cleanup_summary: $totalDeleted duplicate deleted, ${keptIds.length} unique kept');
+    } catch (e) {
+      debugPrint('|10n:cleanup_duplicates_error: $e');
+    }
+  }
+
+  /// Sync all pending training sessions with Supabase (local-first, minimal requests)
+  Future<void> syncPendingTrainingSessions() async {
+    if (_isSyncing) return;
+    _isSyncing = true;
+    
+    final syncStartTime = DateTime.now();
+    debugPrint('🚀 BULK SYNC STARTED at ${syncStartTime.toIso8601String()}');
+    
+    try {
+      final connectivityResult = await Connectivity().checkConnectivity();
+      if (connectivityResult == ConnectivityResult.none) {
+        debugPrint('|10n:sync_no_connectivity');
+        _isSyncing = false;
+        return;
+      }
+      
+      final currentUser = SupabaseConfig.client.auth.currentUser;
+      if (currentUser == null) {
+        _isSyncing = false;
+        return;
+      }
+
+      // 1. Önce silinmiş kayıtları temizle
+      await _database.cleanupSoftDeletedSessions();
+      
+      // 2. Pending session'ları al
+      final pendingSessions = await _database.getPendingTrainingSessions();
+      debugPrint('|10n:sync_pending_sessions_count:  [32m${pendingSessions.length} [0m');
+      
+      if (pendingSessions.isEmpty) {
+        debugPrint('|10n:sync_no_pending_sessions');
+        _isSyncing = false;
+        return;
+      }
+
+      // 3. Supabase'den güncel verileri çek - SADECE karşılaştırma için gerekli alanlar
+      debugPrint('📡 Fetching minimal Supabase data for comparison...');
+      final supabaseResponse = await _supabase
+          .from('training_sessions')
+          .select('id, user_id, created_at, updated_at, series_data, notes, training_session_name')
+          .eq('user_id', currentUser.id)
+          .eq('is_deleted', false);
+      
+      debugPrint('📊 Supabase returned ${supabaseResponse.length} sessions with minimal data');
+      
+      final Map<String, Map<String, dynamic>> supabaseMap = {};
+      for (final item in supabaseResponse) {
+        supabaseMap[item['id']] = item;
+      }
+
+      final List<Map<String, dynamic>> sessionsToInsert = [];
+      final List<Map<String, dynamic>> sessionsToUpdate = [];
+      int skippedCount = 0;
+
+      for (final session in pendingSessions) {
+        // Teknik antrenmanları için özel işlem
+        if (session.trainingType == 'technique') {
+          debugPrint('|10n:sync_technique_training_kept: ${session.id}');
+        } else {
+          // Zero-arrow session kontrolü (teknik antrenmanlar hariç)
+          int totalArrows = 0;
+          int totalScore = 0;
+          try {
+            if (session.seriesData != null && session.seriesData!.isNotEmpty) {
+              final dynamic seriesDataJson = jsonDecode(session.seriesData!);
+              if (seriesDataJson is List) {
+                for (final item in seriesDataJson) {
+                  if (item is List && item.length >= 2 && item[1] is List) {
+                    final arrows = List<int>.from(item[1].map((a) => a is num ? a.toInt() : 0));
+                    totalArrows += arrows.length;
+                    totalScore += arrows.fold<int>(0, (sum, arrow) => sum + arrow);
+                  }
+                }
+              }
+            }
+          } catch (_) {}
+          
+          if (totalArrows == 0 || totalScore == 0) {
+            debugPrint('|10n:sync_skip_zero_session: ${session.id} (arrows: $totalArrows, score: $totalScore)');
+            await _database.hardDeleteTrainingSession(session.id);
+            continue;
+          }
+        }
+
+        final sessionData = session.toJson();
+        sessionData.remove('pending_sync');
+        
+        // training_type düzeltmesi
+        if (sessionData['training_type'] == 'target_score') {
+          sessionData['training_type'] = 'score';
+          debugPrint('|10n:sync_fix_invalid_training_type: ${session.id}');
+        }
+
+        debugPrint('|10n:sync_supabase_payload: ${sessionData.toString()}');
+
+        final isLocalId = session.id.startsWith('local_');
+        
+        if (isLocalId) {
+          // Local session - Supabase'de varlık kontrolü
+          bool duplicateExists = false;
+          
+          // created_at ile duplicate kontrolü
+          for (final supabaseItem in supabaseMap.values) {
+            if (supabaseItem['created_at'] == sessionData['created_at'] && 
+                supabaseItem['user_id'] == currentUser.id) {
+              debugPrint('|10n:sync_duplicate_found_by_created_at: ${sessionData['created_at']} -> ${supabaseItem['id']}');
+              duplicateExists = true;
+              // Local session'ı sil, Supabase'dekini koru
+              await _database.softDeleteTrainingSession(session.id);
+              break;
+            }
+          }
+          
+          if (!duplicateExists) {
+            // ID'yi kaldır, Supabase yeni ID oluşturacak
+            sessionData.remove('id');
+            sessionData.remove('updated_at'); // Supabase yeni timestamp oluşturacak
+            sessionsToInsert.add(sessionData);
+          }
+        } else if (supabaseMap.containsKey(session.id)) {
+          // Mevcut session - değişiklik kontrolü
+          final supabaseVersion = supabaseMap[session.id]!;
+          final localUpdatedAt = session.updatedAt;
+          final supabaseUpdatedAt = supabaseVersion['updated_at'] != null 
+              ? DateTime.parse(supabaseVersion['updated_at'].toString())
+              : null;
+              
+          bool needsUpdate = false;
+          
+          // **FİX: Gerçek içerik karşılaştırması yap - sadece timestamp'e güvenme**
+          final localSeriesData = jsonEncode(session.seriesData);
+          final supabaseSeriesData = jsonEncode(supabaseVersion['series_data'] ?? []);
+          
+          // Önemli alanları karşılaştır
+          final localNotes = session.notes ?? '';
+          final supabaseNotes = supabaseVersion['notes'] ?? '';
+          final localTrainingName = session.training_session_name ?? '';
+          final supabaseTrainingName = supabaseVersion['training_session_name'] ?? '';
+          
+          // İçerik değişmiş mi kontrol et
+          bool contentChanged = localSeriesData != supabaseSeriesData ||
+                               localNotes != supabaseNotes ||
+                               localTrainingName != supabaseTrainingName;
+                               
+          if (contentChanged) {
+            needsUpdate = true;
+            debugPrint('|10n:sync_content_changed: ${session.id}');
+          } else if (localUpdatedAt != null && supabaseUpdatedAt != null) {
+            // **FİX: Startup tolerance artırıldı - 60 saniye fark kabul edilir**
+            if (localUpdatedAt.isAfter(supabaseUpdatedAt.add(const Duration(seconds: 60)))) {
+              needsUpdate = true;
+              debugPrint('|10n:sync_local_newer: ${session.id} (local: $localUpdatedAt > supabase: $supabaseUpdatedAt)');
+            } else {
+              debugPrint('Supabase version is up-to-date: ${session.id}');
+            }
+          } else {
+            // **DEBUG:** Hangi timestamp'ler eksik?
+            debugPrint('|10n:sync_missing_timestamps: ${session.id} (local: $localUpdatedAt, supabase: $supabaseUpdatedAt)');
+          }
+          // **KALDIRILDI: Fallback "needsUpdate = true" - bu gereksiz upload'lara sebep oluyordu**
+          
+          if (needsUpdate) {
+            // **ÖNEMLİ: updated_at'i KALDIR - Supabase otomatik güncelleyecek**
+            sessionData.remove('updated_at');
+            sessionsToUpdate.add(sessionData);
+          } else {
+            skippedCount++;
+            debugPrint('|10n:sync_no_change_needed: ${session.id}');
+            // Sync tamamlandı olarak işaretle (ama updated_at değiştirme)
+            await _database.markSyncComplete(session.id);
+          }
+        } else {
+          // Supabase'de yok - INSERT
+          sessionData.remove('updated_at'); // Supabase yeni timestamp oluşturacak
+          sessionsToUpdate.add(sessionData);
+        }
+      }
+
+      // 4. TOPLU EKLEME (INSERT)
+      if (sessionsToInsert.isNotEmpty) {
+        try {
+          final insertResponse = await _supabase
+              .from('training_sessions')
+              .insert(sessionsToInsert)
+              .select();
+          
+          // Local ID'leri güncelle (sadece başarılı olanlar)
+          final localSessionsToInsert = pendingSessions
+              .where((s) => s.id.startsWith('local_'))
+              .toList();
+          
+          for (int i = 0; i < insertResponse.length && i < localSessionsToInsert.length; i++) {
+            final supabaseId = insertResponse[i]['id'] as String?;
+            if (supabaseId != null) {
+              await _database.markSessionAsSynced(localSessionsToInsert[i].id, supabaseId);
+              _localToSupabaseIdMapping[localSessionsToInsert[i].id] = supabaseId;
+              debugPrint('|10n:sync_marked_complete: ${localSessionsToInsert[i].id}');
+            }
+          }
+        } catch (e) {
+          debugPrint('|10n:sync_supabase_batch_insert_error:$e');
+        }
+      }
+
+      // 5. TOPLU GÜNCELLEME - UPSERT İLE (Çok daha hızlı!)
+      if (sessionsToUpdate.isNotEmpty) {
+        try {
+          debugPrint('🚀 Bulk updating ${sessionsToUpdate.length} sessions with UPSERT...');
+          
+          // Supabase'de toplu upsert yapabilmek için session'ları hazırla
+          final bulkUpdateData = sessionsToUpdate.map((sessionData) {
+            return {
+              'id': sessionData['id'],
+              'user_id': sessionData['user_id'],
+              'date': sessionData['date'],
+              'distance': sessionData['distance'],
+              'bow_type': sessionData['bow_type'],
+              'is_indoor': sessionData['is_indoor'],
+              'training_type': sessionData['training_type'],
+              'arrows_per_series': sessionData['arrows_per_series'],
+              'series_data': sessionData['series_data'],
+              'notes': sessionData['notes'],
+              'training_session_name': sessionData['training_session_name'],
+              'target_face': sessionData['target_face'],
+              'total_arrows': sessionData['total_arrows'],
+              'total_score': sessionData['total_score'],
+              'average': sessionData['average'],
+              'x_count': sessionData['x_count'],
+              'is_deleted': sessionData['is_deleted'] ?? false,
+              // updated_at KASITLI OLARAK EKLENMEDİ - Supabase otomatik ekleyecek
+            };
+          }).toList();
+          
+          // **TOPLU UPSERT** - Tek seferde tüm session'ları güncelle
+          await _supabase
+              .from('training_sessions')
+              .upsert(bulkUpdateData, onConflict: 'id');
+          
+          debugPrint('✅ Bulk upsert completed for ${bulkUpdateData.length} sessions');
+          
+          // Tüm session'ları sync complete olarak işaretle
+          for (final sessionData in sessionsToUpdate) {
+            await _database.markSyncComplete(sessionData['id']);
+          }
+          
+          debugPrint('✅ Marked ${sessionsToUpdate.length} sessions as sync complete');
+          
+        } catch (e) {
+          debugPrint('❌ Bulk upsert error: $e');
+          // Hata durumunda fallback: daha küçük batch'lerde dene
+          await _fallbackBatchUpdate(sessionsToUpdate);
+        }
+      }
+
+      final syncEndTime = DateTime.now();
+      final syncDuration = syncEndTime.difference(syncStartTime);
+      
+      debugPrint('🎉 BULK SYNC COMPLETED:');
+      debugPrint('   📤 Inserted: ${sessionsToInsert.length} sessions');
+      debugPrint('   🔄 Updated: ${sessionsToUpdate.length} sessions');
+      debugPrint('   ⏭️ Skipped: $skippedCount sessions (no changes)');
+      debugPrint('   🕐 Total time: ${syncDuration.inMilliseconds}ms');
+      debugPrint('   ⚡ Average: ${sessionsToUpdate.isNotEmpty ? (syncDuration.inMilliseconds / sessionsToUpdate.length).round() : 0}ms per update');
+      debugPrint('|10n:sync_completed: ${sessionsToInsert.length + sessionsToUpdate.length} antrenman senkronize edildi, $skippedCount atlandı');
+      
+    } catch (e) {
+      debugPrint('|10n:sync_error: $e');
+    } finally {
+      _isSyncing = false;
+    }
+  }
+
+  /// Fallback method for batch updates when bulk upsert fails
+  Future<void> _fallbackBatchUpdate(List<Map<String, dynamic>> sessionsToUpdate) async {
+    debugPrint('🔄 Fallback: Processing ${sessionsToUpdate.length} sessions in smaller batches...');
+    
+    const batchSize = 50; // Daha küçük batch'lerde işle
+    
+    for (int i = 0; i < sessionsToUpdate.length; i += batchSize) {
+      final endIndex = (i + batchSize < sessionsToUpdate.length) 
+          ? i + batchSize 
+          : sessionsToUpdate.length;
+      
+      final batch = sessionsToUpdate.sublist(i, endIndex);
+      
+      try {
+        debugPrint('📦 Processing batch ${i ~/ batchSize + 1}: ${batch.length} sessions');
+        
+        // Bu batch için upsert dene
+        final bulkData = batch.map((sessionData) {
+          return {
+            'id': sessionData['id'],
+            'user_id': sessionData['user_id'],
+            'date': sessionData['date'],
+            'distance': sessionData['distance'],
+            'bow_type': sessionData['bow_type'],
+            'is_indoor': sessionData['is_indoor'],
+            'training_type': sessionData['training_type'],
+            'arrows_per_series': sessionData['arrows_per_series'],
+            'series_data': sessionData['series_data'],
+            'notes': sessionData['notes'],
+            'training_session_name': sessionData['training_session_name'],
+            'target_face': sessionData['target_face'],
+            'total_arrows': sessionData['total_arrows'],
+            'total_score': sessionData['total_score'],
+            'average': sessionData['average'],
+            'x_count': sessionData['x_count'],
+            'is_deleted': sessionData['is_deleted'] ?? false,
+          };
+        }).toList();
+        
+        await _supabase
+            .from('training_sessions')
+            .upsert(bulkData, onConflict: 'id');
+        
+        // Bu batch'i sync complete olarak işaretle
+        for (final sessionData in batch) {
+          await _database.markSyncComplete(sessionData['id']);
+        }
+        
+        debugPrint('✅ Batch ${i ~/ batchSize + 1} completed: ${batch.length} sessions');
+        
+        // Rate limiting için kısa bekle
+        if (endIndex < sessionsToUpdate.length) {
+          await Future.delayed(const Duration(milliseconds: 100));
+        }
+        
+      } catch (e) {
+        debugPrint('❌ Batch ${i ~/ batchSize + 1} failed: $e');
+        // Son çare: bu batch'i tek tek işle
+        await _processBatchIndividually(batch);
+      }
+    }
+    
+    debugPrint('🎉 Fallback batch processing completed');
+  }
+
+  /// Last resort: process sessions individually
+  Future<void> _processBatchIndividually(List<Map<String, dynamic>> batch) async {
+    debugPrint('⚠️ Processing ${batch.length} sessions individually as last resort...');
+    
+    for (final sessionData in batch) {
+      try {
+        await _supabase
+            .from('training_sessions')
+            .update({
+              'series_data': sessionData['series_data'],
+              'notes': sessionData['notes'],
+              'training_session_name': sessionData['training_session_name'],
+              'distance': sessionData['distance'],
+              'bow_type': sessionData['bow_type'],
+              'is_indoor': sessionData['is_indoor'],
+              'training_type': sessionData['training_type'],
+              'arrows_per_series': sessionData['arrows_per_series'],
+              'target_face': sessionData['target_face'],
+            })
+            .eq('id', sessionData['id']);
+        
+        await _database.markSyncComplete(sessionData['id']);
+        
+      } catch (e) {
+        debugPrint('❌ Individual update failed for ${sessionData['id']}: $e');
+      }
+    }
+    
+    debugPrint('✅ Individual processing completed');
+  }
+
+  /// Verify database connection is working properly
+  Future<bool> verifyDatabaseConnection() async {
+    try {
+      // Web platformunda SQLite kullanılmadığı için bu metodu atlayalım
+      if (kIsWeb) {
+        // Web platformunda Supabase bağlantısını doğrula
+        try {
+          await _supabase.from('profiles').select('id').limit(1);
+          print('Supabase connection verified successfully');
+          return true;
+        } catch (e) {
+          print('Supabase connection verification failed: $e');
+          throw Exception('Supabase bağlantı hatası: $e');
+        }
+      }
+
+      final db = await _database.database;
+      // Simple test query to ensure database is accessible
+      await db.rawQuery('SELECT 1');
+      print('Database connection verified successfully');
+      return true;
+    } catch (e) {
+      print('Database connection verification failed: $e');
+      throw Exception('Veritabanı bağlantı hatası: $e');
+    }
+  }
+
+  // Web platformu için antrenman oturumunun toplam değerlerini güncelleme
+  Future<void> _updateTrainingSessionTotals(String trainingId) async {
+    if (!kIsWeb) return;
+
+    try {
+      // Oturumun tüm serilerini al
+      final sessionResponse = await _supabase
+          .from('training_sessions')
+          .select('series_data')
+          .eq('id', trainingId)
+          .single();
+
+      print(
+          'Web platform: Updating totals for session $trainingId with series data');
+
+      if (sessionResponse['series_data'] != null) {
+        final seriesResponse = jsonDecode(sessionResponse['series_data']);
+
+        int totalArrows = 0;
+        int totalScore = 0;
+        int xCount = 0;
+
+        // Toplam değerleri hesapla
+        for (var series in seriesResponse) {
+          // Okları doğru şekilde alıp işle
+          final List<dynamic> rawArrows = series['arrows'] ?? [];
+          final List<int> arrows =
+              rawArrows.map((a) => a is int ? a : (a as num).toInt()).toList();
+
+          // Ok sayısı
+          totalArrows += arrows.length;
+
+          // Toplam skor
+          int seriesScore = 0;
+          if (series['total_score'] != null) {
+            // Eğer total_score varsa onu kullan ve güvenli bir şekilde int'e çevir
+            final numValue = series['total_score'] as num;
+            seriesScore = numValue.toInt();
+          } else {
+            // Yoksa okların toplamını hesapla
+            seriesScore = arrows.fold<int>(0, (sum, arrow) => sum + arrow);
+
+            // Serinin kendi puanını da güncelle
+            try {
+              await _supabase
+                  .from('training_sessions')
+                  .update({'series_data': jsonEncode(seriesResponse)}).eq('id', trainingId);
+            } catch (e) {
+              print('Web platform: Error updating series score: $e');
+            }
+          }
+          totalScore += seriesScore;
+
+          // X sayısı
+          int seriesXCount = 0;
+          if (series['x_count'] != null) {
+            // Güvenli bir şekilde int'e çevir
+            final numXCount = series['x_count'] as num;
+            seriesXCount = numXCount.toInt();
+          } else {
+            // X sayısını oklar listesinden hesapla (10 puan alan oklar)
+            seriesXCount = arrows.where((arrow) => arrow == 10).length;
+
+            // Serinin x_count değerini güncelle
+            try {
+              await _supabase
+                  .from('training_sessions')
+                  .update({'series_data': jsonEncode(seriesResponse)}).eq('id', trainingId);
+            } catch (e) {
+              print('Web platform: Error updating series x_count: $e');
+            }
+          }
+          xCount += seriesXCount;
+        }
+
+        // Ortalamayı hesapla
+        double average = totalArrows > 0 ? totalScore / totalArrows : 0.0;
+
+        // Session'ı güncelle - tek bir adımda tüm değerleri gönder
+        final updateData = {
+          'total_arrows': totalArrows,
+          'total_score': totalScore,
+          'average': average,
+          'x_count': xCount,
+          'series_data': jsonEncode(seriesResponse), // |10n:series_data_update
+        };
+
+        await _supabase
+            .from('training_sessions')
+            .update(updateData)
+            .eq('id', trainingId);
+
+        print('Web platform: Calculated new totals: $updateData');
+
+        // Double-check that our update worked by reading back the session
+        try {
+          final checkResult = await _supabase
+              .from('training_sessions')
+              .select('total_score, total_arrows, average, x_count')
+              .eq('id', trainingId)
+              .single();
+
+          print(
+              'Web platform: Verified update - session now has score: ${checkResult['total_score']}');
+        } catch (e) {
+          print('Web platform: Verification check failed: $e');
+        }
+      } else {
+        print('Web platform: No series found for session $trainingId');
+      }
+    } catch (e) {
+      print('Web platform: Error updating training session totals: $e');
+    }
+  }
+
+  // Clear cache for a specific user
+  void clearCacheForUser(String userId) {
+    // Web platformunda bu işlemi atla
+    if (kIsWeb) {
+      print('Web platform: Cache clearing is not needed in web platform');
+      return;
+    }
+
+    // Pass the request to the training history service (only for mobile)
+    final trainingHistoryService = TrainingHistoryService();
+    trainingHistoryService.clearCacheForAthlete(userId);
+  }
+
+  /// Soft delete a training session (ALWAYS local first)
+  Future<void> deleteTrainingSession(String trainingId) async {
+    try {
+      // Web platformunda direkt Supabase'de soft delete yap
+      if (kIsWeb) {
+        print('Web platformunda soft delete yapılıyor...');
+        await _supabase
+            .from('training_sessions')
+            .update({'is_deleted': true}).eq('id', trainingId);
+        print('Soft deleted training session from Supabase: $trainingId');
+        return;
+      }
+
+      // Mobil platformlarda yerel veritabanında soft delete yap
+      print('Soft delete yapılıyor: $trainingId');
+      await _database.softDeleteTrainingSession(trainingId);
+
+      // Eğer antrenman Supabase'de varsa orada da soft delete yap
+      if (!trainingId.startsWith('local_')) {
+        final connectivityResult = await Connectivity().checkConnectivity();
+
+        if (connectivityResult != ConnectivityResult.none) {
+          try {
+            // Antrenman oturumunu soft delete yap (serilere dokunmuyoruz)
+            await _supabase
+                .from('training_sessions')
+                .update({'is_deleted': true}).eq('id', trainingId);
+
+            print('Soft deleted training session from Supabase: $trainingId');
+          } catch (e) {
+            print('Error soft deleting training session from Supabase: $e');
+          }
+        }
+      }
+    } catch (e) {
+      print('Error soft deleting training session: $e');
+      rethrow;
+    }
+  }
+
+  /// Web platformu için antrenman sonlandırma metodu
+  Future<void> webFinalizeTraining(String trainingId) async {
+    if (!kIsWeb) {
+      // Bu metod sadece web platformunda çalışmalı
+      print(
+          'webFinalizeTraining mobil platformda çağrıldı, normal senkronizasyon kullanılacak');
+      return syncPendingTrainingSessions();
+    }
+
+    try {
+      print('Web platformu için sonlandırma başlıyor: $trainingId');
+
+      // Antrenman oturumunun toplam değerlerini doğrudan güncelle
+      final sessionResponse = await _supabase
+          .from('training_sessions')
+          .select('*')
+          .eq('id', trainingId)
+          .single();
+
+      // Toplam değerleri serilere bakarak hesapla
+      int totalArrows = 0;
+      int totalScore = 0;
+      int xCount = 0;
+
+      if (sessionResponse['series_data'] != null) {
+        final seriesResponse = jsonDecode(sessionResponse['series_data']);
+
+        for (var series in seriesResponse) {
+          // Okları doğru şekilde al
+          List<dynamic> arrows = series['arrows'];
+          totalArrows += arrows.length;
+
+          // Toplam skoru al - güvenli bir şekilde int'e çevir
+          if (series['total_score'] != null) {
+            final numScore = series['total_score'] as num;
+            totalScore += numScore.toInt();
+          }
+
+          // X sayısını al - güvenli bir şekilde int'e çevir
+          if (series['x_count'] != null) {
+            final numXCount = series['x_count'] as num;
+            xCount += numXCount.toInt();
+          }
+        }
+      }
+
+      // Ortalamayı hesapla
+      double average = totalArrows > 0 ? totalScore / totalArrows : 0.0;
+
+      // Session'ı güncelle - tek bir adımda tüm değerleri gönder
+      final updateData = {
+        'total_arrows': totalArrows,
+        'total_score': totalScore,
+        'average': average,
+        'x_count': xCount,
+        'series_data': sessionResponse['series_data'], // |10n:series_data_update
+      };
+
+      await _supabase
+          .from('training_sessions')
+          .update(updateData)
+          .eq('id', trainingId);
+
+      print('Web platformu: Antrenman başarıyla sonlandırıldı: $trainingId');
+    } catch (e) {
+      print('Web platformu sonlandırma hatası: $e');
+      rethrow;
+    }
+  }
+
+  /// Kullanıcıya ait localde kaç antrenman kaydı olduğunu döndürür
+  Future<int> localTrainingCount(String userId) async {
+    if (kIsWeb) {
+      // Web platformunda local cache yok, Supabase'den sayıyı al
+      final sessions = await _database.webGetUserTrainingSessions(userId);
+      return sessions.length;
+    } else {
+      final sessions = await _database.getUserTrainingSessions(userId);
+      return sessions.length;
+    }
+  }
+}

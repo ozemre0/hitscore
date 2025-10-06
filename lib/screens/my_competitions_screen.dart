@@ -1,170 +1,221 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import '../l10n/app_localizations.dart';
 import '../services/supabase_config.dart';
-import 'organized/create_competition_screen.dart';
-import 'edit_competition_screen.dart';
-import 'organized/competition_participants_screen.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'score_entry_screen.dart';
 
-class MyCompetitionsScreen extends StatefulWidget {
-  const MyCompetitionsScreen({super.key});
+class ParticipantCompetitionsScreen extends ConsumerStatefulWidget {
+  const ParticipantCompetitionsScreen({super.key});
 
   @override
-  State<MyCompetitionsScreen> createState() => _MyCompetitionsScreenState();
+  ConsumerState<ParticipantCompetitionsScreen> createState() => _ParticipantCompetitionsScreenState();
 }
 
-class _MyCompetitionsScreenState extends State<MyCompetitionsScreen> {
-  List<Map<String, dynamic>> _competitions = [];
-  bool _isLoading = false;
+class _ParticipantCompetitionsScreenState extends ConsumerState<ParticipantCompetitionsScreen> {
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    if (l10n == null) return const SizedBox.shrink();
+
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(l10n.participantCompetitionsTitle),
+      ),
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          final clampedTextScaler = MediaQuery.textScalerOf(context).clamp(maxScaleFactor: 1.3);
+          return SafeArea(
+            child: MediaQuery(
+              data: MediaQuery.of(context).copyWith(textScaler: clampedTextScaler),
+              child: _ParticipantCompetitionsContent(),
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _ParticipantCompetitionsContent extends ConsumerStatefulWidget {
+  @override
+  ConsumerState<_ParticipantCompetitionsContent> createState() => _ParticipantCompetitionsContentState();
+}
+
+class _ParticipantCompetitionsContentState extends ConsumerState<_ParticipantCompetitionsContent> {
+  bool _isLoading = true;
+  List<Map<String, dynamic>> _participations = [];
   String? _error;
 
   @override
   void initState() {
     super.initState();
-    _loadCompetitions();
+    _loadParticipations();
   }
 
-  Future<void> _loadCompetitions() async {
-    setState(() {
-      _isLoading = true;
-      _error = null;
-    });
-
+  Future<void> _loadParticipations() async {
     try {
+      setState(() {
+        _isLoading = true;
+        _error = null;
+      });
+
       final user = SupabaseConfig.client.auth.currentUser;
       if (user == null) {
-        throw Exception('No user');
+        setState(() {
+          _error = 'User not found';
+          _isLoading = false;
+        });
+        return;
       }
 
+      // Get user's participations with qualification data
       final response = await SupabaseConfig.client
-          .from('organized_competitions')
-          .select()
-          .eq('is_deleted', false)
-          .eq('created_by', user.id)
+          .from('organized_competition_participants')
+          .select('''
+            participant_id,
+            organized_competition_id,
+            status,
+            created_at,
+            classification_id,
+            organized_competitions!fk_organized_competition (
+              name,
+              competition_visible_id,
+              start_date,
+              end_date,
+              status,
+              score_allowed
+            ),
+            classification:organized_competitions_classifications(
+              name,
+              arrow_per_set,
+              set_per_round,
+              available_score_buttons
+            ),
+            qualification:organized_qualifications(
+              qualification_total_score,
+              qualification_sets_data,
+              created_at,
+              updated_at
+            )
+          ''')
+          .eq('user_id', user.id)
           .order('created_at', ascending: false);
-
-      final competitions = List<Map<String, dynamic>>.from(response);
       
-      // Fetch classification counts for each competition
-      for (final competition in competitions) {
-        try {
-          final classificationResponse = await SupabaseConfig.client
-              .from('organized_competitions_classifications')
-              .select('id')
-              .eq('competition_id', competition['organized_competition_id']);
-          
-          competition['classification_count'] = classificationResponse.length;
-        } catch (e) {
-          // If there's an error fetching classification count, set it to 0
-          competition['classification_count'] = 0;
-        }
-      }
 
       setState(() {
-        _competitions = competitions;
+        _participations = response;
         _isLoading = false;
       });
     } catch (e) {
       setState(() {
-        _error = e.toString();
+        _error = 'Error: ${e.toString()}';
         _isLoading = false;
       });
     }
   }
 
-  Future<void> _deleteCompetition(String competitionId) async {
-    try {
-      await SupabaseConfig.client
-          .from('organized_competitions')
-          .update({
-            'is_deleted': true,
-            'updated_at': DateTime.now().toIso8601String(),
-          })
-          .eq('organized_competition_id', competitionId);
-
-      setState(() {
-        _competitions.removeWhere((comp) => comp['organized_competition_id'] == competitionId);
-      });
-
-      if (mounted) {
-        final l10n = AppLocalizations.of(context)!;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(l10n.competitionDeleteSuccess)),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        final l10n = AppLocalizations.of(context)!;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('${l10n.errorGeneric}: $e')),
-        );
-      }
-    }
-  }
-
-  void _showDeleteDialog(String competitionId, String competitionName) {
+  void _navigateToScoreEntry(Map<String, dynamic> participation, Map<String, dynamic>? competition, Map<String, dynamic>? classification) {
+    if (competition == null) return;
+    
     final l10n = AppLocalizations.of(context)!;
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text(l10n.competitionDelete),
-        content: Text(l10n.competitionDeleteConfirm),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: Text(l10n.cancel),
-          ),
-          TextButton(
-            onPressed: () {
-              Navigator.of(context).pop();
-              _deleteCompetition(competitionId);
-            },
-            style: TextButton.styleFrom(foregroundColor: Colors.red),
-            child: Text(l10n.competitionDelete),
-          ),
-        ],
+    final scoreAllowed = competition['score_allowed'] as bool? ?? false;
+    
+    // Check if score entry is allowed
+    if (!scoreAllowed) {
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: Text(l10n.scoreEntryNotAllowedTitle),
+          content: Text(l10n.scoreEntryNotAllowedMessage),
+          actions: [
+            OutlinedButton(
+              onPressed: () => Navigator.of(context).pop(),
+              style: OutlinedButton.styleFrom(
+                side: BorderSide(
+                  color: Theme.of(context).colorScheme.outline,
+                  width: 1,
+                ),
+              ),
+              child: Text(l10n.ok),
+            ),
+          ],
+        ),
+      );
+      return;
+    }
+    
+    final competitionId = participation['organized_competition_id'] as String;
+    final competitionName = competition['name'] as String? ?? 'Untitled Competition';
+    final competitionVisibleId = competition['competition_visible_id'] as String? ?? 'N/A';
+    
+    
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => ScoreEntryScreen(
+          competitionId: competitionId,
+          competitionName: competitionName,
+          competitionVisibleId: competitionVisibleId,
+          classification: classification,
+        ),
       ),
     );
   }
 
-  String _getStatusText(String status) {
+  Future<void> _leaveCompetition(String competitionId) async {
     final l10n = AppLocalizations.of(context)!;
-    switch (status.toLowerCase()) {
-      case 'draft':
-        return l10n.competitionStatusDraft;
-      case 'active':
-        return l10n.competitionStatusActive;
-      case 'completed':
-        return l10n.competitionStatusCompleted;
-      case 'cancelled':
-        return l10n.competitionStatusCancelled;
-      default:
-        return status;
-    }
-  }
+    
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(l10n.leaveCompetition),
+        content: Text(l10n.leaveCompetitionConfirm),
+        actions: [
+          OutlinedButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            style: OutlinedButton.styleFrom(
+              side: BorderSide(
+                color: Theme.of(context).colorScheme.outline,
+                width: 1,
+              ),
+            ),
+            child: Text(l10n.cancel),
+          ),
+          OutlinedButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: Colors.red,
+              side: const BorderSide(
+                color: Colors.red,
+                width: 1,
+              ),
+            ),
+            child: Text(l10n.leaveCompetition),
+          ),
+        ],
+      ),
+    );
 
-  Color _getStatusColor(String status) {
-    switch (status.toLowerCase()) {
-      case 'draft':
-        return Colors.orange;
-      case 'active':
-        return Colors.green;
-      case 'completed':
-        return Colors.blue;
-      case 'cancelled':
-        return Colors.red;
-      default:
-        return Colors.grey;
-    }
-  }
+    if (confirmed == true) {
+      try {
+        await SupabaseConfig.client
+            .from('organized_competition_participants')
+            .delete()
+            .eq('organized_competition_id', competitionId)
+            .eq('athlete_id', SupabaseConfig.client.auth.currentUser!.id);
 
-  String _formatDate(String? dateString) {
-    if (dateString == null) return '';
-    try {
-      final date = DateTime.parse(dateString);
-      return '${date.day.toString().padLeft(2, '0')}.${date.month.toString().padLeft(2, '0')}.${date.year}';
-    } catch (e) {
-      return dateString;
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(l10n.competitionLeft)),
+          );
+          _loadParticipations();
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(l10n.leaveCompetitionError)),
+          );
+        }
+      }
     }
   }
 
@@ -173,43 +224,6 @@ class _MyCompetitionsScreenState extends State<MyCompetitionsScreen> {
     final l10n = AppLocalizations.of(context)!;
     final colorScheme = Theme.of(context).colorScheme;
 
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(l10n.myCompetitionsTitle),
-        elevation: 0,
-        actions: [
-          IconButton(
-            onPressed: _loadCompetitions,
-            icon: const Icon(Icons.refresh),
-          ),
-        ],
-      ),
-      body: LayoutBuilder(
-        builder: (context, constraints) {
-          final clampedTextScaler = MediaQuery.textScalerOf(context).clamp(maxScaleFactor: 1.3);
-          return SafeArea(
-            child: MediaQuery(
-              data: MediaQuery.of(context).copyWith(textScaler: clampedTextScaler),
-              child: _buildBody(l10n, colorScheme),
-            ),
-          );
-        },
-      ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () {
-          Navigator.of(context).push(
-            MaterialPageRoute(
-              builder: (context) => const CreateCompetitionScreen(),
-            ),
-          ).then((_) => _loadCompetitions());
-        },
-        icon: const Icon(Icons.add),
-        label: Text(l10n.createCompetitionTitle),
-      ),
-    );
-  }
-
-  Widget _buildBody(AppLocalizations l10n, ColorScheme colorScheme) {
     if (_isLoading) {
       return const Center(
         child: CircularProgressIndicator(),
@@ -218,51 +232,35 @@ class _MyCompetitionsScreenState extends State<MyCompetitionsScreen> {
 
     if (_error != null) {
       return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                Icons.error_outline,
-                size: 64,
-                color: colorScheme.error,
-              ),
-              const SizedBox(height: 16),
-              SelectableText.rich(
-                TextSpan(
-                  text: l10n.competitionLoadError,
-                  style: TextStyle(
-                    color: colorScheme.error,
-                    fontSize: 16,
-                  ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.error_outline,
+              size: 64,
+              color: colorScheme.error,
+            ),
+            const SizedBox(height: 16),
+            SelectableText.rich(
+              TextSpan(
+                text: l10n.participantCompetitionsLoadError,
+                style: TextStyle(
+                  color: colorScheme.error,
+                  fontSize: 16,
                 ),
-                textAlign: TextAlign.center,
               ),
-              const SizedBox(height: 8),
-              SelectableText.rich(
-                TextSpan(
-                  text: _error!,
-                  style: TextStyle(
-                    color: colorScheme.onSurfaceVariant,
-                    fontSize: 14,
-                  ),
-                ),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 24),
-              ElevatedButton.icon(
-                onPressed: _loadCompetitions,
-                icon: const Icon(Icons.refresh),
-                label: Text(l10n.refresh),
-              ),
-            ],
-          ),
+            ),
+            const SizedBox(height: 16),
+            OutlinedButton(
+              onPressed: _loadParticipations,
+              child: Text(l10n.refresh),
+            ),
+          ],
         ),
       );
     }
 
-    if (_competitions.isEmpty) {
+    if (_participations.isEmpty) {
       return Center(
         child: Padding(
           padding: const EdgeInsets.all(32.0),
@@ -271,39 +269,24 @@ class _MyCompetitionsScreenState extends State<MyCompetitionsScreen> {
             children: [
               Icon(
                 Icons.emoji_events_outlined,
-                size: 80,
-                color: colorScheme.primary.withOpacity(0.6),
+                size: 64,
+                color: colorScheme.onSurfaceVariant,
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 16),
               Text(
                 l10n.myCompetitionsEmptyTitle,
                 style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
+                  color: colorScheme.onSurfaceVariant,
+                ),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 8),
               Text(
                 l10n.myCompetitionsEmptyDesc,
                 style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                      color: colorScheme.onSurfaceVariant,
-                    ),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 32),
-              ElevatedButton.icon(
-                onPressed: () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (context) => const CreateCompetitionScreen(),
-                    ),
-                  ).then((_) => _loadCompetitions());
-                },
-                icon: const Icon(Icons.add),
-                label: Text(l10n.createCompetitionTitle),
-                style: ElevatedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                  color: colorScheme.onSurfaceVariant,
                 ),
+                textAlign: TextAlign.center,
               ),
             ],
           ),
@@ -312,33 +295,31 @@ class _MyCompetitionsScreenState extends State<MyCompetitionsScreen> {
     }
 
     return RefreshIndicator(
-      onRefresh: _loadCompetitions,
+      onRefresh: _loadParticipations,
       child: ListView.builder(
         padding: const EdgeInsets.all(16.0),
-        itemCount: _competitions.length,
+        itemCount: _participations.length,
         itemBuilder: (context, index) {
-          final competition = _competitions[index];
-          return _CompetitionCard(
+          final participation = _participations[index];
+          final competition = participation['organized_competitions'] as Map<String, dynamic>?;
+          final classification = participation['classification'] as Map<String, dynamic>?;
+          
+          // Handle qualification data - it comes as a List, we need the first item
+          Map<String, dynamic>? qualification;
+          final qualificationData = participation['qualification'];
+          if (qualificationData is List && qualificationData.isNotEmpty) {
+            qualification = qualificationData.first as Map<String, dynamic>?;
+          } else if (qualificationData is Map<String, dynamic>) {
+            qualification = qualificationData;
+          }
+          
+          return _SimpleParticipationCard(
+            participation: participation,
             competition: competition,
-            onDelete: () => _showDeleteDialog(
-              competition['organized_competition_id'],
-              competition['name'] ?? l10n.untitledCompetition,
-            ),
-            onEdit: () async {
-              final result = await Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (context) => EditCompetitionScreen(
-                    competition: competition,
-                  ),
-                ),
-              );
-              if (result == true) {
-                _loadCompetitions(); // Refresh the list
-              }
-            },
-            getStatusText: _getStatusText,
-            getStatusColor: _getStatusColor,
-            formatDate: _formatDate,
+            classification: classification,
+            qualification: qualification,
+            onLeave: () => _leaveCompetition(participation['organized_competition_id']),
+            onCardTap: () => _navigateToScoreEntry(participation, competition, classification),
           );
         },
       ),
@@ -346,49 +327,61 @@ class _MyCompetitionsScreenState extends State<MyCompetitionsScreen> {
   }
 }
 
-class _CompetitionCard extends StatelessWidget {
-  final Map<String, dynamic> competition;
-  final VoidCallback onDelete;
-  final VoidCallback onEdit;
-  final String Function(String) getStatusText;
-  final Color Function(String) getStatusColor;
-  final String Function(String?) formatDate;
+class _SimpleParticipationCard extends StatelessWidget {
+  final Map<String, dynamic> participation;
+  final Map<String, dynamic>? competition;
+  final Map<String, dynamic>? classification;
+  final Map<String, dynamic>? qualification;
+  final VoidCallback onLeave;
+  final VoidCallback onCardTap;
 
-  const _CompetitionCard({
+  const _SimpleParticipationCard({
+    required this.participation,
     required this.competition,
-    required this.onDelete,
-    required this.onEdit,
-    required this.getStatusText,
-    required this.getStatusColor,
-    required this.formatDate,
+    required this.classification,
+    required this.qualification,
+    required this.onLeave,
+    required this.onCardTap,
   });
 
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     final colorScheme = Theme.of(context).colorScheme;
-    final status = competition['status'] ?? 'draft';
-    final statusText = getStatusText(status);
-    final statusColor = getStatusColor(status);
+    
+    final status = participation['status'] as String? ?? 'pending';
+    final joinedAt = participation['created_at'] as String?;
+    final competitionName = competition?['name'] as String?;
+    final competitionVisibleId = competition?['competition_visible_id'] as String?;
+    final competitionDescription = competition?['description'] as String?;
+    final startDate = competition?['start_date'] as String?;
+    final endDate = competition?['end_date'] as String?;
+    final competitionStatus = competition?['status'] as String? ?? 'draft';
+    final classificationName = classification?['name'] as String?;
+    final scoreAllowed = competition?['score_allowed'] as bool? ?? false;
+    
+    // Calculate score information
+    final currentScore = qualification?['qualification_total_score'] as int? ?? 0;
+    final arrowPerSet = classification?['arrow_per_set'] as int? ?? 3;
+    final setPerRound = classification?['set_per_round'] as int? ?? 10;
+    final maxScore = arrowPerSet * setPerRound * 10; // Maximum possible score
+    final hasQualificationData = qualification != null && qualification!['qualification_total_score'] != null;
+    
 
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
       elevation: 0,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(16),
         side: BorderSide(
-          color: colorScheme.outline.withOpacity(0.2),
-          width: 1,
+          color: colorScheme.primary.withOpacity(0.35),
+          width: 1.2,
         ),
       ),
+      color: colorScheme.surface,
       child: InkWell(
-        borderRadius: BorderRadius.circular(12),
-        onTap: () {
-          // TODO: Navigate to competition details
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(l10n.comingSoon)),
-          );
-        },
+        onTap: status == 'accepted' ? onCardTap : null,
+        borderRadius: BorderRadius.circular(16),
         child: Padding(
           padding: const EdgeInsets.all(16.0),
           child: Column(
@@ -396,228 +389,266 @@ class _CompetitionCard extends StatelessWidget {
             children: [
               Row(
                 children: [
-                  Expanded(
-                    child: Text(
-                      competition['name'] ?? l10n.untitledCompetition,
-                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                            fontWeight: FontWeight.bold,
-                          ),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                  const SizedBox(width: 8),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    width: 48,
+                    height: 48,
                     decoration: BoxDecoration(
-                      color: statusColor.withOpacity(0.1),
                       borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: statusColor.withOpacity(0.3)),
+                      color: colorScheme.primary.withOpacity(0.1),
                     ),
-                    child: Text(
-                      statusText,
-                      style: TextStyle(
-                        color: statusColor,
-                        fontWeight: FontWeight.w600,
-                        fontSize: 12,
-                      ),
+                    child: Icon(
+                      Icons.emoji_events,
+                      color: colorScheme.primary,
+                      size: 24,
                     ),
                   ),
-                ],
-              ),
-              if (competition['description'] != null && competition['description'].isNotEmpty) ...[
-                const SizedBox(height: 8),
-                Text(
-                  competition['description'],
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: colorScheme.onSurfaceVariant,
-                      ),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  Icon(
-                    Icons.calendar_today,
-                    size: 16,
-                    color: colorScheme.onSurfaceVariant,
-                  ),
-                  const SizedBox(width: 4),
-                  Text(
-                    '${l10n.competitionStartsOn}: ${formatDate(competition['start_date'])}',
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: colorScheme.onSurfaceVariant,
-                        ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 4),
-              Row(
-                children: [
-                  Icon(
-                    Icons.event,
-                    size: 16,
-                    color: colorScheme.onSurfaceVariant,
-                  ),
-                  const SizedBox(width: 4),
-                  Text(
-                    '${l10n.competitionEndsOn}: ${formatDate(competition['end_date'])}',
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: colorScheme.onSurfaceVariant,
-                        ),
-                  ),
-                ],
-              ),
-              if (competition['competition_visible_id'] != null &&
-                  competition['competition_visible_id'].toString().isNotEmpty) ...[
-                const SizedBox(height: 4),
-                Row(
-                  children: [
-                    Icon(
-                      Icons.confirmation_number,
-                      size: 16,
-                      color: colorScheme.onSurfaceVariant,
-                    ),
-                    const SizedBox(width: 4),
-                    Flexible(
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Flexible(
-                            child: Text(
-                              '${l10n.competitionVisibleIdLabel}: ${competition['competition_visible_id']}',
-                              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                    color: colorScheme.onSurfaceVariant,
-                                  ),
-                              overflow: TextOverflow.ellipsis,
-                              softWrap: false,
-                            ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          competitionName ?? l10n.untitledCompetition,
+                          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.w600,
                           ),
-                          const SizedBox(width: 4),
-                          IconButton(
-                            icon: const Icon(Icons.copy, size: 16),
-                            padding: EdgeInsets.zero,
-                            constraints: const BoxConstraints(),
-                            tooltip: l10n.competitionVisibleIdCopyTooltip,
-                            onPressed: () async {
-                              await Clipboard.setData(ClipboardData(
-                                text: competition['competition_visible_id'].toString(),
-                              ));
-                              if (context.mounted) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(content: Text(l10n.competitionVisibleIdCopied)),
-                                );
-                              }
-                            },
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        if (classificationName != null) ...[
+                          const SizedBox(height: 2),
+                          Text(
+                            classificationName,
+                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                              color: colorScheme.primary,
+                              fontWeight: FontWeight.w500,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                           ),
                         ],
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-              const SizedBox(height: 4),
-              Row(
-                children: [
-                  Icon(
-                    Icons.category,
-                    size: 16,
-                    color: colorScheme.onSurfaceVariant,
-                  ),
-                  const SizedBox(width: 4),
-                  Text(
-                    l10n.competitionClassificationsCount(competition['classification_count'] ?? 0),
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: colorScheme.onSurfaceVariant,
-                        ),
-                  ),
-                ],
-              ),
-              if (competition['registration_start_date'] != null) ...[
-                const SizedBox(height: 4),
-                Row(
-                  children: [
-                    Icon(
-                      Icons.play_arrow,
-                      size: 16,
-                      color: colorScheme.onSurfaceVariant,
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      '${l10n.registrationStartLabel}: ${formatDate(competition['registration_start_date'])}',
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: colorScheme.onSurfaceVariant,
+                        // Score information
+                        const SizedBox(height: 4),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: hasQualificationData 
+                                ? colorScheme.primary.withOpacity(0.1)
+                                : colorScheme.surfaceVariant.withOpacity(0.5),
+                            borderRadius: BorderRadius.circular(8),
                           ),
-                    ),
-                  ],
-                ),
-              ],
-              if (competition['registration_end_date'] != null) ...[
-                const SizedBox(height: 4),
-                Row(
-                  children: [
-                    Icon(
-                      Icons.stop,
-                      size: 16,
-                      color: colorScheme.onSurfaceVariant,
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      '${l10n.registrationEndLabel}: ${formatDate(competition['registration_end_date'])}',
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: colorScheme.onSurfaceVariant,
+                          child: Text(
+                            hasQualificationData 
+                                ? '$currentScore / $maxScore'
+                                : 'Henüz skor girilmemiş',
+                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              color: hasQualificationData 
+                                  ? colorScheme.primary
+                                  : colorScheme.onSurfaceVariant,
+                              fontWeight: FontWeight.w600,
+                            ),
                           ),
-                    ),
-                  ],
-                ),
-              ],
-              const SizedBox(height: 12),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    '${l10n.competitionCreatedOn}: ${formatDate(competition['created_at'])}',
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: colorScheme.onSurfaceVariant,
                         ),
+                      ],
+                    ),
                   ),
                   Row(
                     children: [
-                      IconButton(
-                        onPressed: () {
-                          Navigator.of(context).push(
-                            MaterialPageRoute(
-                              builder: (context) => CompetitionParticipantsScreen(
-                                competitionId: competition['organized_competition_id'],
-                              ),
-                            ),
-                          );
-                        },
-                        icon: const Icon(Icons.group),
-                        iconSize: 20,
-                        tooltip: l10n.competitionParticipants,
-                      ),
-                      IconButton(
-                        onPressed: onEdit,
-                        icon: const Icon(Icons.edit),
-                        iconSize: 20,
-                        tooltip: l10n.competitionEdit,
-                      ),
-                      IconButton(
-                        onPressed: onDelete,
-                        icon: const Icon(Icons.delete),
-                        iconSize: 20,
-                        tooltip: l10n.competitionDelete,
-                        color: colorScheme.error,
-                      ),
+                      _StatusChip(status: status),
+                      if (status == 'accepted') ...[
+                        const SizedBox(width: 8),
+                        Icon(
+                          Icons.arrow_forward_ios,
+                          size: 16,
+                          color: colorScheme.onSurfaceVariant,
+                        ),
+                      ],
                     ],
                   ),
                 ],
               ),
+            if (competitionVisibleId != null) ...[
+              const SizedBox(height: 4),
+              Text(
+                '${l10n.competitionVisibleIdLabel}: ${competitionVisibleId}',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: colorScheme.onSurfaceVariant,
+                ),
+              ),
             ],
-          ),
+            if (competitionDescription != null && competitionDescription.isNotEmpty) ...[
+              const SizedBox(height: 4),
+              Text(
+                competitionDescription,
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: colorScheme.onSurfaceVariant,
+                ),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
+            const SizedBox(height: 4),
+            Row(
+              children: [
+                Icon(
+                  scoreAllowed ? Icons.score : Icons.scoreboard_outlined,
+                  size: 16,
+                  color: scoreAllowed 
+                      ? (Theme.of(context).brightness == Brightness.dark ? Colors.green.shade400 : Colors.green.shade900)
+                      : (Theme.of(context).brightness == Brightness.dark ? Colors.red : Colors.red.shade700),
+                ),
+                const SizedBox(width: 4),
+                Text(
+                  scoreAllowed ? l10n.scoreEntryAllowed : l10n.scoreEntryNotAllowed,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: scoreAllowed 
+                      ? (Theme.of(context).brightness == Brightness.dark ? Colors.green.shade400 : Colors.green.shade900)
+                      : (Theme.of(context).brightness == Brightness.dark ? Colors.red : Colors.red.shade700),
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 4),
+            Row(
+              children: [
+                if (joinedAt != null) ...[
+                  Icon(
+                    Icons.access_time,
+                    size: 16,
+                    color: colorScheme.onSurfaceVariant,
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    '${l10n.joinedOn}: ${_formatDate(joinedAt)}',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ],
+                const Spacer(),
+                if (competitionStatus == 'active' && status == 'accepted')
+                  OutlinedButton(
+                    onPressed: onLeave,
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: Colors.red,
+                      side: const BorderSide(
+                        color: Colors.red,
+                        width: 1,
+                      ),
+                    ),
+                    child: Text(l10n.leaveCompetition),
+                  ),
+              ],
+            ),
+            if (startDate != null || endDate != null) ...[
+              const SizedBox(height: 2),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (startDate != null) ...[
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.play_arrow,
+                          size: 16,
+                          color: colorScheme.onSurfaceVariant,
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          '${l10n.competitionStartsOn}: ${_formatDate(startDate)}',
+                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 2),
+                  ],
+                  if (endDate != null) ...[
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.stop,
+                          size: 16,
+                          color: colorScheme.onSurfaceVariant,
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          '${l10n.competitionEndsOn}: ${_formatDate(endDate)}',
+                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ],
+              ),
+            ],
+          ],
+        ),
+      ),
+    ));
+  }
+
+  String _formatDate(String dateString) {
+    try {
+      final date = DateTime.parse(dateString);
+      return '${date.day.toString().padLeft(2, '0')}.${date.month.toString().padLeft(2, '0')}.${date.year}';
+    } catch (e) {
+      return dateString;
+    }
+  }
+}
+
+class _StatusChip extends StatelessWidget {
+  final String status;
+
+  const _StatusChip({required this.status});
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    final colorScheme = Theme.of(context).colorScheme;
+
+    Color backgroundColor;
+    Color textColor;
+    String text;
+
+    switch (status) {
+      case 'accepted':
+        backgroundColor = Colors.green.withOpacity(0.1);
+        textColor = Colors.green;
+        text = l10n.acceptedStatus;
+        break;
+      case 'pending':
+        backgroundColor = Colors.orange.withOpacity(0.1);
+        textColor = Colors.orange;
+        text = l10n.pendingStatus;
+        break;
+      case 'rejected':
+        backgroundColor = Colors.red.withOpacity(0.1);
+        textColor = Colors.red;
+        text = l10n.cancelledStatus;
+        break;
+      default:
+        backgroundColor = colorScheme.surfaceVariant;
+        textColor = colorScheme.onSurfaceVariant;
+        text = status;
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: backgroundColor,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Text(
+        text,
+        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+          color: textColor,
+          fontWeight: FontWeight.w500,
         ),
       ),
     );

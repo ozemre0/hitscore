@@ -520,7 +520,7 @@ class AppLocalizationsTr extends AppLocalizations {
   String get participantsEmptyDesc => 'Bu yarışmaya henüz kimse kayıt olmadı.';
 
   @override
-  String get participantAthleteId => 'Sporcu ID';
+  String get participantAthleteId => 'Kullanıcı ID';
 
   @override
   String get participantGender => 'Cinsiyet';
@@ -595,10 +595,28 @@ class AppLocalizationsTr extends AppLocalizations {
   String get athleteProfileRequired => 'Sporcu profili gerekli. Lütfen önce profilinizi tamamlayın.';
 
   @override
+  String get athlete => 'Sporcu';
+
+  @override
+  String get coach => 'Antrenör';
+
+  @override
   String get registrationOpen => 'Kayıt açık';
 
   @override
   String get registrationClosed => 'Kayıt kapalı';
+
+  @override
+  String get registrationAllowedLabel => 'Kayda izin ver';
+
+  @override
+  String get registrationAllowedDesc => 'Açık olduğunda kullanıcılar katılım isteği gönderebilir. Bunu daha sonra değiştirebilirsiniz.';
+
+  @override
+  String get scoreAllowedLabel => 'Skor girişine izin ver';
+
+  @override
+  String get scoreAllowedDesc => 'Açık olduğunda katılımcılar skor girişi yapabilir. Genellikle yarışma başlamadan hemen önce açın; bunu daha sonra değiştirebilirsiniz.';
 
   @override
   String get requestSent => 'İstek gönderildi';
@@ -623,4 +641,217 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get noClassificationsAvailable => 'Bu yarışma için klasman yok';
+
+  @override
+  String get addAthletes => 'Sporcu Ekle';
+
+  @override
+  String get searchAthleteHint => 'Sporcu ara';
+
+  @override
+  String get add => 'Ekle';
+
+  @override
+  String selectedCount(int count) {
+    return '$count seçili';
+  }
+
+  @override
+  String get onlyEligible => 'Sadece uygun olanlar';
+
+  @override
+  String get noResults => 'Sonuç yok';
+
+  @override
+  String get operationFailed => 'İşlem başarısız';
+
+  @override
+  String get addedSuccessfully => 'Başarıyla eklendi';
+
+  @override
+  String get addToCompetition => 'Yarışmaya ekle';
+
+  @override
+  String pendingRequestsCount(int count) {
+    return 'Bekleyen istek: $count';
+  }
+
+  @override
+  String acceptedParticipantsCount(int count) {
+    return 'Kabul edilen: $count';
+  }
+
+  @override
+  String get all => 'Tümü';
+
+  @override
+  String get classification => 'Klasman';
+
+  @override
+  String get participantClassification => 'Klasman';
+
+  @override
+  String get participantCompetitionsTitle => 'Katılımlarım';
+
+  @override
+  String get participantCompetitionsSubtitle => 'Katıldığınız yarışmaları görüntüleyin.';
+
+  @override
+  String get participantCompetitionsEmptyTitle => 'Henüz katılım yok';
+
+  @override
+  String get participantCompetitionsEmptyDesc => 'Henüz hiçbir yarışmaya katılmadınız.';
+
+  @override
+  String get participantCompetitionsLoadError => 'Katılımlar yüklenemedi';
+
+  @override
+  String get competitionStatus => 'Durum';
+
+  @override
+  String get joinedOn => 'Katılım tarihi';
+
+  @override
+  String get leaveCompetition => 'Ayrıl';
+
+  @override
+  String get leaveCompetitionConfirm => 'Bu yarışmadan ayrılmak istiyor musunuz?';
+
+  @override
+  String get competitionLeft => 'Yarışmadan ayrıldınız';
+
+  @override
+  String get leaveCompetitionError => 'Yarışmadan ayrılma başarısız';
+
+  @override
+  String get scoreEntryTitle => 'Skor Girişi';
+
+  @override
+  String get scoreEntrySubtitle => 'Bu yarışma için skorlarınızı girin';
+
+  @override
+  String get enterScore => 'Skor Gir';
+
+  @override
+  String get scoreEntryComingSoon => 'Skor girişi özelliği yakında';
+
+  @override
+  String get scoreEntryAllowed => 'Skor girişi açık';
+
+  @override
+  String get scoreEntryNotAllowed => 'Skor girişi kapalı';
+
+  @override
+  String get classificationLabel => 'Klasman';
+
+  @override
+  String get roundCountLabel => 'Round sayısı';
+
+  @override
+  String get arrowsPerSetLabel => 'Seri başı ok sayısı';
+
+  @override
+  String get setsPerRoundLabel => 'Round başına seri sayısı';
+
+  @override
+  String get myOrganizedCompetitionsTitle => 'Düzenlediğim Yarışmalar';
+
+  @override
+  String get myOrganizedCompetitionsSubtitle => 'Oluşturduğunuz yarışmaları yönetin.';
+
+  @override
+  String get participantClub => 'Kulüp';
+
+  @override
+  String get noClub => 'Kulüp Yok';
+
+  @override
+  String get currentSet => 'Mevcut Seri';
+
+  @override
+  String get totalScore => 'Toplam Skor';
+
+  @override
+  String tapScoreToContinue(int setNumber) {
+    return 'Antrenmana devam etmek için aşağıdaki skor butonlarına dokunun. Şu anda $setNumber. Seriyi yazıyorsunuz.';
+  }
+
+  @override
+  String editSet(int setNumber) {
+    return 'Düzenle - Seri $setNumber';
+  }
+
+  @override
+  String get edit => 'Düzenle';
+
+  @override
+  String overwritingSet(int setNumber) {
+    return 'Şu anda $setNumber. Seriyi yeniden yazıyorsunuz. Devam etmek için aşağıdaki skor butonlarına dokunun.';
+  }
+
+  @override
+  String get guestTitle => 'Hoş geldin';
+
+  @override
+  String get guestSubtitle => 'Aktif yarışmaları keşfet veya devam etmek için giriş yap.';
+
+  @override
+  String get goToLogin => 'Giriş ekranına git';
+
+  @override
+  String get browseActiveCompetitions => 'Aktif Yarışmalar';
+
+  @override
+  String get onboardingWelcomeTitle => 'Hoş geldin';
+
+  @override
+  String get onboardingWelcomeSubtitle => 'Dilini seç ve HitScore\'u keşfet';
+
+  @override
+  String get onboardingLanguageNext => 'İleri';
+
+  @override
+  String get onboardingGetStarted => 'Başla';
+
+  @override
+  String get onboardingIntroTitle => 'Yarışmaları kolayca yönet';
+
+  @override
+  String get onboardingIntroDescription => 'Yarışmalara katıl, etkinlik düzenle ve skorları takip et.';
+
+  @override
+  String get onboardingFeaturesTitle => 'Neler yapabilirsin';
+
+  @override
+  String get onboardingFeatureSessionsTitle => 'Katıl';
+
+  @override
+  String get onboardingFeatureSessionsDescription => 'Aktif yarışmaları incele ve katılım isteği gönder.';
+
+  @override
+  String get onboardingFeatureCoachTitle => 'Düzenle';
+
+  @override
+  String get onboardingFeatureCoachDescription => 'Yarışma oluştur, katılımcıları ve klasmanları yönet.';
+
+  @override
+  String get onboardingFeatureToolsTitle => 'Skor Takibi';
+
+  @override
+  String get onboardingFeatureToolsDescription => 'Skorları net ve uyumlu ekranlarda gir, takip et.';
+
+  @override
+  String get availableScoreButtonsLabel => 'Mevcut Skor Butonları';
+
+  @override
+  String get availableScoreButtonsDescription => 'Bu klasman için hangi skor butonlarının kullanılacağını seçin';
+
+  @override
+  String get scoreEntryNotAllowedTitle => 'Skor Girişi Mevcut Değil';
+
+  @override
+  String get scoreEntryNotAllowedMessage => 'Bu yarışma için şu an için skor girişi yapılamamaktadır. Organizatör açtığı zaman skor girebileceksiniz.';
+
+  @override
+  String get ok => 'Tamam';
 }

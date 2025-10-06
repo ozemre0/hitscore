@@ -189,7 +189,7 @@
   "participantsLoadError": "Katılımcılar yüklenemedi",
   "participantsEmptyTitle": "Henüz katılımcı yok",
   "participantsEmptyDesc": "Bu yarışmaya henüz kimse kayıt olmadı.",
-  "participantAthleteId": "Sporcu ID",
+  "participantAthleteId": "Kullanıcı ID",
   "participantGender": "Cinsiyet",
   "participantAgeGroup": "Yaş grubu",
   "participantEquipment": "Ekipman",
@@ -214,9 +214,15 @@
   "competitionJoined": "Yarışmaya katıldınız",
   "competitionJoinError": "Yarışmaya katılım başarısız",
   "athleteProfileRequired": "Sporcu profili gerekli. Lütfen önce profilinizi tamamlayın.",
+  "athlete": "Sporcu",
+  "coach": "Antrenör",
   "registrationOpen": "Kayıt açık",
   "registrationClosed": "Kayıt kapalı"
   ,
+  "registrationAllowedLabel": "Kayda izin ver",
+  "registrationAllowedDesc": "Açık olduğunda kullanıcılar katılım isteği gönderebilir. Bunu daha sonra değiştirebilirsiniz.",
+  "scoreAllowedLabel": "Skor girişine izin ver",
+  "scoreAllowedDesc": "Açık olduğunda katılımcılar skor girişi yapabilir. Genellikle yarışma başlamadan hemen önce açın; bunu daha sonra değiştirebilirsiniz.",
   "requestSent": "İstek gönderildi",
   "pending": "Beklemede"
   ,
@@ -227,5 +233,101 @@
   "selectClassificationTitle": "Klasman seç",
   "selectClassificationInstruction": "Katılmak için klasmanını seç",
   "noClassificationsAvailable": "Bu yarışma için klasman yok"
+  ,
+  "addAthletes": "Sporcu Ekle",
+  "searchAthleteHint": "Sporcu ara",
+  "add": "Ekle",
+  "selectedCount": "{count} seçili",
+  "@selectedCount": {"placeholders": {"count": {"type": "int"}}},
+  "onlyEligible": "Sadece uygun olanlar",
+  "noResults": "Sonuç yok",
+  "operationFailed": "İşlem başarısız",
+  "addedSuccessfully": "Başarıyla eklendi",
+  "addToCompetition": "Yarışmaya ekle"
+  ,
+  "pendingRequestsCount": "Bekleyen istek: {count}",
+  "@pendingRequestsCount": {"placeholders": {"count": {"type": "int"}}},
+  "acceptedParticipantsCount": "Kabul edilen: {count}",
+  "@acceptedParticipantsCount": {"placeholders": {"count": {"type": "int"}}},
+  "all": "Tümü",
+  "classification": "Klasman",
+  "participantClassification": "Klasman",
+  "participantCompetitionsTitle": "Katılımlarım",
+  "participantCompetitionsSubtitle": "Katıldığınız yarışmaları görüntüleyin.",
+  "participantCompetitionsEmptyTitle": "Henüz katılım yok",
+  "participantCompetitionsEmptyDesc": "Henüz hiçbir yarışmaya katılmadınız.",
+  "participantCompetitionsLoadError": "Katılımlar yüklenemedi",
+  "competitionStatus": "Durum",
+  "joinedOn": "Katılım tarihi",
+  "leaveCompetition": "Ayrıl",
+  "leaveCompetitionConfirm": "Bu yarışmadan ayrılmak istiyor musunuz?",
+  "competitionLeft": "Yarışmadan ayrıldınız",
+  "leaveCompetitionError": "Yarışmadan ayrılma başarısız",
+  "scoreEntryTitle": "Skor Girişi",
+  "scoreEntrySubtitle": "Bu yarışma için skorlarınızı girin",
+  "enterScore": "Skor Gir",
+  "scoreEntryComingSoon": "Skor girişi özelliği yakında",
+  "scoreEntryAllowed": "Skor girişi açık",
+  "scoreEntryNotAllowed": "Skor girişi kapalı",
+  "classificationLabel": "Klasman",
+  "roundCountLabel": "Round sayısı",
+  "arrowsPerSetLabel": "Seri başı ok sayısı",
+  "setsPerRoundLabel": "Round başına seri sayısı",
+  "myOrganizedCompetitionsTitle": "Düzenlediğim Yarışmalar",
+  "myOrganizedCompetitionsSubtitle": "Oluşturduğunuz yarışmaları yönetin.",
+  "participantClub": "Kulüp",
+  "noClub": "Kulüp Yok",
+  "currentSet": "Mevcut Seri",
+  "totalScore": "Toplam Skor",
+  "tapScoreToContinue": "Antrenmana devam etmek için aşağıdaki skor butonlarına dokunun. Şu anda {setNumber}. Seriyi yazıyorsunuz.",
+  "@tapScoreToContinue": {
+    "placeholders": {
+      "setNumber": {
+        "type": "int"
+      }
+    }
+  },
+  "editSet": "Düzenle - Seri {setNumber}",
+  "@editSet": {
+    "placeholders": {
+      "setNumber": {
+        "type": "int"
+      }
+    }
+  },
+  "cancel": "Vazgeç",
+  "edit": "Düzenle",
+  "delete": "Sil",
+  "overwritingSet": "Şu anda {setNumber}. Seriyi yeniden yazıyorsunuz. Devam etmek için aşağıdaki skor butonlarına dokunun.",
+  "@overwritingSet": {
+    "placeholders": {
+      "setNumber": {
+        "type": "int"
+      }
+    }
+  }
+  ,
+  "guestTitle": "Hoş geldin",
+  "guestSubtitle": "Aktif yarışmaları keşfet veya devam etmek için giriş yap.",
+  "goToLogin": "Giriş ekranına git",
+  "browseActiveCompetitions": "Aktif Yarışmalar",
+  "onboardingWelcomeTitle": "Hoş geldin",
+  "onboardingWelcomeSubtitle": "Dilini seç ve HitScore'u keşfet",
+  "onboardingLanguageNext": "İleri",
+  "onboardingGetStarted": "Başla",
+  "onboardingIntroTitle": "Yarışmaları kolayca yönet",
+  "onboardingIntroDescription": "Yarışmalara katıl, etkinlik düzenle ve skorları takip et.",
+  "onboardingFeaturesTitle": "Neler yapabilirsin",
+  "onboardingFeatureSessionsTitle": "Katıl",
+  "onboardingFeatureSessionsDescription": "Aktif yarışmaları incele ve katılım isteği gönder.",
+  "onboardingFeatureCoachTitle": "Düzenle",
+  "onboardingFeatureCoachDescription": "Yarışma oluştur, katılımcıları ve klasmanları yönet.",
+  "onboardingFeatureToolsTitle": "Skor Takibi",
+  "onboardingFeatureToolsDescription": "Skorları net ve uyumlu ekranlarda gir, takip et.",
+  "availableScoreButtonsLabel": "Mevcut Skor Butonları",
+  "availableScoreButtonsDescription": "Bu klasman için hangi skor butonlarının kullanılacağını seçin",
+  "scoreEntryNotAllowedTitle": "Skor Girişi Mevcut Değil",
+  "scoreEntryNotAllowedMessage": "Bu yarışma için şu an için skor girişi yapılamamaktadır. Organizatör açtığı zaman skor girebileceksiniz.",
+  "ok": "Tamam"
 }
 

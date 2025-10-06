@@ -17,15 +17,15 @@ class _EditCompetitionScreenState extends State<EditCompetitionScreen> {
   final TextEditingController _descriptionController = TextEditingController();
   final TextEditingController _startDateController = TextEditingController();
   final TextEditingController _endDateController = TextEditingController();
-  final TextEditingController _registrationStartController = TextEditingController();
-  final TextEditingController _registrationEndController = TextEditingController();
+  // registration date controllers removed
 
   DateTime? _startDate;
   DateTime? _endDate;
-  DateTime? _registrationStartDate;
-  DateTime? _registrationEndDate;
+  // registration dates removed; using boolean flags globally
   bool _isLoading = false;
   bool _hasChanges = false;
+  bool _registrationAllowed = false;
+  bool _scoreAllowed = false;
 
   @override
   void initState() {
@@ -48,23 +48,16 @@ class _EditCompetitionScreenState extends State<EditCompetitionScreen> {
       _endDateController.text = _formatDateTime(_endDate!);
     }
     
-    if (widget.competition['registration_start_date'] != null) {
-      _registrationStartDate = DateTime.parse(widget.competition['registration_start_date']);
-      _registrationStartController.text = _formatDateTime(_registrationStartDate!);
-    }
-    
-    if (widget.competition['registration_end_date'] != null) {
-      _registrationEndDate = DateTime.parse(widget.competition['registration_end_date']);
-      _registrationEndController.text = _formatDateTime(_registrationEndDate!);
-    }
+    // registration window removed
+    _registrationAllowed = (widget.competition['registration_allowed'] as bool?) ?? false;
+    _scoreAllowed = (widget.competition['score_allowed'] as bool?) ?? false;
     
     // Add listeners to track changes
     _nameController.addListener(_checkForChanges);
     _descriptionController.addListener(_checkForChanges);
     _startDateController.addListener(_checkForChanges);
     _endDateController.addListener(_checkForChanges);
-    _registrationStartController.addListener(_checkForChanges);
-    _registrationEndController.addListener(_checkForChanges);
+    // no reg date listeners
   }
 
   void _checkForChanges() {
@@ -72,18 +65,16 @@ class _EditCompetitionScreenState extends State<EditCompetitionScreen> {
     final originalDescription = widget.competition['description'] ?? '';
     final originalStartDate = widget.competition['start_date'];
     final originalEndDate = widget.competition['end_date'];
-    final originalRegistrationStartDate = widget.competition['registration_start_date'];
-    final originalRegistrationEndDate = widget.competition['registration_end_date'];
+    // removed registration window comparison
     
     final hasNameChanged = _nameController.text.trim() != originalName;
     final hasDescriptionChanged = _descriptionController.text.trim() != originalDescription;
     final hasStartDateChanged = _startDate?.toIso8601String() != originalStartDate;
     final hasEndDateChanged = _endDate?.toIso8601String() != originalEndDate;
-    final hasRegistrationStartChanged = _registrationStartDate?.toIso8601String() != originalRegistrationStartDate;
-    final hasRegistrationEndChanged = _registrationEndDate?.toIso8601String() != originalRegistrationEndDate;
     
-    final hasChanges = hasNameChanged || hasDescriptionChanged || hasStartDateChanged || 
-                      hasEndDateChanged || hasRegistrationStartChanged || hasRegistrationEndChanged;
+    final hasBoolChanged = _registrationAllowed != ((widget.competition['registration_allowed'] as bool?) ?? false)
+        || _scoreAllowed != ((widget.competition['score_allowed'] as bool?) ?? false);
+    final hasChanges = hasNameChanged || hasDescriptionChanged || hasStartDateChanged || hasEndDateChanged || hasBoolChanged;
     
     if (hasChanges != _hasChanges) {
       setState(() {
@@ -102,8 +93,7 @@ class _EditCompetitionScreenState extends State<EditCompetitionScreen> {
     _descriptionController.dispose();
     _startDateController.dispose();
     _endDateController.dispose();
-    _registrationStartController.dispose();
-    _registrationEndController.dispose();
+    // no extra controllers
     super.dispose();
   }
 
@@ -179,8 +169,9 @@ class _EditCompetitionScreenState extends State<EditCompetitionScreen> {
         'description': _descriptionController.text.trim().isEmpty ? null : _descriptionController.text.trim(),
         'start_date': _startDate!.toIso8601String(),
         'end_date': _endDate!.toIso8601String(),
-        'registration_start_date': _registrationStartDate?.toIso8601String(),
-        'registration_end_date': _registrationEndDate?.toIso8601String(),
+        'registration_allowed': _registrationAllowed,
+        'score_allowed': _scoreAllowed,
+        // registration window removed
         'updated_at': DateTime.now().toIso8601String(),
       };
 
@@ -298,6 +289,32 @@ class _EditCompetitionScreenState extends State<EditCompetitionScreen> {
                       maxLines: 4,
                     ),
                     const SizedBox(height: 16),
+                    SwitchListTile(
+                      value: _registrationAllowed,
+                      onChanged: (v) {
+                        setState(() {
+                          _registrationAllowed = v;
+                          _checkForChanges();
+                        });
+                      },
+                      title: Text(l10n.registrationAllowedLabel),
+                      subtitle: Text(l10n.registrationAllowedDesc),
+                      secondary: const Icon(Icons.how_to_reg),
+                    ),
+                    const SizedBox(height: 8),
+                    SwitchListTile(
+                      value: _scoreAllowed,
+                      onChanged: (v) {
+                        setState(() {
+                          _scoreAllowed = v;
+                          _checkForChanges();
+                        });
+                      },
+                      title: Text(l10n.scoreAllowedLabel),
+                      subtitle: Text(l10n.scoreAllowedDesc),
+                      secondary: const Icon(Icons.score),
+                    ),
+                    const SizedBox(height: 16),
                     Text(
                       l10n.competitionDuration,
                       style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
@@ -331,37 +348,7 @@ class _EditCompetitionScreenState extends State<EditCompetitionScreen> {
                       readOnly: true,
                       onTap: () => _selectDateTime(_endDateController, _endDate, (d) => _endDate = d),
                     ),
-                    const SizedBox(height: 24),
-                    Text(l10n.registrationDatesLabel, style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
-                    const SizedBox(height: 8),
-                    Text(
-                      l10n.registrationDatesOptional,
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant),
-                    ),
-                    const SizedBox(height: 16),
-                    TextField(
-                      controller: _registrationStartController,
-                      decoration: InputDecoration(
-                        labelText: l10n.registrationStartLabel,
-                        border: const OutlineInputBorder(),
-                        prefixIcon: const Icon(Icons.play_arrow),
-                        hintText: l10n.competitionDateHint,
-                      ),
-                      readOnly: true,
-                      onTap: () => _selectDateTime(_registrationStartController, _registrationStartDate, (d) => _registrationStartDate = d),
-                    ),
-                    const SizedBox(height: 16),
-                    TextField(
-                      controller: _registrationEndController,
-                      decoration: InputDecoration(
-                        labelText: l10n.registrationEndLabel,
-                        border: const OutlineInputBorder(),
-                        prefixIcon: const Icon(Icons.stop),
-                        hintText: l10n.competitionDateHint,
-                      ),
-                      readOnly: true,
-                      onTap: () => _selectDateTime(_registrationEndController, _registrationEndDate, (d) => _registrationEndDate = d),
-                    ),
+                    // registration date section removed
                     const SizedBox(height: 32),
                     // Classifications Section
                     Card(

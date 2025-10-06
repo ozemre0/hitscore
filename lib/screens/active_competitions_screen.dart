@@ -4,6 +4,7 @@ import '../l10n/app_localizations.dart';
 import '../services/supabase_config.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:uuid/uuid.dart';
+import 'competition_participants_screen.dart';
 
 class ActiveCompetitionsScreen extends StatefulWidget {
   const ActiveCompetitionsScreen({super.key});
@@ -30,14 +31,12 @@ class _ActiveCompetitionsScreenState extends State<ActiveCompetitionsScreen> {
       _error = null;
     });
     try {
-      final nowIso = DateTime.now().toIso8601String();
       final response = await SupabaseConfig.client
           .from('organized_competitions')
-          .select()
+          .select('organized_competition_id,name,description,start_date,end_date,competition_visible_id,registration_allowed,status')
           .eq('is_deleted', false)
           .eq('status', 'active')
-          .lte('registration_start_date', nowIso)
-          .gte('registration_end_date', nowIso)
+          .eq('registration_allowed', true)
           .order('start_date');
 
       final competitions = List<Map<String, dynamic>>.from(response);
@@ -81,6 +80,7 @@ class _ActiveCompetitionsScreenState extends State<ActiveCompetitionsScreen> {
     }
   }
 
+
   String _formatDate(String? dateString) {
     if (dateString == null) return '';
     try {
@@ -104,11 +104,22 @@ class _ActiveCompetitionsScreenState extends State<ActiveCompetitionsScreen> {
 
       // 2) Insert pending request with classification
       final participantId = const Uuid().v4();
+      
+      // Get user's role from profile
+      final profile = await SupabaseConfig.client
+          .from('profiles')
+          .select('role')
+          .eq('id', user.id)
+          .maybeSingle();
+      
+      final userRole = profile?['role'] as String? ?? 'athlete';
+      
       await SupabaseConfig.client.from('organized_competition_participants').insert({
         'participant_id': participantId,
         'organized_competition_id': competition['organized_competition_id'],
         'classification_id': classificationId,
-        'athlete_id': user.id,
+        'user_id': user.id,
+        'participant_role': userRole,
         'status': 'pending',
         'created_at': DateTime.now().toIso8601String(),
       });
@@ -121,7 +132,7 @@ class _ActiveCompetitionsScreenState extends State<ActiveCompetitionsScreen> {
     } on PostgrestException catch (e) {
       final l10n = AppLocalizations.of(context)!;
       final isDuplicate = e.code == '23505';
-      final isForeignKeyError = e.code == '23503' && e.message.contains('athlete_id_fkey');
+      final isForeignKeyError = e.code == '23503' && e.message.contains('user_id');
       
       if (isDuplicate) {
         setState(() {
@@ -135,7 +146,7 @@ class _ActiveCompetitionsScreenState extends State<ActiveCompetitionsScreen> {
       } else if (isForeignKeyError) {
         message = l10n.athleteProfileRequired;
       } else {
-        message = '${l10n.competitionJoinError}: ${e.message ?? e.details ?? e.code}';
+        message = '${l10n.competitionJoinError}: ${e.message}';
       }
       
       if (mounted) {
@@ -295,6 +306,17 @@ class _ActiveCompetitionsScreenState extends State<ActiveCompetitionsScreen> {
     }
   }
 
+  void _showParticipants(Map<String, dynamic> competition) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => CompetitionParticipantsScreen(
+          competitionId: competition['organized_competition_id'] as String,
+          competitionName: competition['name'] ?? '',
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
@@ -379,16 +401,7 @@ class _ActiveCompetitionsScreenState extends State<ActiveCompetitionsScreen> {
         itemCount: _competitions.length,
         itemBuilder: (context, index) {
           final c = _competitions[index];
-          final isRegistrationWindow = c['registration_start_date'] != null && c['registration_end_date'] != null;
-          final now = DateTime.now();
-          bool canRegister = false;
-          if (isRegistrationWindow) {
-            try {
-              final rs = DateTime.parse(c['registration_start_date']);
-              final re = DateTime.parse(c['registration_end_date']);
-              canRegister = now.isAfter(rs) && now.isBefore(re);
-            } catch (_) {}
-          }
+          final bool canRegister = (c['registration_allowed'] as bool?) ?? false;
           return Card(
             margin: const EdgeInsets.only(bottom: 12),
             elevation: 0,
@@ -409,18 +422,19 @@ class _ActiveCompetitionsScreenState extends State<ActiveCompetitionsScreen> {
                     ),
                   ),
                   const SizedBox(width: 8),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: (canRegister ? Colors.green : Colors.grey).withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: (canRegister ? Colors.green : Colors.grey).withOpacity(0.3)),
+                  if (SupabaseConfig.client.auth.currentUser != null)
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: (canRegister ? Colors.green : Colors.grey).withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: (canRegister ? Colors.green : Colors.grey).withOpacity(0.3)),
+                      ),
+                      child: Text(
+                        canRegister ? l10n.registrationOpen : l10n.registrationClosed,
+                        style: TextStyle(color: canRegister ? Colors.green : Colors.grey, fontWeight: FontWeight.w600, fontSize: 12),
+                      ),
                     ),
-                    child: Text(
-                      canRegister ? l10n.registrationOpen : l10n.registrationClosed,
-                      style: TextStyle(color: canRegister ? Colors.green : Colors.grey, fontWeight: FontWeight.w600, fontSize: 12),
-                    ),
-                  ),
                 ]),
                 if (c['description'] != null && (c['description'] as String).isNotEmpty) ...[
                   const SizedBox(height: 8),
@@ -482,34 +496,34 @@ class _ActiveCompetitionsScreenState extends State<ActiveCompetitionsScreen> {
                     ),
                   ]),
                 ],
-                if (isRegistrationWindow) ...[
-                  const SizedBox(height: 4),
-                  Row(children: [
-                    Icon(Icons.play_arrow, size: 16, color: colorScheme.onSurfaceVariant),
-                    const SizedBox(width: 4),
-                    Text('${l10n.registrationStartLabel}: ${_formatDate(c['registration_start_date'])}', style: Theme.of(context).textTheme.bodySmall?.copyWith(color: colorScheme.onSurfaceVariant)),
-                  ]),
-                  const SizedBox(height: 4),
-                  Row(children: [
-                    Icon(Icons.stop, size: 16, color: colorScheme.onSurfaceVariant),
-                    const SizedBox(width: 4),
-                    Text('${l10n.registrationEndLabel}: ${_formatDate(c['registration_end_date'])}', style: Theme.of(context).textTheme.bodySmall?.copyWith(color: colorScheme.onSurfaceVariant)),
-                  ]),
-                ],
+                Row(children: [
+                  Icon(Icons.how_to_reg, size: 16, color: colorScheme.onSurfaceVariant),
+                  const SizedBox(width: 4),
+                  Text(canRegister ? l10n.registrationOpen : l10n.registrationClosed, style: Theme.of(context).textTheme.bodySmall?.copyWith(color: colorScheme.onSurfaceVariant)),
+                ]),
                 const SizedBox(height: 12),
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: _pendingCompetitionIds.contains(c['organized_competition_id'])
-                      ? OutlinedButton.icon(
-                          onPressed: () => _cancelRequest(c),
-                          icon: const Icon(Icons.close),
-                          label: Text(l10n.cancelRequest),
-                        )
-                      : OutlinedButton.icon(
-                          onPressed: canRegister ? () => _joinCompetition(c) : null,
-                          icon: const Icon(Icons.how_to_reg),
-                          label: Text(l10n.competitionJoin),
-                        ),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    OutlinedButton.icon(
+                      onPressed: () => _showParticipants(c),
+                      icon: const Icon(Icons.people),
+                      label: Text(l10n.participantsTitle),
+                    ),
+                    // If not authenticated (guest), hide join/cancel and only show participants
+                    if (SupabaseConfig.client.auth.currentUser != null)
+                      (_pendingCompetitionIds.contains(c['organized_competition_id'])
+                          ? OutlinedButton.icon(
+                              onPressed: () => _cancelRequest(c),
+                              icon: const Icon(Icons.close),
+                              label: Text(l10n.cancelRequest),
+                            )
+                          : OutlinedButton.icon(
+                              onPressed: canRegister ? () => _joinCompetition(c) : null,
+                              icon: const Icon(Icons.how_to_reg),
+                              label: Text(l10n.competitionJoin),
+                            )),
+                  ],
                 ),
               ]),
             ),

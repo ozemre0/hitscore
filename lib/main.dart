@@ -2,11 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'l10n/app_localizations.dart';
 import 'screens/login_screen.dart';
+import 'screens/guest_screen.dart';
 import 'screens/home_shell.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'providers/settings_providers.dart';
 import 'providers/auth_provider.dart';
 import 'services/supabase_config.dart';
+import 'widgets/start_gate.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -66,12 +68,14 @@ class MyApp extends ConsumerWidget {
         GlobalCupertinoLocalizations.delegate,
       ],
       supportedLocales: const [Locale('en'), Locale('tr')],
-      home: authState.when(
-        data: (user) => user != null ? const HomeShell() : const LoginScreen(),
-        loading: () => const Scaffold(
-          body: Center(child: CircularProgressIndicator()),
+      home: StartGate(
+        child: authState.when(
+          data: (user) => user != null ? const HomeShell() : const GuestScreen(),
+          loading: () => const Scaffold(
+            body: Center(child: CircularProgressIndicator()),
+          ),
+          error: (_, __) => const GuestScreen(),
         ),
-        error: (_, __) => const LoginScreen(),
       ),
     );
   }

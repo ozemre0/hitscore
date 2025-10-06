@@ -1,0 +1,249 @@
+import 'dart:async';
+import 'dart:convert';
+import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:flutter/foundation.dart';
+import 'package:http/http.dart' as http;
+import '../models/training_session_model.dart';
+// import '../models/training_series_model.dart'; // Artık kullanılmıyor, kaldırıldı
+import '../services/training_repository.dart';
+import '../services/database_service.dart';
+import '../services/supabase_config.dart';
+
+/// Service that handles the synchronization of training data between
+/// local SQLite database and Supabase. This ensures that the app operates in
+/// an offline-first manner, with synchronization happening regularly.
+class TrainingSyncService {
+  final TrainingRepository _repository;
+  final DatabaseService _database = DatabaseService();
+  Timer? _syncTimer;
+  bool _isAutoSyncEnabled = true;
+  bool _isSyncing = false; // Senkronizasyonun devam edip etmediğini takip etmek için
+
+  TrainingSyncService({required TrainingRepository repository})
+      : _repository = repository {
+    // Uygulaması başladığında mevcut verileri senkronize etmeye çalış
+    _initializeSync();
+  }
+
+  /// Uygulama başladığında ilk senkronizasyon ve periyodik senkronizasyon ayarı
+  void _initializeSync() {
+    // **OPTİMİZE EDİLDİ:** İlk sync'i biraz geciktir (ana sync bitsin diye)
+    Timer(const Duration(seconds: 10), () {
+      if (_isAutoSyncEnabled) {
+        syncPendingData();
+      }
+    });
+
+    // **OPTİMİZE EDİLDİ:** Timer süresini 2 dakikadan 15 dakikaya çıkardık
+    // Çünkü çok sık sync gereksiz request'lere sebep oluyor
+    _syncTimer = Timer.periodic(const Duration(minutes: 15), (timer) {
+      if (_isAutoSyncEnabled) {
+        syncPendingData();
+      }
+    });
+
+    // İnternet tekrar gelince otomatik sync - throttle ekledik
+    DateTime? lastConnectivitySync;
+    Connectivity().onConnectivityChanged.listen((status) {
+      if (status != ConnectivityResult.none) {
+        final now = DateTime.now();
+        // **THROTTLE:** Son connectivity sync'ten 30 saniye geçmişse sync yap
+        if (lastConnectivitySync == null || 
+            now.difference(lastConnectivitySync!) > const Duration(seconds: 30)) {
+          debugPrint('|10n:internet_came_back_syncing_pending_trainings');
+          lastConnectivitySync = now;
+          syncPendingData();
+        } else {
+          debugPrint('|10n:connectivity_sync_throttled');
+        }
+      }
+    });
+  }
+
+  /// Set auto sync enabled/disabled
+  void setAutoSync(bool isEnabled) {
+    _isAutoSyncEnabled = isEnabled;
+  }
+
+  /// Belirli bir antrenman oturumu için hemen senkronizasyon yap
+  /// Bu metot, özellikle sporcu bir antrenmanı güncellediğinde çağrılmalıdır
+  Future<void> syncTrainingSession(TrainingSession session) async {
+    try {
+      // Check connectivity first
+      final connectivityResult = await Connectivity().checkConnectivity();
+      if (connectivityResult == ConnectivityResult.none) {
+        debugPrint('No internet connection, training will be synced later');
+        return;
+      }
+
+      // Supabase client'ı doğrudan al
+      final supabase = SupabaseConfig.client;
+
+      // Eğer oturum zaten Supabase'de kaydedilmemişse (local_ ile başlamayan ID)
+      if (!session.id.startsWith('local_')) {
+        debugPrint('Immediate sync for training session: ${session.id}');
+
+        // **OPTİMİZE EDİLDİ:** Sadece series_data güncelle - updated_at Supabase tarafından otomatik güncellenecek
+        final sessionData = {
+          'series_data': session.seriesData,
+          // 'updated_at': DateTime.now().toIso8601String(), // KALDIRILDI - Supabase otomatik güncelleyecek
+        };
+
+        debugPrint('Updating training session data: ${session.id}');
+
+        try {
+          await supabase
+              .from('training_sessions')
+              .update(sessionData)
+              .eq('id', session.id);
+
+          debugPrint('=== SUPABASE SYNC SUCCESS ===');
+          debugPrint('Session ID: ${session.id}');
+          debugPrint('Series Count: ${session.decodedSeriesData.length}');
+          debugPrint('Updated At: ${sessionData['updated_at']}');
+          debugPrint('This should trigger realtime listeners');
+          debugPrint('=============================');
+        } catch (e) {
+          debugPrint('Error updating training session: $e');
+        }
+      } else {
+        // Henüz Supabase'e kaydedilmemiş - lokalde sakla, sıklıkla sync etme
+        debugPrint('Session has local ID (${session.id}), will sync in bulk later');
+        // Gereksiz frequent sync'i engelle - sadece yerel kayıt yap
+        return;
+      }
+    } catch (e) {
+      debugPrint('Error syncing specific training session: $e');
+    }
+  }
+
+  /// Sync training data with Supabase
+  /// This should be called whenever a training session is created or updated
+  Future<void> finalizeTrainingSession(TrainingSession session) async {
+    try {
+      // Check connectivity first
+      final connectivityResult = await Connectivity().checkConnectivity();
+      if (connectivityResult == ConnectivityResult.none) {
+        debugPrint('No internet connection, training will be synced later');
+        return;
+      }
+
+      // Sync all pending training sessions
+      await _repository.syncPendingTrainingSessions();
+    } catch (e) {
+      debugPrint('Error syncing training data: $e');
+    }
+  }
+
+  /// Manually trigger a background sync of all pending training data
+  Future<void> syncPendingData() async {
+    if (_isSyncing) {
+      debugPrint('Sync already in progress, skipping');
+      return;
+    }
+
+    try {
+      _isSyncing = true;
+      await _repository.syncPendingTrainingSessions();
+    } catch (e) {
+      debugPrint('Error syncing training data: $e');
+    } finally {
+      _isSyncing = false;
+    }
+  }
+
+  /// Supabase'den sadece son sync'ten sonra değişen antrenmanları çek ve local veritabanına kaydet (HTTP workaround)
+  Future<void> syncUpdatedTrainingsFromSupabase(String userId) async {
+    final dbService = DatabaseService();
+    final now = DateTime.now();
+    final lastSync = DatabaseService.lastSupabaseSync;
+    if (_isSyncing) {
+      debugPrint('Supabase delta sync: Sync already in progress, skipping.');
+      return;
+    }
+    _isSyncing = true;
+    try {
+      debugPrint('Supabase delta sync: Fetching updated trainings for user $userId...');
+      final supabaseUrl = '${SupabaseConfig.supabaseUrl}/rest/v1';
+      final supabaseKey = SupabaseConfig.supabaseAnonKey;
+      final filter = lastSync != null
+          ? '&updated_at=gte.${lastSync.toIso8601String()}'
+          : '';
+      
+      // 1. Normal (active) antrenmanları çek
+      final activeUrl =
+          '$supabaseUrl/training_sessions?user_id=eq.$userId&is_deleted=eq.false$filter&order=date.desc';
+      final activeResponse = await http.get(
+        Uri.parse(activeUrl),
+        headers: {
+          'apikey': supabaseKey,
+          'Authorization': 'Bearer $supabaseKey',
+        },
+      );
+      
+      // 2. Silinen antrenmanları da çek (son sync'ten sonra silinenleri)
+      final deletedUrl =
+          '$supabaseUrl/training_sessions?user_id=eq.$userId&is_deleted=eq.true$filter&order=date.desc';
+      final deletedResponse = await http.get(
+        Uri.parse(deletedUrl),
+        headers: {
+          'apikey': supabaseKey,
+          'Authorization': 'Bearer $supabaseKey',
+        },
+      );
+      
+      if (activeResponse.statusCode == 200 && deletedResponse.statusCode == 200) {
+        final List<dynamic> activeData = jsonDecode(activeResponse.body);
+        final List<dynamic> deletedData = jsonDecode(deletedResponse.body);
+        
+        debugPrint('Supabase delta sync: ${activeData.length} active, ${deletedData.length} deleted trainings found.');
+        
+        final db = await dbService.database;
+        
+        // Active antrenmanları işle
+        for (final sessionMap in activeData) {
+          try {
+            final List<Map<String, dynamic>> localRows = await db.query(
+              'training_sessions',
+              where: 'id = ?',
+              whereArgs: [sessionMap['id']],
+            );
+            if (localRows.isNotEmpty && (localRows.first['is_deleted'] == 1)) {
+              debugPrint('Supabase delta sync: Local training was deleted, skipping: ${sessionMap['id']}');
+              continue;
+            }
+            final session = TrainingSession.fromJson(sessionMap);
+            await dbService.saveTrainingSession(session, markForSync: false); // **FİX: Supabase'den gelen güncellemeleri sync'e koyma**
+          } catch (e) {
+            debugPrint('Supabase delta sync: Error saving session: $e');
+          }
+        }
+        
+        // Silinen antrenmanları işle - local'de de sil
+        for (final sessionMap in deletedData) {
+          try {
+            final trainingId = sessionMap['id'] as String;
+            debugPrint('Supabase delta sync: Marking training as deleted locally: $trainingId');
+            await dbService.softDeleteTrainingSession(trainingId);
+          } catch (e) {
+            debugPrint('Supabase delta sync: Error marking session as deleted: $e');
+          }
+        }
+        
+        debugPrint('Supabase delta sync: All updated trainings synced to local DB.');
+        DatabaseService.lastSupabaseSync = now;
+      } else {
+        debugPrint('Supabase delta sync: HTTP error - active: ${activeResponse.statusCode}, deleted: ${deletedResponse.statusCode}');
+      }
+    } catch (e) {
+      debugPrint('Supabase delta sync: Error fetching updated trainings from Supabase: $e');
+    } finally {
+      _isSyncing = false;
+    }
+  }
+
+  /// Uygulama kapandığında timer'ı iptal et
+  void dispose() {
+    _syncTimer?.cancel();
+  }
+}

@@ -1,0 +1,113 @@
+source_schema,source_table,src_columns,target_schema,target_table,tgt_columns,on_update_action,on_delete_action
+auth,identities,{user_id},auth,users,{id},NO ACTION,CASCADE
+auth,mfa_amr_claims,{session_id},auth,sessions,{id},NO ACTION,CASCADE
+auth,mfa_challenges,{factor_id},auth,mfa_factors,{id},NO ACTION,CASCADE
+auth,mfa_factors,{user_id},auth,users,{id},NO ACTION,CASCADE
+auth,one_time_tokens,{user_id},auth,users,{id},NO ACTION,CASCADE
+auth,refresh_tokens,{session_id},auth,sessions,{id},NO ACTION,CASCADE
+auth,saml_providers,{sso_provider_id},auth,sso_providers,{id},NO ACTION,CASCADE
+auth,saml_relay_states,{flow_state_id},auth,flow_state,{id},NO ACTION,CASCADE
+auth,saml_relay_states,{sso_provider_id},auth,sso_providers,{id},NO ACTION,CASCADE
+auth,sessions,{user_id},auth,users,{id},NO ACTION,CASCADE
+auth,sso_domains,{sso_provider_id},auth,sso_providers,{id},NO ACTION,CASCADE
+pgsodium,key,{parent_key},pgsodium,key,{id},NO ACTION,NO ACTION
+public,app_config,{updated_by},auth,users,{id},NO ACTION,NO ACTION
+public,athlete_coach,{athlete_id},public,athletes,{athlete_id},NO ACTION,NO ACTION
+public,athlete_coach,{athlete_id},public,athletes,{athlete_id},NO ACTION,NO ACTION
+public,athlete_coach,{coach_id},public,coaches,{coach_id},NO ACTION,NO ACTION
+public,athlete_coach,{coach_id},public,coaches,{coach_id},NO ACTION,NO ACTION
+public,athletes,{user_id},auth,users,{id},NO ACTION,CASCADE
+public,athletes,{user_id},auth,users,{id},NO ACTION,CASCADE
+public,athletes,{club_id},public,clubs,{club_id},NO ACTION,NO ACTION
+public,athletes,{club_id},public,clubs,{club_id},NO ACTION,NO ACTION
+public,athletes,{profile_id},public,profiles,{id},NO ACTION,NO ACTION
+public,athletes,{parent_id},public,xxx_parents,{parent_id},NO ACTION,NO ACTION
+public,athletes,{parent_id},public,xxx_parents,{parent_id},NO ACTION,NO ACTION
+public,coaches,{profile_id},public,profiles,{id},NO ACTION,NO ACTION
+public,coaches,{coach_id},public,profiles,{id},NO ACTION,NO ACTION
+public,competition_records,{age_group},public,age_groups,{age_group_id},NO ACTION,NO ACTION
+public,competition_records,{athlete_id},public,athletes,{athlete_id},NO ACTION,NO ACTION
+public,competition_records,{athlete_id},public,athletes,{athlete_id},NO ACTION,NO ACTION
+public,organized_competition_participants,{age_group},public,age_groups,{age_group_id},NO ACTION,NO ACTION
+public,organized_competition_participants,{organized_competition_id},public,organized_competitions,{organized_competition_id},NO ACTION,NO ACTION
+public,organized_competition_participants,{organized_competition_id},public,organized_competitions,{organized_competition_id},NO ACTION,NO ACTION
+public,organized_competition_participants,{classification_id},public,organized_competitions_classifications,{id},NO ACTION,NO ACTION
+public,organized_competition_participants,{user_id},public,profiles,{id},NO ACTION,NO ACTION
+public,organized_competition_participants,{visible_id},public,profiles,{visible_id},NO ACTION,NO ACTION
+public,organized_competition_participants_duplicate,{age_group},public,age_groups,{age_group_id},NO ACTION,NO ACTION
+public,organized_competition_participants_duplicate,{athlete_id},public,athletes,{athlete_id},NO ACTION,NO ACTION
+public,organized_competition_participants_duplicate,{athlete_id},public,athletes,{athlete_id},NO ACTION,NO ACTION
+public,organized_competition_participants_duplicate,{organized_competition_id},public,organized_competitions,{organized_competition_id},NO ACTION,NO ACTION
+public,organized_competition_participants_duplicate,{organized_competition_id},public,organized_competitions,{organized_competition_id},NO ACTION,NO ACTION
+public,organized_competition_participants_duplicate,{classification_id},public,organized_competitions_classifications,{id},NO ACTION,NO ACTION
+public,organized_competition_participants_duplicate,{visible_id},public,profiles,{visible_id},NO ACTION,NO ACTION
+public,organized_competitions,{created_by},auth,users,{id},NO ACTION,NO ACTION
+public,organized_competitions,{created_by},auth,users,{id},NO ACTION,NO ACTION
+public,organized_competitions,{organizing_club_id},public,clubs,{club_id},NO ACTION,NO ACTION
+public,organized_competitions,{organizing_club_id},public,clubs,{club_id},NO ACTION,NO ACTION
+public,organized_competitions_classifications,{age_group_id},public,age_groups,{age_group_id},CASCADE,RESTRICT
+public,organized_competitions_classifications,{competition_id},public,organized_competitions,{organized_competition_id},NO ACTION,CASCADE
+public,organized_qualifications,{participant_id},public,organized_competition_participants,{participant_id},NO ACTION,NO ACTION
+public,profiles,{id},auth,users,{id},NO ACTION,CASCADE
+public,profiles,{club_id},public,clubs,{club_id},NO ACTION,NO ACTION
+public,training_sessions,{user_id},auth,users,{id},NO ACTION,CASCADE
+public,user_terms_acceptances,{user_id},auth,users,{id},NO ACTION,CASCADE
+public,user_terms_acceptances,{terms_id},public,terms_and_conditions,{id},NO ACTION,CASCADE
+public,xxx_admins,{user_id},auth,users,{id},NO ACTION,NO ACTION
+public,xxx_app_subscription_payments,{subscription_id},public,xxx_app_subscriptions,{subscription_id},NO ACTION,NO ACTION
+public,xxx_app_subscription_payments,{subscription_id},public,xxx_app_subscriptions,{subscription_id},NO ACTION,NO ACTION
+public,xxx_app_subscriptions,{user_id},auth,users,{id},NO ACTION,NO ACTION
+public,xxx_app_subscriptions,{user_id},auth,users,{id},NO ACTION,NO ACTION
+public,xxx_club_coach,{club_id},public,clubs,{club_id},NO ACTION,NO ACTION
+public,xxx_club_coach,{club_id},public,clubs,{club_id},NO ACTION,NO ACTION
+public,xxx_club_coach,{coach_id},public,coaches,{coach_id},NO ACTION,NO ACTION
+public,xxx_club_coach,{coach_id},public,coaches,{coach_id},NO ACTION,NO ACTION
+public,xxx_club_membership_payments,{membership_id},public,xxx_club_memberships,{membership_id},NO ACTION,NO ACTION
+public,xxx_club_membership_payments,{membership_id},public,xxx_club_memberships,{membership_id},NO ACTION,NO ACTION
+public,xxx_club_memberships,{athlete_id},public,athletes,{athlete_id},NO ACTION,NO ACTION
+public,xxx_club_memberships,{athlete_id},public,athletes,{athlete_id},NO ACTION,NO ACTION
+public,xxx_club_memberships,{club_id},public,clubs,{club_id},NO ACTION,NO ACTION
+public,xxx_club_memberships,{club_id},public,clubs,{club_id},NO ACTION,NO ACTION
+public,xxx_club_staff,{club_id},public,clubs,{club_id},NO ACTION,NO ACTION
+public,xxx_club_staff,{club_id},public,clubs,{club_id},NO ACTION,NO ACTION
+public,xxx_group_members,{user_id},auth,users,{id},NO ACTION,NO ACTION
+public,xxx_group_members,{user_id},auth,users,{id},NO ACTION,NO ACTION
+public,xxx_group_members,{group_id},public,xxx_groups,{group_id},NO ACTION,NO ACTION
+public,xxx_group_members,{group_id},public,xxx_groups,{group_id},NO ACTION,NO ACTION
+public,xxx_groups,{created_by},auth,users,{id},NO ACTION,NO ACTION
+public,xxx_groups,{created_by},auth,users,{id},NO ACTION,NO ACTION
+public,xxx_messages,{sender_id},auth,users,{id},NO ACTION,NO ACTION
+public,xxx_messages,{sender_id},auth,users,{id},NO ACTION,NO ACTION
+public,xxx_messages,{group_id},public,xxx_groups,{group_id},NO ACTION,NO ACTION
+public,xxx_messages,{group_id},public,xxx_groups,{group_id},NO ACTION,NO ACTION
+public,xxx_news,{created_by},public,xxx_admins,{admin_id},NO ACTION,NO ACTION
+public,xxx_news,{created_by},public,xxx_admins,{admin_id},NO ACTION,NO ACTION
+public,xxx_news_target_audience,{news_id},public,xxx_news,{news_id},NO ACTION,NO ACTION
+public,xxx_news_target_audience,{news_id},public,xxx_news,{news_id},NO ACTION,NO ACTION
+public,xxx_organized_elimination_matches,{winner_id},public,athletes,{athlete_id},NO ACTION,NO ACTION
+public,xxx_organized_elimination_matches,{athlete2_id},public,athletes,{athlete_id},NO ACTION,NO ACTION
+public,xxx_organized_elimination_matches,{athlete1_id},public,athletes,{athlete_id},NO ACTION,NO ACTION
+public,xxx_organized_elimination_matches,{winner_id},public,athletes,{athlete_id},NO ACTION,NO ACTION
+public,xxx_organized_elimination_matches,{athlete2_id},public,athletes,{athlete_id},NO ACTION,NO ACTION
+public,xxx_organized_elimination_matches,{athlete1_id},public,athletes,{athlete_id},NO ACTION,NO ACTION
+public,xxx_organized_elimination_matches,{winner_team_id},public,clubs,{club_id},NO ACTION,NO ACTION
+public,xxx_organized_elimination_matches,{winner_team_id},public,clubs,{club_id},NO ACTION,NO ACTION
+public,xxx_organized_elimination_matches,{team2_id},public,clubs,{club_id},NO ACTION,NO ACTION
+public,xxx_organized_elimination_matches,{team1_id},public,clubs,{club_id},NO ACTION,NO ACTION
+public,xxx_organized_elimination_matches,{team2_id},public,clubs,{club_id},NO ACTION,NO ACTION
+public,xxx_organized_elimination_matches,{team1_id},public,clubs,{club_id},NO ACTION,NO ACTION
+public,xxx_organized_elimination_matches,{organized_competition_id},public,organized_competitions,{organized_competition_id},NO ACTION,NO ACTION
+public,xxx_organized_elimination_matches,{organized_competition_id},public,organized_competitions,{organized_competition_id},NO ACTION,NO ACTION
+public,xxx_organized_scores,{athlete_id},public,athletes,{athlete_id},NO ACTION,NO ACTION
+public,xxx_organized_scores,{athlete_id},public,athletes,{athlete_id},NO ACTION,NO ACTION
+public,xxx_organized_scores,{organized_competition_id},public,organized_competitions,{organized_competition_id},NO ACTION,NO ACTION
+public,xxx_organized_scores,{organized_competition_id},public,organized_competitions,{organized_competition_id},NO ACTION,NO ACTION
+public,xxx_training_records,{athlete_id},public,athletes,{athlete_id},NO ACTION,NO ACTION
+public,xxx_training_records,{athlete_id},public,athletes,{athlete_id},NO ACTION,NO ACTION
+public,xxx_training_series,{training_id},public,training_sessions,{id},NO ACTION,CASCADE
+storage,objects,{bucket_id},storage,buckets,{id},NO ACTION,NO ACTION
+storage,prefixes,{bucket_id},storage,buckets,{id},NO ACTION,NO ACTION
+storage,s3_multipart_uploads,{bucket_id},storage,buckets,{id},NO ACTION,NO ACTION
+storage,s3_multipart_uploads_parts,{bucket_id},storage,buckets,{id},NO ACTION,NO ACTION
+storage,s3_multipart_uploads_parts,{upload_id},storage,s3_multipart_uploads,{id},NO ACTION,CASCADE
+vault,secrets,{key_id},pgsodium,key,{id},NO ACTION,NO ACTION

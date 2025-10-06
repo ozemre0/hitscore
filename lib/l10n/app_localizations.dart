@@ -1112,7 +1112,7 @@ abstract class AppLocalizations {
   /// No description provided for @participantAthleteId.
   ///
   /// In en, this message translates to:
-  /// **'Athlete ID'**
+  /// **'User ID'**
   String get participantAthleteId;
 
   /// No description provided for @participantGender.
@@ -1259,6 +1259,18 @@ abstract class AppLocalizations {
   /// **'Athlete profile required. Please complete your profile first.'**
   String get athleteProfileRequired;
 
+  /// No description provided for @athlete.
+  ///
+  /// In en, this message translates to:
+  /// **'Athlete'**
+  String get athlete;
+
+  /// No description provided for @coach.
+  ///
+  /// In en, this message translates to:
+  /// **'Coach'**
+  String get coach;
+
   /// No description provided for @registrationOpen.
   ///
   /// In en, this message translates to:
@@ -1270,6 +1282,30 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Registration closed'**
   String get registrationClosed;
+
+  /// No description provided for @registrationAllowedLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Allow registration'**
+  String get registrationAllowedLabel;
+
+  /// No description provided for @registrationAllowedDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'If enabled, users can send join requests. You can change this later.'**
+  String get registrationAllowedDesc;
+
+  /// No description provided for @scoreAllowedLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Allow score entry'**
+  String get scoreAllowedLabel;
+
+  /// No description provided for @scoreAllowedDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'If enabled, participants can enter scores. Typically enable right before the competition starts; you can change this later.'**
+  String get scoreAllowedDesc;
 
   /// No description provided for @requestSent.
   ///
@@ -1318,6 +1354,408 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'No classifications available for this competition'**
   String get noClassificationsAvailable;
+
+  /// No description provided for @addAthletes.
+  ///
+  /// In en, this message translates to:
+  /// **'Add Athletes'**
+  String get addAthletes;
+
+  /// No description provided for @searchAthleteHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Search athletes'**
+  String get searchAthleteHint;
+
+  /// No description provided for @add.
+  ///
+  /// In en, this message translates to:
+  /// **'Add'**
+  String get add;
+
+  /// No description provided for @selectedCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} selected'**
+  String selectedCount(int count);
+
+  /// No description provided for @onlyEligible.
+  ///
+  /// In en, this message translates to:
+  /// **'Only eligible'**
+  String get onlyEligible;
+
+  /// No description provided for @noResults.
+  ///
+  /// In en, this message translates to:
+  /// **'No results'**
+  String get noResults;
+
+  /// No description provided for @operationFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Operation failed'**
+  String get operationFailed;
+
+  /// No description provided for @addedSuccessfully.
+  ///
+  /// In en, this message translates to:
+  /// **'Added successfully'**
+  String get addedSuccessfully;
+
+  /// No description provided for @addToCompetition.
+  ///
+  /// In en, this message translates to:
+  /// **'Add to competition'**
+  String get addToCompetition;
+
+  /// No description provided for @pendingRequestsCount.
+  ///
+  /// In en, this message translates to:
+  /// **'Pending requests: {count}'**
+  String pendingRequestsCount(int count);
+
+  /// No description provided for @acceptedParticipantsCount.
+  ///
+  /// In en, this message translates to:
+  /// **'Accepted participants: {count}'**
+  String acceptedParticipantsCount(int count);
+
+  /// No description provided for @all.
+  ///
+  /// In en, this message translates to:
+  /// **'All'**
+  String get all;
+
+  /// No description provided for @classification.
+  ///
+  /// In en, this message translates to:
+  /// **'Classification'**
+  String get classification;
+
+  /// No description provided for @participantClassification.
+  ///
+  /// In en, this message translates to:
+  /// **'Classification'**
+  String get participantClassification;
+
+  /// No description provided for @participantCompetitionsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'My Participations'**
+  String get participantCompetitionsTitle;
+
+  /// No description provided for @participantCompetitionsSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'View competitions you\'re participating in.'**
+  String get participantCompetitionsSubtitle;
+
+  /// No description provided for @participantCompetitionsEmptyTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'No participations yet'**
+  String get participantCompetitionsEmptyTitle;
+
+  /// No description provided for @participantCompetitionsEmptyDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'You haven\'t joined any competitions yet.'**
+  String get participantCompetitionsEmptyDesc;
+
+  /// No description provided for @participantCompetitionsLoadError.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to load participations'**
+  String get participantCompetitionsLoadError;
+
+  /// No description provided for @competitionStatus.
+  ///
+  /// In en, this message translates to:
+  /// **'Status'**
+  String get competitionStatus;
+
+  /// No description provided for @joinedOn.
+  ///
+  /// In en, this message translates to:
+  /// **'Joined on'**
+  String get joinedOn;
+
+  /// No description provided for @leaveCompetition.
+  ///
+  /// In en, this message translates to:
+  /// **'Leave'**
+  String get leaveCompetition;
+
+  /// No description provided for @leaveCompetitionConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Do you want to leave this competition?'**
+  String get leaveCompetitionConfirm;
+
+  /// No description provided for @competitionLeft.
+  ///
+  /// In en, this message translates to:
+  /// **'You have left the competition'**
+  String get competitionLeft;
+
+  /// No description provided for @leaveCompetitionError.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to leave competition'**
+  String get leaveCompetitionError;
+
+  /// No description provided for @scoreEntryTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Score Entry'**
+  String get scoreEntryTitle;
+
+  /// No description provided for @scoreEntrySubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter your scores for this competition'**
+  String get scoreEntrySubtitle;
+
+  /// No description provided for @enterScore.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter Score'**
+  String get enterScore;
+
+  /// No description provided for @scoreEntryComingSoon.
+  ///
+  /// In en, this message translates to:
+  /// **'Score entry feature coming soon'**
+  String get scoreEntryComingSoon;
+
+  /// No description provided for @scoreEntryAllowed.
+  ///
+  /// In en, this message translates to:
+  /// **'Score entry allowed'**
+  String get scoreEntryAllowed;
+
+  /// No description provided for @scoreEntryNotAllowed.
+  ///
+  /// In en, this message translates to:
+  /// **'Score entry not allowed'**
+  String get scoreEntryNotAllowed;
+
+  /// No description provided for @classificationLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Classification'**
+  String get classificationLabel;
+
+  /// No description provided for @roundCountLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Round count'**
+  String get roundCountLabel;
+
+  /// No description provided for @arrowsPerSetLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Arrows per set'**
+  String get arrowsPerSetLabel;
+
+  /// No description provided for @setsPerRoundLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Sets per round'**
+  String get setsPerRoundLabel;
+
+  /// No description provided for @myOrganizedCompetitionsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'My Organized Competitions'**
+  String get myOrganizedCompetitionsTitle;
+
+  /// No description provided for @myOrganizedCompetitionsSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Manage competitions you have created.'**
+  String get myOrganizedCompetitionsSubtitle;
+
+  /// No description provided for @participantClub.
+  ///
+  /// In en, this message translates to:
+  /// **'Club'**
+  String get participantClub;
+
+  /// No description provided for @noClub.
+  ///
+  /// In en, this message translates to:
+  /// **'No Club'**
+  String get noClub;
+
+  /// No description provided for @currentSet.
+  ///
+  /// In en, this message translates to:
+  /// **'Current Set'**
+  String get currentSet;
+
+  /// No description provided for @totalScore.
+  ///
+  /// In en, this message translates to:
+  /// **'Total Score'**
+  String get totalScore;
+
+  /// No description provided for @tapScoreToContinue.
+  ///
+  /// In en, this message translates to:
+  /// **'Tap the score buttons below to continue training. You are now writing Set {setNumber}.'**
+  String tapScoreToContinue(int setNumber);
+
+  /// No description provided for @editSet.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit - Set {setNumber}'**
+  String editSet(int setNumber);
+
+  /// No description provided for @edit.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit'**
+  String get edit;
+
+  /// No description provided for @overwritingSet.
+  ///
+  /// In en, this message translates to:
+  /// **'You are overwriting Set {setNumber}. Tap the score buttons below to continue.'**
+  String overwritingSet(int setNumber);
+
+  /// No description provided for @guestTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Welcome'**
+  String get guestTitle;
+
+  /// No description provided for @guestSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Explore active competitions or sign in to continue.'**
+  String get guestSubtitle;
+
+  /// No description provided for @goToLogin.
+  ///
+  /// In en, this message translates to:
+  /// **'Go to Login'**
+  String get goToLogin;
+
+  /// No description provided for @browseActiveCompetitions.
+  ///
+  /// In en, this message translates to:
+  /// **'Active Competitions'**
+  String get browseActiveCompetitions;
+
+  /// No description provided for @onboardingWelcomeTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Welcome'**
+  String get onboardingWelcomeTitle;
+
+  /// No description provided for @onboardingWelcomeSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose your language and explore HitScore'**
+  String get onboardingWelcomeSubtitle;
+
+  /// No description provided for @onboardingLanguageNext.
+  ///
+  /// In en, this message translates to:
+  /// **'Next'**
+  String get onboardingLanguageNext;
+
+  /// No description provided for @onboardingGetStarted.
+  ///
+  /// In en, this message translates to:
+  /// **'Get Started'**
+  String get onboardingGetStarted;
+
+  /// No description provided for @onboardingIntroTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Manage competitions with ease'**
+  String get onboardingIntroTitle;
+
+  /// No description provided for @onboardingIntroDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Join competitions, organize events, and track scores seamlessly.'**
+  String get onboardingIntroDescription;
+
+  /// No description provided for @onboardingFeaturesTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'What you can do'**
+  String get onboardingFeaturesTitle;
+
+  /// No description provided for @onboardingFeatureSessionsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Participate'**
+  String get onboardingFeatureSessionsTitle;
+
+  /// No description provided for @onboardingFeatureSessionsDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Browse active competitions and send join requests.'**
+  String get onboardingFeatureSessionsDescription;
+
+  /// No description provided for @onboardingFeatureCoachTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Organize'**
+  String get onboardingFeatureCoachTitle;
+
+  /// No description provided for @onboardingFeatureCoachDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Create competitions, manage participants and classifications.'**
+  String get onboardingFeatureCoachDescription;
+
+  /// No description provided for @onboardingFeatureToolsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Track Scores'**
+  String get onboardingFeatureToolsTitle;
+
+  /// No description provided for @onboardingFeatureToolsDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter and follow scores with clear, responsive screens.'**
+  String get onboardingFeatureToolsDescription;
+
+  /// No description provided for @availableScoreButtonsLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Available Score Buttons'**
+  String get availableScoreButtonsLabel;
+
+  /// No description provided for @availableScoreButtonsDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Select which score buttons will be available for this classification'**
+  String get availableScoreButtonsDescription;
+
+  /// No description provided for @scoreEntryNotAllowedTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Score Entry Not Available'**
+  String get scoreEntryNotAllowedTitle;
+
+  /// No description provided for @scoreEntryNotAllowedMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Score entry is not currently available for this competition. You will be able to enter scores when the organizer opens it.'**
+  String get scoreEntryNotAllowedMessage;
+
+  /// No description provided for @ok.
+  ///
+  /// In en, this message translates to:
+  /// **'OK'**
+  String get ok;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

@@ -1,0 +1,2063 @@
+import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_gen/gen_l10n/app_localizations.dart';                   
+import '../models/scoring_rules.dart';
+import '../models/training_session_model.dart';
+import '../providers/training_session_controller.dart';
+import '../providers/training_config_controller.dart';
+import '../widgets/target_face_widgets.dart';
+import 'training_live_preview_screen.dart';
+import 'training_history_screen.dart';
+import 'package:archeryozs/utils/score_utils.dart';
+
+class TrainingSessionScreen extends ConsumerWidget {
+  const TrainingSessionScreen({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context);
+    final sessionState = ref.watch(trainingSessionProvider);
+    final configState = ref.watch(trainingConfigProvider);
+
+    // Hata durumunu kontrol et
+    if (sessionState.error != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(sessionState.error!),
+              backgroundColor: Colors.red,
+            ),
+          );
+          ref.read(trainingSessionProvider.notifier).clearError();
+        }
+      });
+    }
+
+    // Oturum yoksa yükleniyor veya hata ekranı göster
+    if (sessionState.session == null) {
+      return Scaffold(
+        appBar: AppBar(
+          title: Text(l10n.training),
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back),
+            onPressed: () => Navigator.of(context).pop(),
+          ),
+        ),
+        body: Center(
+          child: sessionState.isLoading
+              ? Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const CircularProgressIndicator(),
+                    const SizedBox(height: 16),
+                    const Text(
+                      'Yükleniyor...',
+                      style: TextStyle(fontSize: 16),
+                    ),
+                  ],
+                )
+              : Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(
+                      Icons.error_outline,
+                      size: 64,
+                      color: Colors.red,
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      'Antrenman oturumu bulunamadı',
+                      style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Oturum silinmiş veya erişilemez durumda olabilir.',
+                      style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 24),
+                    ElevatedButton.icon(
+                      onPressed: () => Navigator.of(context).pop(),
+                      icon: const Icon(Icons.arrow_back),
+                      label: const Text('Geri Dön'),
+                    ),
+                  ],
+                ),
+        ),
+      );
+    }
+
+    final session = sessionState.session!;
+    final currentArrows = sessionState.currentArrows;
+    final currentSeries = sessionState.currentSeriesNumber;
+    final isLoading = sessionState.isLoading;
+    final combinedSeries = ref.read(trainingSessionProvider.notifier).combinedSeries;
+    final isDirty = sessionState.isDirty;
+    
+    // DEBUG: Session ve target face bilgilerini kontrol et
+    if (kDebugMode) print('=== DEBUG: Session Info ===');
+    print('Training Type: [33m${session.trainingType}[0m');
+    print('Target Face: [36m${session.targetFace}[0m');
+    print('Session ID: [31m${session.id}[0m');
+    print('Current Series: [33m${currentSeries}[0m');
+    print('Current Arrows: [35m${currentArrows.length}[0m');
+    print('Combined Series Count: [32m${combinedSeries.length}[0m');
+    print('isDirty: [36m${isDirty}[0m');
+    print('=========================');
+    if (session.targetFace != null) {
+      print('DEBUG: Hedef kağıdı seçili! Değer: [32m${session.targetFace}[0m');
+    } else {
+      print('DEBUG: Hedef kağıdı SEÇİLİ DEĞİL!');
+    }
+    // Hedef kağıdı bloklayan bir şey var mı?
+    if (session.trainingType != 'target') {
+      print('DEBUG: Hedef kağıdı gösterilmiyor çünkü trainingType "target" değil. Şu anki değer: [31m${session.trainingType}[0m');
+    }
+    if (session.targetFace == null) {
+      print('DEBUG: Hedef kağıdı gösterilmiyor çünkü targetFace null.');
+    }
+
+    // Yapılandırmadan her seri için ok sayısını al
+    final arrowsPerSeries =
+        sessionState.session?.arrowsPerSeries ?? configState.arrowsPerSeries;
+    // Yapılandırmadan toplam seri sayısını al
+    final totalConfiguredSeries = configState.seriesCount;
+    
+    // Hedef kağıdında görüntülenen seri için ok verilerini belirle
+    final displayArrowsForTotal = (session.trainingType == 'target' && session.targetFace != null) 
+        ? (sessionState.currentSeriesNumber <= combinedSeries.length 
+            ? List<int>.from((combinedSeries[sessionState.currentSeriesNumber - 1] as Map<String, dynamic>)['arrows'] ?? [])
+            : currentArrows)
+        : currentArrows;
+    
+    // Mevcut ok sayısı seri başına belirlenen ok sayısına ulaştı mı kontrol et
+    final isSeriesComplete = displayArrowsForTotal.length >= arrowsPerSeries;
+    // Mevcut serinin son ayarlanan seri olup olmadığını kontrol et
+    final isLastConfiguredSeries = currentSeries == totalConfiguredSeries;
+
+    // Düzenleme modunda toplam skor ve seri sayısı doğru hesaplansın
+    final filteredSeries = sessionState.isEditing
+        ? combinedSeries.where((s) => s['seriesNumber'] != sessionState.currentSeriesNumber).toList()
+        : combinedSeries;
+
+    final totalScore = filteredSeries.fold<int>(0, (sum, seriesObj) {
+      final arrows = (seriesObj['arrows'] as List<dynamic>?)?.cast<int>() ?? [];
+      return sum + calculateSeriesTotal(arrows);
+    }) + (currentArrows.isNotEmpty ? calculateSeriesTotal(currentArrows) : 0);
+
+    // Calculate current series total - hedef kağıdında görüntülenen seri için
+    final currentSeriesTotal = displayArrowsForTotal.fold<int>(
+        0, (sum, arrow) => sum + ScoringRules.getPointValue(arrow));
+
+    // Get available scores based on bow type and environment
+    final availableScores = ScoringRules.getScoreValues(
+      bowType: session.bowType ?? '', // Provide default empty string
+      isIndoor: session.isIndoor,
+    );
+
+    String environment = session.isIndoor ? l10n.indoor : l10n.outdoor;
+
+    return WillPopScope(
+      onWillPop: () async {
+        // Navigation: pushReplacement ile doğrudan TrainingHistoryScreen'e geç
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (context) => const TrainingHistoryScreen()),
+        );
+        return false; // Varsayılan geri davranışını engelle
+      },
+      child: Scaffold(
+        appBar: AppBar(
+          title: Text(l10n.trainingEnvironmentTitle(environment)),
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back),
+            onPressed: () {
+              Navigator.of(context).pushReplacement(
+                MaterialPageRoute(builder: (context) => const TrainingHistoryScreen()),
+              );
+            },
+          ),
+          actions: [
+            if (isDirty)
+              IconButton(
+                icon: const Icon(Icons.save),
+                tooltip: 'Kaydedilmemiş değişiklikler var',
+                onPressed: () async {
+                  await _handleSaveAction(context, ref, currentArrows, arrowsPerSeries, l10n);
+                },
+              ),
+          ],
+        ),
+        body: Column(
+          children: [
+            // Üst bilgi alanı
+            Container(
+              padding: const EdgeInsets.all(12),
+              color: Theme.of(context).primaryColor.withOpacity(0.1),
+              child: Row(
+                children: [
+                  Expanded(
+                    flex: 3,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          l10n.distanceLabel(
+                              '${session.distance}${l10n.meters}'),
+                          style: const TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w500,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          l10n.bowTypeInfo(getLocalizedBowType(session.bowType, l10n)),
+                          style: const TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w500,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                    ),
+                  ),
+                  Expanded(
+                    flex: 2,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Text(
+                          l10n.seriesCountDisplay(currentSeries, totalConfiguredSeries),
+                          style: const TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w500,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        Text(
+                          l10n.totalScore(totalScore),
+                          style: const TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w500,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            // Mevcut oklar - her zaman göster (hedef kağıdı dahil)
+            Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Expanded(
+                          flex: 3,
+                          child: Text(
+                            l10n.currentSeries(
+                                displayArrowsForTotal.length, arrowsPerSeries),
+                            style: const TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        // Preview icon for target training
+                        if (session.trainingType == 'target' && combinedSeries.isNotEmpty)
+                          Container(
+                            decoration: BoxDecoration(
+                              color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: IconButton(
+                              onPressed: () {
+                                Navigator.of(context).push(
+                                  MaterialPageRoute(
+                                    builder: (context) => const TrainingLivePreviewScreen(),
+                                  ),
+                                );
+                              },
+                              icon: Icon(
+                                Icons.visibility,
+                                color: Theme.of(context).colorScheme.primary,
+                                size: 18,
+                              ),
+                              padding: const EdgeInsets.all(6),
+                              constraints: const BoxConstraints(
+                                minWidth: 32,
+                                minHeight: 32,
+                              ),
+                              tooltip: l10n.series,
+                            ),
+                          ),
+                        Expanded(
+                          flex: 2,
+                          child: Text(
+                            l10n.totalSeriesScore(currentSeriesTotal),
+                            style: const TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
+                            ),
+                            textAlign: TextAlign.end,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    _buildArrowScores(displayArrowsForTotal),
+
+                    // Seri boşken bilgilendirme (score modu)
+                    if (session.trainingType == 'score' && session.targetFace == null && currentArrows.isEmpty)
+                      Container(
+                        margin: const EdgeInsets.only(top: 12),
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).colorScheme.primary.withOpacity(0.08),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: Theme.of(context).colorScheme.primary.withOpacity(0.4)),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Icon(Icons.touch_app, color: Theme.of(context).colorScheme.primary),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    l10n.scoreModeStartHint,
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w500,
+                                      color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black87,
+                                      height: 1.2,
+                                    ),
+                                    maxLines: 3,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            if (sessionState.showOverwriteInfo)
+                              Padding(
+                                padding: const EdgeInsets.only(top: 6, left: 2, right: 2),
+                                child: Text(
+                                  l10n.editingSeriesOverwriteInfo(sessionState.currentSeriesNumber),
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w600,
+                                    color: Colors.redAccent,
+                                    height: 1.2,
+                                  ),
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            if (!sessionState.showOverwriteInfo)
+                              Padding(
+                                padding: const EdgeInsets.only(top: 6, left: 2, right: 2),
+                                child: Text(
+                                  l10n.writingSeriesInfo(sessionState.currentSeriesNumber),
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w600,
+                                    color: Theme.of(context).brightness == Brightness.dark ? Colors.white70 : Colors.black54,
+                                    height: 1.2,
+                                  ),
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
+
+                    // Seri tamamlandığında uyarı göster (hedef kağıdı antrenmanı için gizli)
+                    if (isSeriesComplete && !(session.trainingType == 'target' && session.targetFace != null))
+                      Container(
+                        margin: const EdgeInsets.only(top: 12),
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: Colors.amber.withOpacity(0.2),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: Colors.amber),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.info_outline, color: Colors.amber),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                l10n.seriesCompleteMessage(arrowsPerSeries),
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w500,
+                                  color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black87,
+                                  height: 1.2,
+                                ),
+                                maxLines: 3,
+                                overflow: TextOverflow.ellipsis,
+                                // textScaleFactor: 1.0,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+
+                    // Düzenleme sırasında bilgilendirme (mevcut seti yeniden yazıyorsunuz)
+                    // Not: currentArrows boşken zaten üstteki bilgi kutusunda overwrite mesajı gösteriliyor.
+                    // Bu nedenle burada sadece oklar varken ikinci bir kutu göster.
+                    if (sessionState.isEditing && sessionState.showOverwriteInfo && currentArrows.isNotEmpty)
+                      Container(
+                        margin: const EdgeInsets.only(top: 12),
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: Colors.lightBlueAccent.withOpacity(0.15),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: Colors.lightBlueAccent),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.info_outline, color: Colors.lightBlue),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                l10n.editingSeriesOverwriteInfo(sessionState.currentSeriesNumber),
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                  color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black87,
+                                  height: 1.2,
+                                ),
+                                maxLines: 3,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+
+            // Hedef kağıdı skor antrenmanı için özel görünüm
+            if (session.trainingType == 'target' && session.targetFace != null)
+              Expanded(
+                child: _buildTargetFaceSeriesView(context, ref, sessionState, combinedSeries, arrowsPerSeries, session, l10n),
+              )
+            // Normal antrenmanlar için seri kartları
+            else if (combinedSeries.isNotEmpty)
+              Expanded(
+                child: Stack(
+                  children: [
+                    ListView.builder(
+                      padding: const EdgeInsets.all(16),
+                      itemCount: combinedSeries.length,
+                      itemBuilder: (context, index) {
+                        final series = combinedSeries[index];
+                        // Düzenleme modunda ve düzenlenen seri ise kartı gizle (ok sayısına bakmadan)
+                        if (sessionState.isEditing && sessionState.currentSeriesNumber == (series['seriesNumber'] ?? (index + 1))) {
+                          return const SizedBox.shrink();
+                        }
+                        return _buildSeriesItem(
+                          context,
+                          series,
+                          series['seriesNumber'] ?? (index + 1),
+                          (series['id'] ?? '').toString().startsWith('local_'),
+                          l10n,
+                        );
+                      },
+                    ),
+                    if (isLoading)
+                      Container(
+                        color: Colors.black.withOpacity(0.1),
+                        child: const Center(
+                          child: CircularProgressIndicator(),
+                        ),
+                      ),
+                  ],
+                ),
+              )
+            else if (session.trainingType != 'target' || session.targetFace == null)
+              Expanded(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.info_outline, color: Colors.blue, size: 48),
+                    const SizedBox(height: 16),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                      child: Text(
+                        l10n.trainingSessionInfo,
+                        style: TextStyle(
+                          fontSize: 18,
+                          color: Colors.blue[900],
+                          fontWeight: FontWeight.w500,
+                        ),
+                        textAlign: TextAlign.center,
+                        maxLines: 4,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+            const Divider(height: 1),
+
+            // Normal skor antrenmanı için puan butonları ve kontroller
+            if (session.trainingType == 'score' && session.targetFace == null)
+              SafeArea(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+                  child: Column(
+                    children: [
+                      // Puan butonları - sadece normal skor antrenmanı için (hedef kağıdı yoksa)
+                      if (!isSeriesComplete)
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          alignment: WrapAlignment.center,
+                          children: availableScores.map((score) {
+                            return _buildScoreButton(
+                              context,
+                              score,
+                              () {
+                                ref
+                                    .read(trainingSessionProvider.notifier)
+                                    .recordArrow(score);
+                              },
+                              ref,
+                              arrowsPerSeries,
+                            );
+                          }).toList(),
+                        ),
+
+                      // Not: Bilgilendirme mesajı ok çiplerinin hemen altında gösteriliyor
+
+                      const SizedBox(height: 16),
+
+                      // İşlem butonları - HER ZAMAN sabit göster, sadece aktiflik değişsin
+                      LayoutBuilder(
+                        builder: (context, constraints) {
+                          final double screenWidth = MediaQuery.of(context).size.width;
+                          final double screenHeight = MediaQuery.of(context).size.height;
+                          final bool isTablet = screenWidth >= 600;
+                          final double buttonHeight = isTablet
+                              ? (screenHeight * 0.08).clamp(56.0, 72.0)
+                              : (screenHeight * 0.065).clamp(48.0, 60.0);
+                          final double iconSize = isTablet ? 20 : 16;
+                          final double fontSize = isTablet ? 14 : 12;
+
+                          ButtonStyle commonStyle({Color? bg, Color? fg}) => ElevatedButton.styleFrom(
+                                foregroundColor: fg,
+                                backgroundColor: bg,
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                                minimumSize: Size(0, buttonHeight),
+                              );
+
+                          return Row(
+                            children: [
+                              // Geri al butonu
+                              Expanded(
+                                child: ElevatedButton.icon(
+                                  onPressed: currentArrows.isNotEmpty
+                                      ? () {
+                                          ref
+                                              .read(trainingSessionProvider.notifier)
+                                              .undoLastArrow();
+                                        }
+                                      : null,
+                                  icon: Icon(Icons.undo, size: iconSize),
+                                  label: Text(
+                                    l10n.undoButton,
+                                    style: TextStyle(fontSize: fontSize),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                  style: commonStyle(bg: Colors.grey[300], fg: Colors.black87),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              // Sıfırla butonu
+                              Expanded(
+                                child: ElevatedButton.icon(
+                                  onPressed: currentArrows.isNotEmpty
+                                      ? () {
+                                          ref
+                                              .read(trainingSessionProvider.notifier)
+                                              .resetCurrentSeries();
+                                        }
+                                      : null,
+                                  icon: Icon(Icons.refresh, size: iconSize),
+                                  label: Text(
+                                    l10n.resetButton,
+                                    style: TextStyle(fontSize: fontSize),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                  style: commonStyle(bg: Colors.amber[200], fg: Colors.black87),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              // Seriyi Tamamla butonu
+                              Expanded(
+                                child: ElevatedButton.icon(
+                                  onPressed: (currentArrows.isNotEmpty && currentArrows.length == arrowsPerSeries)
+                                      ? () {
+                                          if (isLastConfiguredSeries && !sessionState.isEditing) {
+                                            _showTrainingFinishConfirmation(
+                                                context,
+                                                ref,
+                                                totalScore,
+                                                combinedSeries.fold<int>(0, (sum, sObj) {
+                                                  final s = sObj as Map<String, dynamic>?;
+                                                  final arrows = s != null ? s['arrows'] as List<dynamic>? : null;
+                                                  final arrowsLength = arrows?.length ?? 0;
+                                                  return sum + arrowsLength;
+                                                }) +
+                                                    currentArrows.length,
+                                                isLastConfiguredSeries,
+                                                arrowsPerSeries,
+                                                l10n);
+                                          } else {
+                                            ref
+                                                .read(trainingSessionProvider.notifier)
+                                                .completeCurrentSeries(arrowsPerSeries: arrowsPerSeries);
+                                          }
+                                        }
+                                      : null,
+                                  icon: Icon(Icons.check, size: iconSize),
+                                  label: Text(
+                                    sessionState.isEditing
+                                        ? (Localizations.localeOf(context).languageCode == 'tr' ? 'Güncelle' : 'Update')
+                                        : l10n.completeSeriesButton,
+                                    style: TextStyle(fontSize: fontSize),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                  style: commonStyle(
+                                    bg: (currentArrows.isNotEmpty && currentArrows.length == arrowsPerSeries)
+                                        ? (sessionState.isEditing ? Colors.orange : Colors.green)
+                                        : Colors.grey,
+                                    fg: Colors.white,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          );
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+
+            // Teknik antrenman için basit bilgi gösterimi
+            if (session.trainingType == 'technique')
+              Container(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  children: [
+                    Icon(
+                      Icons.fitness_center,
+                      size: 64,
+                      color: Theme.of(context).primaryColor,
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      l10n.techniqueTraining,
+                      style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                      textAlign: TextAlign.center,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Teknik çalışmanız için zamanlayıcıyı kullanabilirsiniz.',
+                      style: Theme.of(context).textTheme.bodyMedium,
+                      textAlign: TextAlign.center,
+                      maxLines: 3,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // Antrenman bitimi onay penceresini göster
+  void _showTrainingFinishConfirmation(
+      BuildContext context,
+      WidgetRef ref,
+      int totalScore,
+      int totalArrows,
+      bool isLastSeries,
+      int arrowsPerSeries,
+      AppLocalizations l10n) {
+    // Ok başına ortalama puanı hesapla
+    final double averagePerArrow =
+        totalArrows > 0 ? totalScore / totalArrows : 0;
+
+    showDialog(
+      context: context,
+      barrierDismissible: false, // Prevent dismissing while processing
+      builder: (BuildContext context) {
+        final dialogTheme = Theme.of(context);
+        final isDarkDialog = dialogTheme.brightness == Brightness.dark;
+
+        return AlertDialog(
+          backgroundColor:
+              isDarkDialog ? dialogTheme.colorScheme.surface : Colors.white,
+          title: Text(
+            'Antrenmanı Bitir',
+            style: TextStyle(
+              color: isDarkDialog ? Colors.white : Colors.black,
+            ),
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _buildSummaryItem(
+                  Icons.score, 'Toplam Puan', '$totalScore', isDarkDialog),
+              _buildSummaryItem(Icons.arrow_forward, 'Toplam Ok',
+                  '$totalArrows', isDarkDialog),
+              _buildSummaryItem(Icons.calculate, 'Ok Başı Ortalama',
+                  averagePerArrow.toStringAsFixed(2), isDarkDialog),
+            ],
+          ),
+          actions: <Widget>[
+            TextButton(
+              child: const Text('Antrenmana Devam Et'),
+              onPressed: () async {
+                // Eğer mevcut oklar tamamlanmışsa yeni seriyi başlat
+                if (ref.read(trainingSessionProvider).currentArrows.length == arrowsPerSeries) {
+                  await ref.read(trainingSessionProvider.notifier).completeCurrentSeries(arrowsPerSeries: arrowsPerSeries);
+                }
+                Navigator.of(context).pop();
+              },
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.green,
+                foregroundColor: Colors.white,
+              ),
+              onPressed: () async {
+                // Show a loading indicator while saving
+                // Web platformunda daha belirgin bir yükleme göstergesi
+                showDialog(
+                  context: context,
+                  barrierDismissible: false,
+                  builder: (BuildContext context) {
+                    return Dialog(
+                      child: Container(
+                        padding: const EdgeInsets.all(20.0),
+                        width: kIsWeb ? 300 : 250, // Web'de daha geniş
+                        child: const Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            if (kIsWeb)
+                              // Web'de daha büyük yükleme göstergesi
+                              SizedBox(
+                                width: 60,
+                                height: 60,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 4,
+                                  valueColor: AlwaysStoppedAnimation<Color>(
+                                      Colors.blue),
+                                ),
+                              )
+                            else
+                              CircularProgressIndicator(),
+                            SizedBox(height: 20),
+                            Text(
+                              kIsWeb
+                                  ? "Antrenman kaydediliyor...\nLütfen bekleyin"
+                                  : "Antrenman kaydediliyor...",
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                fontSize: kIsWeb ? 16 : 14,
+                                fontWeight: kIsWeb
+                                    ? FontWeight.bold
+                                    : FontWeight.normal,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                );
+
+                try {
+                  // First complete current series if needed
+                  if (ref.read(trainingSessionProvider).currentArrows.length ==
+                      arrowsPerSeries) {
+                    print('Completing final series before saving training');
+                    await ref
+                        .read(trainingSessionProvider.notifier)
+                        .completeCurrentSeries(
+                            arrowsPerSeries: arrowsPerSeries);
+                  }
+
+                  // First make sure all local series are saved to local database
+                  print('Saving all changes to local database');
+                  await ref
+                      .read(trainingSessionProvider.notifier)
+                      .saveTrainingToDatabase();
+
+                  // Now explicitly tell the controller to end and save training with scores
+                  print('Ending training with saveChanges=true');
+                  final success = await ref
+                      .read(trainingSessionProvider.notifier)
+                      .endTraining(saveChanges: true);
+
+                  if (!success) {
+                    throw Exception('Failed to save training session');
+                  }
+
+                  print('Training successfully saved and ended');
+
+                  if (context.mounted) {
+                    // Close loading dialog
+                    Navigator.of(context).pop();
+                    // Close confirmation dialog  
+                    Navigator.of(context).pop();
+
+                    // Navigate to history screen with safe navigation
+                    await _navigateToHistorySafely(context);
+                  }
+                } catch (e) {
+                  print('Error saving training: $e');
+                  if (context.mounted) {
+                    // Close loading indicator
+                    Navigator.of(context).pop();
+                    // Show error
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content:
+                            Text(
+                              'Antrenman kaydedilemedi: ${e.toString()}',
+                              maxLines: 3,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                        backgroundColor: Colors.red,
+                      ),
+                    );
+                  }
+                }
+              },
+              child: const Text('Kaydet ve Bitir'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  // Özet öğesi için yardımcı widget - isDarkDialog parametresi ekledim
+  Widget _buildSummaryItem(
+      IconData icon, String label, String value, bool isDarkDialog) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8.0),
+      child: Row(
+        children: [
+          Icon(icon, size: 20, color: Colors.blue),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              label,
+              style: TextStyle(
+                fontWeight: FontWeight.w500,
+                // Adapt text color based on theme
+                color: isDarkDialog ? Colors.white70 : Colors.black87,
+              ),
+            ),
+          ),
+          Text(
+            value,
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 16,
+              // Adapt text color based on theme
+              color: isDarkDialog ? Colors.white : Colors.black,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Ok skorlarını gösteren widget
+  Widget _buildArrowScores(List<int> arrows) {
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          // Show actual arrow scores if any exist
+          for (int i = 0; i < arrows.length; i++)
+            Container(
+              width: 42,
+              height: 42,
+              margin: const EdgeInsets.symmetric(horizontal: 3),
+              decoration: BoxDecoration(
+                color: _getColorForScore(arrows[i]),
+                shape: BoxShape.circle,
+                border: Border.all(color: Colors.black26),
+              ),
+              alignment: Alignment.center,
+              child: Text(
+                ScoringRules.labelFromScore(arrows[i]),
+                style: TextStyle(
+                  color: _getTextColorForScore(arrows[i]),
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          // Show transparent placeholder when no arrows to prevent layout shift
+          if (arrows.isEmpty)
+            Container(
+              width: 42,
+              height: 42,
+              margin: const EdgeInsets.symmetric(horizontal: 3),
+            ),
+        ],
+      ),
+    );
+  }
+
+  // Seri öğesi
+  Widget _buildSeriesItem(BuildContext context, Map<String, dynamic> series,
+      int seriesNumber, bool isLocal, AppLocalizations l10n) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    // Toplam puanı ok dizisinden anlık hesapla
+    final arrows = (series['arrows'] as List<dynamic>?)?.cast<int>() ?? [];
+    final totalScore = calculateSeriesTotal(arrows);
+
+    return Consumer(
+      builder: (context, ref, _) => Card(
+        // Adapt card color to current theme
+        color: isDark ? const Color(0xFF1F1F1F) : Colors.white,
+        elevation: 3, // Daha belirgin gölge
+        margin: const EdgeInsets.only(bottom: 8),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(8),
+          side: BorderSide(
+            // Adapt border color to current theme
+            color: isDark ? Colors.grey.shade800 : Colors.grey.shade300,
+            width: 1,
+          ),
+        ),
+        child: InkWell(
+          onTap: () {
+            showDialog(
+              context: context,
+              builder: (BuildContext context) {
+                final dialogTheme = Theme.of(context);
+                final isDarkDialog = dialogTheme.brightness == Brightness.dark;
+
+                return AlertDialog(
+                  // Adapt dialog background to current theme
+                  backgroundColor:
+                      isDarkDialog ? const Color(0xFF2D2D2D) : Colors.white,
+                  title: Text(
+                    '${l10n.edit} - ${l10n.set} ${seriesNumber}',
+                    style: TextStyle(
+                      // Adapt text color to current theme
+                      color: isDarkDialog ? Colors.white : Colors.black,
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  content: const SizedBox.shrink(),
+                  actionsPadding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+                  actions: [
+                    Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Align(
+                          alignment: Alignment.center,
+                          child: ConstrainedBox(
+                            constraints: const BoxConstraints(
+                              minWidth: 160,
+                              maxWidth: 320,
+                            ),
+                            child: OutlinedButton(
+                              style: OutlinedButton.styleFrom(
+                                side: BorderSide(color: Theme.of(context).colorScheme.outline),
+                                foregroundColor: Theme.of(context).colorScheme.onSurface,
+                              ),
+                              onPressed: () => Navigator.of(context).pop(),
+                              child: Text(
+                                l10n.cancelButton,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Align(
+                          alignment: Alignment.center,
+                          child: ConstrainedBox(
+                            constraints: const BoxConstraints(
+                              minWidth: 160,
+                              maxWidth: 320,
+                            ),
+                            child: FilledButton(
+                              style: FilledButton.styleFrom(
+                                backgroundColor: Theme.of(context).colorScheme.primary,
+                                foregroundColor: Theme.of(context).colorScheme.onPrimary,
+                              ),
+                              onPressed: () {
+                                Navigator.of(context).pop();
+                                ref
+                                    .read(trainingSessionProvider.notifier)
+                                    .loadSeriesForEditing(
+                                      (series['id'] ?? 'local_$seriesNumber').toString(), // Null id fallback
+                                      (series['arrows'] as List).map((e) => e as int).toList(),
+                                      seriesNumber,
+                                    );
+                              },
+                              child: Text(
+                                l10n.edit,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Align(
+                          alignment: Alignment.center,
+                          child: ConstrainedBox(
+                            constraints: const BoxConstraints(
+                              minWidth: 160,
+                              maxWidth: 320,
+                            ),
+                            child: FilledButton(
+                              style: FilledButton.styleFrom(
+                                backgroundColor: Theme.of(context).colorScheme.error,
+                                foregroundColor: Theme.of(context).colorScheme.onError,
+                              ),
+                              onPressed: () async {
+                                Navigator.of(context).pop();
+                                await ref.read(trainingSessionProvider.notifier).deleteSeriesByNumber(seriesNumber);
+                                if (context.mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text(l10n.delete),
+                                      backgroundColor: Colors.redAccent,
+                                      duration: const Duration(seconds: 1),
+                                    ),
+                                  );
+                                }
+                              },
+                              child: Text(
+                                l10n.delete,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                );
+              },
+            );
+          },
+          child: Container(
+            decoration: BoxDecoration(
+              border: ref.watch(trainingSessionProvider).isEditing &&
+                      ref.watch(trainingSessionProvider).currentSeriesNumber ==
+                          seriesNumber
+                  ? Border.all(color: Theme.of(context).primaryColor, width: 2)
+                  : null,
+              borderRadius: BorderRadius.circular(8),
+              // Adapt gradient based on theme
+              gradient: isLocal
+                  ? LinearGradient(
+                      colors: isDark
+                          ? [
+                              Colors.grey.shade900,
+                              Colors.grey.shade800,
+                            ]
+                          : [
+                              Colors.grey.shade200,
+                              Colors.grey.shade100,
+                            ],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    )
+                  : null,
+            ),
+            padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  // Seri numarası ve toplam skor (alt alta)
+                  Container(
+                    padding: const EdgeInsets.symmetric(vertical: 4),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          '${l10n.set} $seriesNumber',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            color: isDark ? Colors.white : Colors.black87,
+                            height: 1.2,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        Text(
+                          '$totalScore/${arrows.length * 10}',
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w400,
+                            color: isDark ? Colors.white60 : Colors.black54,
+                            height: 1.2,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                    ),
+                  ),
+                  Container(
+                    height: 36,
+                    width: 1,
+                    margin: const EdgeInsets.symmetric(horizontal: 8),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [
+                          // Adapt divider color based on theme
+                          isDark
+                              ? Colors.grey.shade800.withOpacity(0.1)
+                              : Colors.grey.shade300.withOpacity(0.1),
+                          isDark ? Colors.grey.shade800 : Colors.grey.shade300,
+                          isDark
+                              ? Colors.grey.shade800.withOpacity(0.1)
+                              : Colors.grey.shade300.withOpacity(0.1),
+                        ],
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                      ),
+                    ),
+                  ),
+                  // Ok skorları
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: series['arrows'] != null
+                        ? (series['arrows'] as List<dynamic>).map((score) => Container(
+                              width: 32,
+                              height: 32,
+                              margin: const EdgeInsets.symmetric(horizontal: 2),
+                              decoration: BoxDecoration(
+                                color: _getColorForScore(score),
+                                shape: BoxShape.circle,
+                                border: Border.all(color: Colors.black26),
+                                boxShadow: const [
+                                  BoxShadow(
+                                    color: Colors.black26,
+                                    blurRadius: 2,
+                                    offset: Offset(0, 1),
+                                  ),
+                                ],
+                              ),
+                              alignment: Alignment.center,
+                              child: Text(
+                                ScoringRules.labelFromScore(score),
+                                style: TextStyle(
+                                  color: _getTextColorForScore(score),
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ))
+                        .toList()
+                        : [],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  // Puan butonları
+  Widget _buildScoreButton(BuildContext context, int score,
+      VoidCallback onPressed, WidgetRef ref, int arrowsPerSeries) {
+    final sessionState = ref.watch(trainingSessionProvider);
+    final isMaxArrowsReached =
+        sessionState.currentArrows.length >= arrowsPerSeries;
+
+    return Material(
+      color: Colors.transparent,
+      elevation: 2,
+      borderRadius: BorderRadius.circular(25),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(25),
+        onTap: isMaxArrowsReached
+            ? () {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(
+                        'Bu seri için maksimum ok sayısına ($arrowsPerSeries) ulaşıldı. Seriyi tamamlayın veya son oku geri alın.',
+                        maxLines: 3,
+                        overflow: TextOverflow.ellipsis,
+                    ),
+                    backgroundColor: Colors.orange,
+                    duration: const Duration(seconds: 3),
+                  ),
+                );
+              }
+            : onPressed,
+        child: Container(
+          width: 50,
+          height: 50,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: _getColorForScore(score),
+            border: Border.all(color: Colors.black26),
+          ),
+          alignment: Alignment.center,
+          child: Text(
+            ScoringRules.labelFromScore(score),
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+              color: _getTextColorForScore(score),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  // Puana göre renk belirleme
+  Color _getColorForScore(int score) {
+    if (ScoringRules.isX(score)) return Colors.yellow;
+    if (score == 10) return Colors.yellow;
+    if (score == 9) return Colors.yellow;
+    if (score == 8) return Colors.red;
+    if (score == 7) return Colors.red;
+    if (score == 6) return Colors.blue;
+    if (score == 5) return Colors.blue;
+    if (score == 4) return Colors.black;
+    if (score == 3) return Colors.black;
+    if (score == 2) return Colors.white;
+    if (score == 1) return Colors.white;
+    return Colors.white; // 0 için (M)
+  }
+
+  // Puana göre metin rengi belirleme
+  Color _getTextColorForScore(int score) {
+    if (ScoringRules.isX(score)) return Colors.black;
+    if (score >= 9) return Colors.black;
+    if (score >= 4 || score == 3) {
+      return Colors.white; // 3 puanı için beyaz renk ekledim
+    }
+    return Colors.black;
+  }
+
+  String getLocalizedBowType(String? bowType, AppLocalizations l10n) {
+    switch (bowType) {
+      case 'Recurve':
+        return l10n.bowTypeRecurve;
+      case 'Compound':
+        return l10n.bowTypeCompound;
+      case 'Barebow':
+        return l10n.bowTypeBarebow;
+      default:
+        return bowType ?? '-';
+    }
+  }
+
+  // Basit seri kartı (hedef kağıdı antrenmanı için)
+  Widget _buildSeriesCard(List<int> arrows, int seriesNumber, AppLocalizations l10n, BuildContext context, {bool showUndoButton = false, VoidCallback? onUndo}) {
+    final totalScore = arrows.fold<int>(0, (sum, score) => sum + score);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+      child: Card(
+        elevation: 2,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        child: Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(12),
+            gradient: LinearGradient(
+              colors: isDark
+                  ? [
+                      Colors.grey.shade900,
+                      Colors.grey.shade800,
+                    ]
+                  : [
+                      Colors.grey.shade200,
+                      Colors.grey.shade100,
+                    ],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+          ),
+          child: Column(
+            children: [
+              // Ana seri kartı içeriği
+              Container(
+                padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+                child: SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      // Seri numarası ve toplam skor (alt alta)
+                      Container(
+                        padding: const EdgeInsets.symmetric(vertical: 4),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text(
+                              '${l10n.set} $seriesNumber',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                                color: isDark ? Colors.white : Colors.black87,
+                                height: 1.2,
+                              ),
+                            ),
+                            Text(
+                              '$totalScore/${arrows.length * 10}',
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w400,
+                                color: isDark ? Colors.white60 : Colors.black54,
+                                height: 1.2,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Container(
+                        height: 36,
+                        width: 1,
+                        margin: const EdgeInsets.symmetric(horizontal: 8),
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [
+                              isDark
+                                  ? Colors.grey.shade800.withOpacity(0.1)
+                                  : Colors.grey.shade300.withOpacity(0.1),
+                              isDark ? Colors.grey.shade800 : Colors.grey.shade300,
+                              isDark
+                                  ? Colors.grey.shade800.withOpacity(0.1)
+                                  : Colors.grey.shade300.withOpacity(0.1),
+                            ],
+                            begin: Alignment.topCenter,
+                            end: Alignment.bottomCenter,
+                          ),
+                        ),
+                      ),
+                      // Ok skorları
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: arrows.map((score) => Container(
+                              width: 32,
+                              height: 32,
+                              margin: const EdgeInsets.symmetric(horizontal: 2),
+                              decoration: BoxDecoration(
+                                color: _getColorForScore(score),
+                                shape: BoxShape.circle,
+                                border: Border.all(color: Colors.black26),
+                                boxShadow: const [
+                                  BoxShadow(
+                                    color: Colors.black26,
+                                    blurRadius: 2,
+                                    offset: Offset(0, 1),
+                                  ),
+                                ],
+                              ),
+                              alignment: Alignment.center,
+                              child: Text(
+                                ScoringRules.labelFromScore(score),
+                                style: TextStyle(
+                                  color: _getTextColorForScore(score),
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ))
+                        .toList(),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              
+              // Geri alma butonu (geçmiş seriler için)
+              if (showUndoButton && arrows.isNotEmpty)
+                Container(
+                  width: double.infinity,
+                  decoration: BoxDecoration(
+                    borderRadius: const BorderRadius.only(
+                      bottomLeft: Radius.circular(12),
+                      bottomRight: Radius.circular(12),
+                    ),
+                    color: isDark ? Colors.grey.shade800 : Colors.grey.shade300,
+                  ),
+                  child: Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      borderRadius: const BorderRadius.only(
+                        bottomLeft: Radius.circular(12),
+                        bottomRight: Radius.circular(12),
+                      ),
+                      onTap: onUndo,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 8),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.undo,
+                              size: 16,
+                              color: isDark ? Colors.white70 : Colors.black54,
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              'Son oku geri al',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: isDark ? Colors.white70 : Colors.black54,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ),
+         );
+   }
+
+   // Geçmiş serilerden ok geri alma (çoklu geri alma destekli)
+   void _undoArrowFromSeries(WidgetRef ref, int seriesNumber, AppLocalizations l10n, BuildContext context) {
+     // Basit geri alma - sadece son oku geri al
+     ref.read(trainingSessionProvider.notifier).undoArrowFromSeries(seriesNumber);
+   }
+
+   // Geçmiş seriye ok ekleme (pixel pozisyon ile)
+   void _addArrowToSeriesWithPosition(WidgetRef ref, int seriesNumber, int score, Offset pixelPosition, AppLocalizations l10n, BuildContext context) {
+     ref.read(trainingSessionProvider.notifier).addArrowToSeriesWithPosition(seriesNumber, score, pixelPosition);
+   }
+   
+   // Geçmiş seriye ok ekleme (rastgele pozisyon ile - eski metod)
+   void _addArrowToSeries(WidgetRef ref, int seriesNumber, int score, AppLocalizations l10n, BuildContext context) {
+     ref.read(trainingSessionProvider.notifier).addArrowToSeries(seriesNumber, score);
+   }
+ 
+   // Hedef kağıdı skor antrenmanı için özel seri görünümü
+  Widget _buildTargetFaceSeriesView(
+    BuildContext context,
+    WidgetRef ref,
+    TrainingSessionState sessionState,
+    List<dynamic> combinedSeries,
+    int arrowsPerSeries,
+    TrainingSession session,
+    AppLocalizations l10n,
+  ) {
+    // Mevcut seri numarası (1'den başlar)
+    final currentSeriesNumber = sessionState.currentSeriesNumber;
+    final totalSeries = combinedSeries.length + 1; // Tamamlanan + mevcut seri
+    final currentArrows = sessionState.currentArrows;
+    
+    // Görüntülenecek seri verisi
+    Map<String, dynamic>? displaySeries;
+    List<int> displayArrows = [];
+    List<Offset> displayPositions = [];
+    bool isViewingCurrentSeries = true;
+    
+    // Hangi seriyi görüntülüyoruz?
+    if (currentSeriesNumber <= combinedSeries.length) {
+      // Geçmiş seri görüntüleniyor
+      displaySeries = combinedSeries[currentSeriesNumber - 1] as Map<String, dynamic>;
+      displayArrows = List<int>.from(displaySeries['arrows'] ?? []);
+      displayPositions = (displaySeries['positions'] as List?)?.map((p) => Offset((p[0] as num).toDouble(), (p[1] as num).toDouble())).toList() ?? [];
+      isViewingCurrentSeries = false;
+      
+      print('=== DEBUG: Hedef Antrenman - Geçmiş Seri ===');
+      print('Görüntülenen Seri: $currentSeriesNumber');
+      print('Seri Okları: $displayArrows');
+      print('Seri Pozisyonları: $displayPositions');
+      print('==========================================');
+    } else {
+      // Mevcut seri görüntüleniyor
+      displayArrows = currentArrows;
+      displayPositions = sessionState.currentArrowPositions;
+      isViewingCurrentSeries = true;
+      
+      print('=== DEBUG: Hedef Antrenman - Mevcut Seri ===');
+      print('Görüntülenen Seri: $currentSeriesNumber');
+      print('Mevcut Oklar: $displayArrows');
+      print('Mevcut Pozisyonlar: $displayPositions');
+      print('===========================================');
+    }
+
+    final double targetFaceMaxHeight = MediaQuery.of(context).size.height * 0.44;
+    final double targetFaceMaxWidth = MediaQuery.of(context).size.width * 0.85;
+    final bool isSetComplete = displayArrows.length >= arrowsPerSeries;
+
+    return Column(
+      children: [
+        // Hedef kağıdı görünümü
+        Expanded(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Tap instruction - show short completed message when series is full
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 6),
+                  child: Text(
+                    isSetComplete ? l10n.seriesCompletedShortTargetFace : l10n.tapTargetToScore,
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: Theme.of(context).brightness == Brightness.dark 
+                          ? Colors.white 
+                          : Theme.of(context).primaryColor,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+                // Target Face Widget
+                Flexible(
+                  child: Center(
+                    child: SizedBox(
+                      width: targetFaceMaxWidth,
+                      height: targetFaceMaxHeight,
+                      child: InteractiveTargetFaceWidget(
+                        targetType: session.targetFace!,
+                        size: targetFaceMaxWidth < targetFaceMaxHeight ? targetFaceMaxWidth : targetFaceMaxHeight,
+                        arrowsPerSeries: arrowsPerSeries,
+                        existingArrows: displayArrows,
+                        existingPositions: displayPositions,
+                        isInteractive: true,
+                        showInstructionAnimation: sessionState.showInstructionAnimation && isViewingCurrentSeries,
+                        onScoreTap: (score, pixelPosition) {
+                          if (!isViewingCurrentSeries) {
+                            // Geçmiş seriye ok ekle
+                            ref.read(trainingSessionProvider.notifier).addArrowToSeriesWithPosition(currentSeriesNumber, score, pixelPosition);
+                          } else {
+                            // Mevcut seriye ok ekle
+                            ref.read(trainingSessionProvider.notifier).recordArrow(score, position: pixelPosition);
+                          }
+                        },
+                        onUndoArrow: () {
+                          if (!isViewingCurrentSeries) {
+                            // DEBUG: Geçmiş seriden ok geri alınıyor
+                            print('=== DEBUG: Geçmiş Seriden Undo ===');
+                            print('Seri Numarası: $currentSeriesNumber');
+                            print('Mevcut Ok Sayısı: ${displayArrows.length}');
+                            print('================================');
+                            
+                            // Geçmiş seriden ok geri al
+                            _undoArrowFromSeries(ref, currentSeriesNumber, l10n, context);
+                          } else {
+                            // Widget'taki undo ile eş zamanlı provider'daki state'i de güncelle
+                            ref
+                                .read(trainingSessionProvider.notifier)
+                                .undoLastArrow();
+                          }
+                        },
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        // Alt navigasyon butonları - SafeArea ile korumalı
+        SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(8, 4, 8, 8),
+            child: Row(
+              children: [
+                // Geri butonu
+                Expanded(
+                  child: ElevatedButton.icon(
+                    onPressed: currentSeriesNumber > 1
+                        ? () {
+                            ref
+                                .read(trainingSessionProvider.notifier)
+                                .goToPreviousSeries();
+                          }
+                        : null,
+                    icon: const Icon(Icons.arrow_back),
+                    label: Text(l10n.backButton),
+                    style: ElevatedButton.styleFrom(
+                      foregroundColor: Colors.black87,
+                      backgroundColor: Colors.grey[300],
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                // Geri al butonu (hem mevcut hem geçmiş seriler için)
+                if (displayArrows.isNotEmpty)
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      onPressed: () {
+                        if (isViewingCurrentSeries) {
+                          ref
+                              .read(trainingSessionProvider.notifier)
+                              .undoLastArrow();
+                        } else {
+                          // Geçmiş seriden ok geri al
+                          _undoArrowFromSeries(ref, currentSeriesNumber, l10n, context);
+                        }
+                      },
+                      icon: const Icon(Icons.undo),
+                      label: Text(l10n.undoButton),
+                      style: ElevatedButton.styleFrom(
+                        foregroundColor: Colors.black87,
+                        backgroundColor: Colors.amber[200],
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                      ),
+                    ),
+                  ),
+                if (displayArrows.isNotEmpty)
+                  const SizedBox(width: 8),
+                // İleri butonu - seri tamamlandığında veya geçmiş seriler için aktif
+                Expanded(
+                  child: ElevatedButton.icon(
+                    onPressed: (currentSeriesNumber < totalSeries) || 
+                             (isViewingCurrentSeries && displayArrows.length >= arrowsPerSeries)
+                        ? () {
+                            if (isViewingCurrentSeries && displayArrows.length >= arrowsPerSeries) {
+                              // DEBUG: Seri tamamlandığında
+                              print('=== DEBUG: Seri Tamamlandı ===');
+                              print('Seri Numarası: ${ref.read(trainingSessionProvider).currentSeriesNumber}');
+                              print('Toplam Ok Sayısı: ${displayArrows.length}');
+                              print('Oklar: $displayArrows');
+                              print('Seri Toplamı: ${displayArrows.fold<int>(0, (sum, arrow) => sum + (arrow == -1 ? 10 : arrow))}');
+                              print('==============================');
+                              
+                              // Mevcut seri tamamlandı, seriyi kaydet ve sonrakine geç
+                              ref
+                                  .read(trainingSessionProvider.notifier)
+                                  .completeCurrentSeries(arrowsPerSeries: arrowsPerSeries);
+                            } else {
+                              // Normal seri navigasyonu
+                              ref
+                                  .read(trainingSessionProvider.notifier)
+                                  .goToNextSeries();
+                            }
+                          }
+                        : null,
+                    icon: const Icon(Icons.arrow_forward),
+                    label: Text(l10n.nextButton),
+                    style: ElevatedButton.styleFrom(
+                      foregroundColor: Colors.white,
+                      backgroundColor: Theme.of(context).primaryColor,
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Future<bool> _handleBackPressed(BuildContext context, WidgetRef ref, List<dynamic> combinedSeries, List<int> currentArrows, bool isDirty, AppLocalizations l10n, int arrowsPerSeries) async {
+    // Eğer hiç seri yoksa ve mevcut seride de ok yoksa, direkt çıkış yap
+    if (combinedSeries.isEmpty && currentArrows.isEmpty) {
+      await ref.read(trainingSessionProvider.notifier).endSession();
+      return true;
+    }
+
+    // Eğer kullanıcı hiçbir değişiklik yapmadıysa, alert dialog göstermeden çık
+    if (!isDirty) {
+      await ref.read(trainingSessionProvider.notifier).endSession();
+      return true;
+    }
+
+    // Eğer mevcut seride ok varsa veya kaydedilmiş seriler varsa uyarı göster
+    if (currentArrows.isNotEmpty || combinedSeries.isNotEmpty) {
+      final result = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: Text(l10n.warning),
+          content: Text(l10n.trainingNotSavedMessage),
+          actions: [
+            TextButton(
+              onPressed: () async {
+                // Kaydetmeden çıkış yaparken hiçbir şey kaydetme
+                await ref
+                    .read(trainingSessionProvider.notifier)
+                    .endSession(forceDelete: false, saveChanges: false);
+                if (context.mounted) {
+                  Navigator.of(context).pop(true);
+                }
+              },
+              child: Text(l10n.exitWithoutSaving),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: Text(l10n.cancelButton),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                // Complete current series if needed
+                if (currentArrows.isNotEmpty &&
+                    currentArrows.length == arrowsPerSeries) {
+                  await ref
+                      .read(trainingSessionProvider.notifier)
+                      .completeCurrentSeries(
+                          arrowsPerSeries: arrowsPerSeries);
+                }
+
+                // Save all changes to database
+                if (isDirty) {
+                  await ref
+                      .read(trainingSessionProvider.notifier)
+                      .saveTrainingToDatabase();
+                }
+
+                if (context.mounted) {
+                  Navigator.of(context).pop(false); // Close dialog
+                  // Navigate to history with safe navigation
+                  await _navigateToHistorySafely(context);
+                }
+              },
+              child: Text(l10n.saveButton),
+            ),
+          ],
+        ),
+      );
+      return result ?? false;
+    }
+
+    return true;
+  }
+
+  Future<void> _handleSaveAction(BuildContext context, WidgetRef ref, List<int> currentArrows, int arrowsPerSeries, AppLocalizations l10n) async {
+    // Complete current series if needed
+    if (currentArrows.isNotEmpty &&
+        currentArrows.length == arrowsPerSeries) {
+      await ref
+          .read(trainingSessionProvider.notifier)
+          .completeCurrentSeries(
+              arrowsPerSeries: arrowsPerSeries);
+    }
+
+    // Save all changes to database
+    await ref
+        .read(trainingSessionProvider.notifier)
+        .saveTrainingToDatabase();
+
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            l10n.trainingSavedMessage,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+          ),
+          backgroundColor: Colors.green,
+        ),
+      );
+    }
+  }
+
+  // Güvenli navigation methodu - Navigator assertion hatalarını önler
+  Future<void> _navigateToHistorySafely(BuildContext context) async {
+    if (!context.mounted) return;
+    
+    // Navigator stack'ini kontrol et
+    if (Navigator.canPop(context)) {
+      // Birden fazla route varsa güvenli geçiş yap
+      try {
+        // Minimal delay ile async navigation
+        await Future.delayed(const Duration(milliseconds: 50));
+        
+        if (context.mounted) {
+          Navigator.of(context).pushReplacement(
+            MaterialPageRoute(
+              builder: (context) => const TrainingHistoryScreen(),
+            ),
+          );
+        }
+      } catch (e) {
+        print('Navigation error: $e');
+        // Fallback navigation
+        if (context.mounted) {
+          Navigator.of(context).pop();
+        }
+      }
+    } else {
+      // Tek route varsa direkt replacement yap
+      if (context.mounted) {
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(
+            builder: (context) => const TrainingHistoryScreen(),
+          ),
+        );
+      }
+    }
+  }
+
+  // Show series preview dialog for target training
+  void _showSeriesPreviewDialog(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return Consumer(
+          builder: (context, WidgetRef ref, child) {
+            final sessionState = ref.watch(trainingSessionProvider);
+            final session = sessionState.session;
+            final combinedSeries = ref.read(trainingSessionProvider.notifier).combinedSeries;
+            
+            if (session == null || combinedSeries.isEmpty) {
+              return AlertDialog(
+                title: Text(l10n.series),
+                content: const Text('No series data available'),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    child: Text(l10n.close),
+                  ),
+                ],
+              );
+            }
+
+            final isDark = Theme.of(context).brightness == Brightness.dark;
+            final colorScheme = Theme.of(context).colorScheme;
+
+            return Dialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Container(
+                constraints: const BoxConstraints(
+                  maxWidth: 400,
+                  maxHeight: 600,
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Header
+                    Container(
+                      padding: const EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        color: colorScheme.primary.withOpacity(0.1),
+                        borderRadius: const BorderRadius.only(
+                          topLeft: Radius.circular(16),
+                          topRight: Radius.circular(16),
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            l10n.series,
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 18,
+                              color: colorScheme.primary,
+                            ),
+                          ),
+                          IconButton(
+                            onPressed: () => Navigator.of(context).pop(),
+                            icon: const Icon(Icons.close),
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(),
+                          ),
+                        ],
+                      ),
+                    ),
+                    // Content
+                    Flexible(
+                      child: SingleChildScrollView(
+                        padding: const EdgeInsets.all(16),
+                        child: Column(
+                          children: combinedSeries.asMap().entries.map((entry) {
+                            final index = entry.key;
+                            final seriesData = entry.value;
+                            final seriesArrows = List<int>.from(seriesData['arrows'] ?? []);
+                            final seriesScore = seriesArrows.fold(0, (sum, arrow) => sum + (arrow == 11 || arrow == -1 ? 10 : arrow));
+                            
+                            return Container(
+                              margin: const EdgeInsets.only(bottom: 12),
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: isDark 
+                                    ? colorScheme.surface.withOpacity(0.7) 
+                                    : Colors.grey[100],
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(
+                                  color: isDark 
+                                      ? Colors.grey[800]! 
+                                      : Colors.grey[300]!,
+                                  width: 1,
+                                ),
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Text(
+                                        '${l10n.set} ${index + 1}',
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 16,
+                                          color: isDark ? Colors.white : Colors.black87,
+                                        ),
+                                      ),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                                        decoration: BoxDecoration(
+                                          color: colorScheme.primary.withOpacity(0.1),
+                                          borderRadius: BorderRadius.circular(12),
+                                        ),
+                                        child: Text(
+                                          seriesScore.toString(),
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            color: colorScheme.primary,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 12),
+                                  Wrap(
+                                    spacing: 8,
+                                    runSpacing: 8,
+                                    children: seriesArrows.map((arrow) {
+                                      // Color and value settings
+                                      Color arrowColor;
+                                      Color textColor;
+                                      String arrowValue;
+                                      if (arrow == 11 || arrow == -1) {
+                                        arrowColor = isDark ? Colors.yellow : Colors.orange.shade700;
+                                        textColor = isDark ? Colors.black : Colors.white;
+                                        arrowValue = 'X';
+                                      } else if (arrow == 10 || arrow == 9) {
+                                        arrowColor = isDark ? Colors.yellow : Colors.orange.shade600;
+                                        textColor = isDark ? Colors.black : Colors.white;
+                                        arrowValue = arrow.toString();
+                                      } else if (arrow == 8 || arrow == 7) {
+                                        arrowColor = Colors.red;
+                                        textColor = Colors.white;
+                                        arrowValue = arrow.toString();
+                                      } else if (arrow == 6 || arrow == 5) {
+                                        arrowColor = Colors.blue;
+                                        textColor = Colors.white;
+                                        arrowValue = arrow.toString();
+                                      } else if (arrow == 4 || arrow == 3) {
+                                        arrowColor = Colors.black;
+                                        textColor = Colors.white;
+                                        arrowValue = arrow.toString();
+                                      } else if (arrow == 2 || arrow == 1) {
+                                        arrowColor = Colors.white;
+                                        textColor = Colors.black;
+                                        arrowValue = arrow.toString();
+                                      } else if (arrow == 0) {
+                                        arrowColor = Colors.grey;
+                                        textColor = Colors.white;
+                                        arrowValue = 'M';
+                                      } else {
+                                        arrowColor = Colors.grey;
+                                        textColor = Colors.white;
+                                        arrowValue = arrow.toString();
+                                      }
+                                      return Container(
+                                        width: 36,
+                                        height: 36,
+                                        decoration: BoxDecoration(
+                                          color: arrowColor.withOpacity(isDark ? 0.7 : (arrowColor == Colors.white ? 0.9 : 0.85)),
+                                          shape: BoxShape.circle,
+                                          border: Border.all(
+                                            color: arrowColor.withOpacity(isDark ? 0.5 : 1.0),
+                                            width: 2,
+                                          ),
+                                        ),
+                                        child: Center(
+                                          child: Text(
+                                            arrowValue,
+                                            style: TextStyle(
+                                              fontWeight: FontWeight.bold,
+                                              color: textColor,
+                                            ),
+                                          ),
+                                        ),
+                                      );
+                                    }).toList(),
+                                  ),
+                                ],
+                              ),
+                            );
+                          }).toList(),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+}

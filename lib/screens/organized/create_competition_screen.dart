@@ -16,14 +16,36 @@ class _CreateCompetitionScreenState extends State<CreateCompetitionScreen> {
   final TextEditingController _descriptionController = TextEditingController();
   final TextEditingController _startDateController = TextEditingController();
   final TextEditingController _endDateController = TextEditingController();
-  final TextEditingController _registrationStartController = TextEditingController();
-  final TextEditingController _registrationEndController = TextEditingController();
+  bool _registrationAllowed = false;
+  bool _scoreAllowed = false;
 
   DateTime? _startDate;
   DateTime? _endDate;
-  DateTime? _registrationStartDate;
-  DateTime? _registrationEndDate;
+  // Registration window removed; using flags instead
   bool _isLoading = false;
+
+  String _normalizeNameToPrefix(String name) {
+    String lower = name.toLowerCase();
+    const Map<String, String> trMap = {
+      'ç': 'c', 'ğ': 'g', 'ı': 'i', 'ö': 'o', 'ş': 's', 'ü': 'u',
+      'â': 'a', 'î': 'i', 'û': 'u'
+    };
+    String replaced = lower.split('').map((ch) => trMap[ch] ?? ch).join();
+    final alnum = replaced.replaceAll(RegExp(r'[^a-z0-9]'), '');
+    return alnum.isEmpty
+        ? 'cmp'
+        : (alnum.length >= 3 ? alnum.substring(0, 3) : alnum.padRight(3, 'x'));
+  }
+
+  Future<String> _generateVisibleId(String name) async {
+    final prefix = _normalizeNameToPrefix(name);
+    final existing = await SupabaseConfig.client
+        .from('organized_competitions')
+        .select('competition_visible_id')
+        .ilike('competition_visible_id', '${prefix}%');
+    final count = (existing as List).length;
+    return '$prefix$count';
+  }
 
   @override
   void dispose() {
@@ -31,8 +53,7 @@ class _CreateCompetitionScreenState extends State<CreateCompetitionScreen> {
     _descriptionController.dispose();
     _startDateController.dispose();
     _endDateController.dispose();
-    _registrationStartController.dispose();
-    _registrationEndController.dispose();
+    // no extra controllers to dispose
     super.dispose();
   }
 
@@ -101,14 +122,16 @@ class _CreateCompetitionScreenState extends State<CreateCompetitionScreen> {
       }
       final uuid = const Uuid();
       final competitionId = uuid.v4();
+      final visibleId = await _generateVisibleId(_nameController.text.trim());
       final competitionData = {
         'organized_competition_id': competitionId,
         'name': _nameController.text.trim(),
         'description': _descriptionController.text.trim().isEmpty ? null : _descriptionController.text.trim(),
         'start_date': _startDate!.toIso8601String(),
         'end_date': _endDate!.toIso8601String(),
-        'registration_start_date': _registrationStartDate?.toIso8601String(),
-        'registration_end_date': _registrationEndDate?.toIso8601String(),
+        'registration_allowed': _registrationAllowed,
+        'score_allowed': _scoreAllowed,
+        'competition_visible_id': visibleId,
         'created_by': user.id,
         'status': 'draft',
       };
@@ -125,9 +148,12 @@ class _CreateCompetitionScreenState extends State<CreateCompetitionScreen> {
       );
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Hata: $e')),
-        );
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: SelectableText.rich(
+            TextSpan(text: e.toString()),
+            style: TextStyle(color: Theme.of(context).colorScheme.error),
+          ),
+        ));
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);
@@ -205,35 +231,20 @@ class _CreateCompetitionScreenState extends State<CreateCompetitionScreen> {
               maxLines: 4,
             ),
             const SizedBox(height: 16),
-            Text(l10n.registrationDatesLabel, style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
+            SwitchListTile(
+              value: _registrationAllowed,
+              onChanged: (v) => setState(() => _registrationAllowed = v),
+              title: Text(l10n.registrationAllowedLabel),
+              subtitle: Text(l10n.registrationAllowedDesc),
+              secondary: const Icon(Icons.how_to_reg),
+            ),
             const SizedBox(height: 8),
-            Text(
-              l10n.registrationDatesOptional,
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant),
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: _registrationStartController,
-              decoration: InputDecoration(
-                labelText: l10n.registrationStartLabel,
-                border: const OutlineInputBorder(),
-                prefixIcon: const Icon(Icons.play_arrow),
-                hintText: l10n.competitionDateHint,
-              ),
-              readOnly: true,
-              onTap: () => _selectDateTime(_registrationStartController, _registrationStartDate, (d) => _registrationStartDate = d),
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: _registrationEndController,
-              decoration: InputDecoration(
-                labelText: l10n.registrationEndLabel,
-                border: const OutlineInputBorder(),
-                prefixIcon: const Icon(Icons.stop),
-                hintText: l10n.competitionDateHint,
-              ),
-              readOnly: true,
-              onTap: () => _selectDateTime(_registrationEndController, _registrationEndDate, (d) => _registrationEndDate = d),
+            SwitchListTile(
+              value: _scoreAllowed,
+              onChanged: (v) => setState(() => _scoreAllowed = v),
+              title: Text(l10n.scoreAllowedLabel),
+              subtitle: Text(l10n.scoreAllowedDesc),
+              secondary: const Icon(Icons.score),
             ),
             const SizedBox(height: 24),
             Text(

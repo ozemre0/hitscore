@@ -4,6 +4,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../services/supabase_config.dart';
 import '../providers/google_signin_provider.dart';
+import 'package:flutter/foundation.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -41,6 +42,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
     setState(() => _isLoading = true);
     try {
+      debugPrint('login.email: attempting signInWithPassword email=${_emailController.text.trim()}');
       final AuthResponse response = await SupabaseConfig.client.auth
           .signInWithPassword(
         email: _emailController.text.trim(),
@@ -50,6 +52,7 @@ class _LoginScreenState extends State<LoginScreen> {
       if (!mounted) return;
 
       final user = response.user;
+      debugPrint('login.email: signInWithPassword user=${user?.id}');
       if (user == null) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(l10n.loginErrorGeneric)),
@@ -87,9 +90,13 @@ class _LoginScreenState extends State<LoginScreen> {
           ),
         );
 
-      // Authentication state provider will handle navigation automatically
-      // No need for manual navigation
+      // Return to root so the root (home:) rebuild shows the correct screen
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+      if (mounted) {
+        Navigator.of(context).popUntil((route) => route.isFirst);
+      }
     } catch (e) {
+      debugPrint('login.email: error=$e');
       if (!mounted) return;
       final String message;
       final String errorText = e.toString();
@@ -205,6 +212,14 @@ class _LoginScreenState extends State<LoginScreen> {
                             await ref
                                 .read(googleSignInProvider.notifier)
                                 .signIn();
+                            // If sign-in succeeded, pop to root so root decides
+                            try {
+                              final u = SupabaseConfig.client.auth.currentUser;
+                              if (u != null && mounted) {
+                                debugPrint('login.google: success user=${u.id}, popping to root');
+                                Navigator.of(context).popUntil((route) => route.isFirst);
+                              }
+                            } catch (_) {}
                             if (mounted) {
                               setState(() => _isGoogleLoading = false);
                             }

@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class SupabaseConfig {
@@ -13,11 +14,14 @@ class SupabaseConfig {
 
   static Future<void> initialize() async {
     if (_initialized) return;
+    debugPrint('supabase.config: INIT start');
     await Supabase.initialize(
       url: supabaseUrl,
       anonKey: supabaseAnonKey,
     );
     _initialized = true;
+    final currentUser = Supabase.instance.client.auth.currentUser;
+    debugPrint('supabase.config: INIT done. currentUser=${currentUser?.id ?? 'null'}');
   }
 }
 

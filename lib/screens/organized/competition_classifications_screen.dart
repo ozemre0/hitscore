@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../l10n/app_localizations.dart';
 import '../../services/supabase_config.dart';
+import 'add_classification_screen.dart';
 
 class CompetitionClassificationsScreen extends StatefulWidget {
   final String competitionId;
@@ -67,10 +68,13 @@ class _CompetitionClassificationsScreenState extends State<CompetitionClassifica
                   ? ageGroupData['age_group_tr'] 
                   : ageGroupData['age_group_en'])
               : 'Unknown';
-          
+
+          // Normalize keys to camelCase used by UI and save logic
           return {
             ...classification,
             'ageGroup': ageGroupName,
+            'ageGroupId': classification['age_group_id'],
+            'bowType': classification['bow_type'],
           };
         }).toList();
       });
@@ -84,27 +88,22 @@ class _CompetitionClassificationsScreenState extends State<CompetitionClassifica
     }
   }
 
-  void _addClassification() {
-    showDialog(
-      context: context,
-      builder: (context) => _ClassificationDialog(
-        onSave: (classification) {
-          setState(() => _classifications.add(classification));
-        },
-      ),
-    );
+  Future<void> _addClassification() async {
+    final result = await Navigator.of(context).push<Map<String, dynamic>>(MaterialPageRoute(
+      builder: (context) => const AddClassificationScreen(),
+    ));
+    if (result != null) {
+      setState(() => _classifications.add(result));
+    }
   }
 
-  void _editClassification(int index) {
-    showDialog(
-      context: context,
-      builder: (context) => _ClassificationDialog(
-        classification: _classifications[index],
-        onSave: (classification) {
-          setState(() => _classifications[index] = classification);
-        },
-      ),
-    );
+  Future<void> _editClassification(int index) async {
+    final result = await Navigator.of(context).push<Map<String, dynamic>>(MaterialPageRoute(
+      builder: (context) => AddClassificationScreen(initialClassification: _classifications[index]),
+    ));
+    if (result != null) {
+      setState(() => _classifications[index] = result);
+    }
   }
 
   void _deleteClassification(int index) {
@@ -136,15 +135,17 @@ class _CompetitionClassificationsScreenState extends State<CompetitionClassifica
     }
     setState(() => _isLoading = true);
     try {
-      // First, delete existing classifications for this competition
-      await SupabaseConfig.client
+      // Get existing classifications to compare
+      final existingClassifications = await SupabaseConfig.client
           .from('organized_competitions_classifications')
-          .delete()
+          .select('id, name, age_group_id, bow_type, environment, gender, distance, round_count, arrow_per_set, set_per_round, available_score_buttons')
           .eq('competition_id', widget.competitionId);
       
-      // Then insert new classifications
-      if (_classifications.isNotEmpty) {
-        final classificationsData = _classifications.map((classification) => {
+      print('DEBUG: Existing classifications: ${existingClassifications.length}');
+      
+      // Process each classification
+      for (final classification in _classifications) {
+        final classificationData = {
           'competition_id': widget.competitionId,
           'name': classification['name'],
           'age_group_id': classification['ageGroupId'],
@@ -152,11 +153,63 @@ class _CompetitionClassificationsScreenState extends State<CompetitionClassifica
           'environment': classification['environment'],
           'gender': classification['gender'],
           'distance': classification['distance'],
-        }).toList();
+          'round_count': classification['round_count'],
+          'arrow_per_set': classification['arrow_per_set'],
+          'set_per_round': classification['set_per_round'],
+          'available_score_buttons': classification['available_score_buttons'],
+        };
         
-        await SupabaseConfig.client
-            .from('organized_competitions_classifications')
-            .insert(classificationsData);
+        print('DEBUG: Processing classification: ${classificationData['name']}');
+        
+        // Check if this classification already exists (by name and competition)
+        final existing = existingClassifications.firstWhere(
+          (existing) => existing['name'] == classification['name'],
+          orElse: () => <String, dynamic>{},
+        );
+        
+        if (existing.isNotEmpty) {
+          // Update existing classification
+          print('DEBUG: Updating existing classification: ${existing['id']}');
+          await SupabaseConfig.client
+              .from('organized_competitions_classifications')
+              .update(classificationData)
+              .eq('id', existing['id']);
+        } else {
+          // Insert new classification
+          print('DEBUG: Inserting new classification');
+          await SupabaseConfig.client
+              .from('organized_competitions_classifications')
+              .insert(classificationData);
+        }
+      }
+      
+      // Remove classifications that are no longer in the list
+      final currentNames = _classifications.map((c) => c['name']).toList();
+      final toDelete = existingClassifications.where(
+        (existing) => !currentNames.contains(existing['name'])
+      ).toList();
+      
+      if (toDelete.isNotEmpty) {
+        print('DEBUG: Removing ${toDelete.length} classifications that are no longer needed');
+        for (final classification in toDelete) {
+          // Check if this classification has participants
+          final participants = await SupabaseConfig.client
+              .from('organized_competition_participants')
+              .select('participant_id')
+              .eq('classification_id', classification['id'])
+              .limit(1);
+          
+          if (participants.isEmpty) {
+            // Safe to delete - no participants
+            await SupabaseConfig.client
+                .from('organized_competitions_classifications')
+                .delete()
+                .eq('id', classification['id']);
+            print('DEBUG: Deleted classification: ${classification['name']}');
+          } else {
+            print('DEBUG: Cannot delete classification ${classification['name']} - has participants');
+          }
+        }
       }
       
       if (widget.isEditMode) {
@@ -292,225 +345,6 @@ class _CompetitionClassificationsScreenState extends State<CompetitionClassifica
   }
 }
 
-class _ClassificationDialog extends StatefulWidget {
-  final Map<String, dynamic>? classification;
-  final Function(Map<String, dynamic>) onSave;
-  const _ClassificationDialog({this.classification, required this.onSave});
-
-  @override
-  State<_ClassificationDialog> createState() => _ClassificationDialogState();
-}
-
-class _ClassificationDialogState extends State<_ClassificationDialog> {
-  final _nameController = TextEditingController();
-  String? _selectedAgeGroup;
-  String? _selectedBowType;
-  String? _selectedEnvironment;
-  String? _selectedGender;
-  int? _selectedDistance;
-  final _customDistanceController = TextEditingController();
-
-  List<Map<String, dynamic>> _ageGroups = [];
-  List<String> _bowTypes = [];
-  List<String> _environments = [];
-  List<String> _genders = [];
-  final List<int> _distances = [18, 20, 30, 50, 60, 70];
-
-  @override
-  void initState() {
-    super.initState();
-    if (widget.classification != null) {
-      _nameController.text = widget.classification!['name'] ?? '';
-      _selectedAgeGroup = widget.classification!['age_group_id']?.toString();
-      _selectedBowType = widget.classification!['bowType'];
-      _selectedEnvironment = widget.classification!['environment'];
-      _selectedGender = widget.classification!['gender'];
-      _selectedDistance = widget.classification!['distance'];
-    }
-  }
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    _initializeOptions();
-  }
-
-  Future<void> _initializeOptions() async {
-    final l10n = AppLocalizations.of(context)!;
-    
-    // Load age groups from database
-    try {
-      final response = await SupabaseConfig.client
-          .from('age_groups')
-          .select('age_group_id, age_group_tr, age_group_en')
-          .order('age_group_id');
-      
-      setState(() {
-        _ageGroups = List<Map<String, dynamic>>.from(response);
-        _bowTypes = [
-          l10n.bowTypeRecurve,
-          l10n.bowTypeCompound,
-          l10n.bowTypeBarebow,
-        ];
-        _environments = [
-          l10n.environmentIndoor,
-          l10n.environmentOutdoor,
-        ];
-        _genders = [
-          l10n.genderMale,
-          l10n.genderFemale,
-          l10n.genderMixed,
-        ];
-      });
-    } catch (e) {
-      // Fallback to hardcoded values if database fails
-      setState(() {
-        _ageGroups = [
-          {'age_group_id': 1, 'age_group_tr': '9 - 10', 'age_group_en': '9 - 10'},
-          {'age_group_id': 2, 'age_group_tr': '11 - 12', 'age_group_en': '11 - 12'},
-          {'age_group_id': 3, 'age_group_tr': '13 - 14', 'age_group_en': '13 - 14'},
-          {'age_group_id': 4, 'age_group_tr': 'U18 (15-16-17)', 'age_group_en': 'U18 (15-16-17)'},
-          {'age_group_id': 5, 'age_group_tr': 'U21 (18-19-20)', 'age_group_en': 'U21 (18-19-20)'},
-          {'age_group_id': 6, 'age_group_tr': 'Büyükler', 'age_group_en': 'Senior'},
-        ];
-        _bowTypes = [
-          l10n.bowTypeRecurve,
-          l10n.bowTypeCompound,
-          l10n.bowTypeBarebow,
-        ];
-        _environments = [
-          l10n.environmentIndoor,
-          l10n.environmentOutdoor,
-        ];
-        _genders = [
-          l10n.genderMale,
-          l10n.genderFemale,
-          l10n.genderMixed,
-        ];
-      });
-    }
-  }
-
-  @override
-  void dispose() {
-    _nameController.dispose();
-    _customDistanceController.dispose();
-    super.dispose();
-  }
-
-  void _save() {
-    final l10n = AppLocalizations.of(context)!;
-    if (_nameController.text.trim().isEmpty ||
-        _selectedAgeGroup == null ||
-        _selectedBowType == null ||
-        _selectedEnvironment == null ||
-        _selectedGender == null ||
-        (_selectedDistance == null && _customDistanceController.text.trim().isEmpty)) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(l10n.fillAllFields)));
-      return;
-    }
-    final distance = _selectedDistance ?? int.tryParse(_customDistanceController.text.trim());
-    if (distance == null) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(l10n.enterValidDistance)));
-      return;
-    }
-    // Find the selected age group data
-    final selectedAgeGroup = _ageGroups.firstWhere(
-      (age) => age['age_group_id'].toString() == _selectedAgeGroup!,
-    );
-    
-    widget.onSave({
-      'name': _nameController.text.trim(),
-      'ageGroup': selectedAgeGroup['age_group_tr'], // Store Turkish name for display
-      'ageGroupId': selectedAgeGroup['age_group_id'], // Store ID for database
-      'bowType': _selectedBowType!,
-      'environment': _selectedEnvironment!,
-      'gender': _selectedGender!,
-      'distance': distance,
-    });
-    Navigator.of(context).pop();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context)!;
-    return AlertDialog(
-      title: Text(widget.classification == null ? l10n.addClassificationTitle : l10n.editClassificationTitle),
-      content: SingleChildScrollView(
-        child: Column(mainAxisSize: MainAxisSize.min, children: [
-          TextField(
-            controller: _nameController,
-            decoration: InputDecoration(
-              labelText: l10n.classificationNameLabel,
-              border: const OutlineInputBorder(),
-              hintText: '${l10n.ageGroupSenior} ${l10n.male} ${l10n.bowTypeRecurve} 70m',
-            ),
-          ),
-          const SizedBox(height: 16),
-          DropdownButtonFormField<String>(
-            value: _selectedAgeGroup,
-            decoration: InputDecoration(labelText: l10n.ageGroupLabel, border: const OutlineInputBorder()),
-            items: _ageGroups.map((age) {
-              final displayText = Localizations.localeOf(context).languageCode == 'tr' 
-                  ? age['age_group_tr'] 
-                  : age['age_group_en'];
-              return DropdownMenuItem(
-                value: age['age_group_id'].toString(),
-                child: Text(displayText),
-              );
-            }).toList(),
-            onChanged: (value) => setState(() => _selectedAgeGroup = value),
-          ),
-          const SizedBox(height: 16),
-          DropdownButtonFormField<String>(
-            value: _selectedBowType,
-            decoration: InputDecoration(labelText: l10n.bowTypeLabel, border: const OutlineInputBorder()),
-            items: _bowTypes.map((bow) => DropdownMenuItem(value: bow, child: Text(bow))).toList(),
-            onChanged: (value) => setState(() => _selectedBowType = value),
-          ),
-          const SizedBox(height: 16),
-          DropdownButtonFormField<String>(
-            value: _selectedEnvironment,
-            decoration: InputDecoration(labelText: l10n.environmentLabel, border: const OutlineInputBorder()),
-            items: _environments.map((env) => DropdownMenuItem(value: env, child: Text(env))).toList(),
-            onChanged: (value) => setState(() => _selectedEnvironment = value),
-          ),
-          const SizedBox(height: 16),
-          DropdownButtonFormField<String>(
-            value: _selectedGender,
-            decoration: InputDecoration(labelText: l10n.genderLabel, border: const OutlineInputBorder()),
-            items: _genders.map((gender) => DropdownMenuItem(value: gender, child: Text(gender))).toList(),
-            onChanged: (value) => setState(() => _selectedGender = value),
-          ),
-          const SizedBox(height: 16),
-          DropdownButtonFormField<int>(
-            value: _selectedDistance,
-            decoration: InputDecoration(labelText: l10n.distanceMetersLabel, border: const OutlineInputBorder()),
-            items: [
-              ..._distances.map((d) => DropdownMenuItem(value: d, child: Text('${d}m'))),
-              DropdownMenuItem(value: -1, child: Text(l10n.customDistance)),
-            ],
-            onChanged: (value) => setState(() => _selectedDistance = value == -1 ? null : value),
-          ),
-          if (_selectedDistance == null) ...[
-            const SizedBox(height: 16),
-            TextField(
-              controller: _customDistanceController,
-              decoration: InputDecoration(
-                labelText: l10n.customDistanceMeters,
-                border: const OutlineInputBorder(),
-              ),
-              keyboardType: TextInputType.number,
-            ),
-          ],
-        ]),
-      ),
-      actions: [
-        TextButton(onPressed: () => Navigator.of(context).pop(), child: Text(l10n.cancel)),
-        ElevatedButton(onPressed: _save, child: Text(l10n.save)),
-      ],
-    );
-  }
-}
+// Dialog removed in favor of full-screen page
 
 

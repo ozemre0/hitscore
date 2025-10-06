@@ -3,6 +3,7 @@ import '../l10n/app_localizations.dart';
 import 'organized/create_competition_screen.dart';
 import 'my_competitions_screen.dart';
 import 'active_competitions_screen.dart';
+import 'organized_competitions_screen.dart';
 import '../services/supabase_config.dart';
 import 'settings_screen.dart';
 
@@ -45,7 +46,7 @@ class HomeScreen extends StatelessWidget {
                         onTap: () {
                           Navigator.of(context).push(
                             MaterialPageRoute(
-                              builder: (context) => const MyCompetitionsScreen(),
+                              builder: (context) => const ParticipantCompetitionsScreen(),
                             ),
                           );
                         },
@@ -72,6 +73,19 @@ class HomeScreen extends StatelessWidget {
                           Navigator.of(context).push(
                             MaterialPageRoute(
                               builder: (context) => const CreateCompetitionScreen(),
+                            ),
+                          );
+                        },
+                      ),
+                      const SizedBox(height: 12),
+                      _HomeCardButton(
+                        icon: Icons.admin_panel_settings,
+                        title: l10n.myOrganizedCompetitionsTitle,
+                        subtitle: l10n.myOrganizedCompetitionsSubtitle,
+                        onTap: () {
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (context) => const OrganizedCompetitionsScreen(),
                             ),
                           );
                         },
@@ -281,7 +295,7 @@ class _HomeDrawer extends StatelessWidget {
                           onPressed: () => Navigator.of(dialogContext).pop(false),
                           style: OutlinedButton.styleFrom(
                             side: BorderSide(
-                              color: Theme.of(context).colorScheme.outline,
+                              color: Theme.of(dialogContext).colorScheme.outline,
                               width: 1,
                             ),
                           ),
