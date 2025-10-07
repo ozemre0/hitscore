@@ -791,6 +791,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String overwritingSet(int setNumber) {
     return 'You are overwriting Set $setNumber. Tap the score buttons below to continue.';
   }
+  @override
+  String setLabel(int setNumber) {
+    return 'Set $setNumber';
+  }
 
   @override
   String get guestTitle => 'Welcome';
@@ -896,4 +900,16 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get scoreNotAllowed => 'Not allowed';
+
+  @override
+  String get competitionArchiveTitle => 'Competition Archive';
+
+  @override
+  String get competitionArchiveSubtitle => 'Browse completed competitions and past results.';
+
+  @override
+  String get competitionArchiveEmptyTitle => 'No archived competitions yet';
+
+  @override
+  String get competitionArchiveEmptyDesc => 'Completed competitions will appear here.';
 }

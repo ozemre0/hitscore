@@ -791,6 +791,10 @@ class AppLocalizationsTr extends AppLocalizations {
   String overwritingSet(int setNumber) {
     return 'Şu anda $setNumber. Seriyi yeniden yazıyorsunuz. Devam etmek için aşağıdaki skor butonlarına dokunun.';
   }
+  @override
+  String setLabel(int setNumber) {
+    return 'Seri $setNumber';
+  }
 
   @override
   String get guestTitle => 'Hoş geldin';
@@ -896,4 +900,16 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get scoreNotAllowed => 'Kapalı';
+
+  @override
+  String get competitionArchiveTitle => 'Yarışma Arşivi';
+
+  @override
+  String get competitionArchiveSubtitle => 'Tamamlanan yarışmaları ve geçmiş sonuçları inceleyin.';
+
+  @override
+  String get competitionArchiveEmptyTitle => 'Henüz arşivde yarışma yok';
+
+  @override
+  String get competitionArchiveEmptyDesc => 'Tamamlanan yarışmalar burada görünecek.';
 }

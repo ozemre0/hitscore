@@ -37,6 +37,7 @@ class _CompetitionParticipantsScreenState extends State<CompetitionParticipantsS
   final Set<String> _activePulseIds = <String>{};
   final List<String> _pulseQueue = <String>[];
   Timer? _pulseBatchTimer;
+  final Set<String> _expandedParticipantIds = <String>{};
   
 
   @override
@@ -295,12 +296,16 @@ class _CompetitionParticipantsScreenState extends State<CompetitionParticipantsS
     if (_dirtyParticipantIds.isEmpty) return;
 
     final Map<String, int> updatedScores = {};
+    final Map<String, dynamic> updatedSetsByPid = {};
     // Try to get score from last payload if available; otherwise we still mark dirty for re-sort
     if (payload != null) {
       final String? pid = payload['participant_id'] as String?;
       final int? total = payload['qualification_total_score'] as int?;
       if (pid != null && total != null) {
         updatedScores[pid] = total;
+      }
+      if (pid != null && payload.containsKey('qualification_sets_data')) {
+        updatedSetsByPid[pid] = payload['qualification_sets_data'];
       }
     }
 
@@ -322,6 +327,29 @@ class _CompetitionParticipantsScreenState extends State<CompetitionParticipantsS
             // Mark as changed; we will re-sort even if value unknown (server authoritative)
             changed = true;
           }
+          // Also refresh sets data if provided
+          if (updatedSetsByPid.containsKey(pid)) {
+            final dynamic rawSets = updatedSetsByPid[pid];
+            q0['qualification_sets_data'] = rawSets;
+            // If this participant's drawer is expanded, update parsed sets immediately
+            if (_expandedParticipantIds.contains(pid)) {
+              List<dynamic> parsedSets;
+              try {
+                if (rawSets == null) {
+                  parsedSets = const [];
+                } else if (rawSets is String) {
+                  parsedSets = (jsonDecode(rawSets) as List).toList();
+                } else if (rawSets is List) {
+                  parsedSets = rawSets;
+                } else {
+                  parsedSets = const [];
+                }
+              } catch (_) {
+                parsedSets = const [];
+              }
+              p['__parsed_sets__'] = parsedSets;
+            }
+          }
         }
       }
     }
@@ -329,8 +357,7 @@ class _CompetitionParticipantsScreenState extends State<CompetitionParticipantsS
     _dirtyParticipantIds.clear();
 
     if (changed) {
-      // Keep a snapshot of previous ranks before we change order
-      final Map<String, int> oldRanks = Map<String, int>.from(_prevRankById);
+      // Snapshot not needed in inline mode
       // Re-sort by score desc
       _participants.sort((a, b) {
         final List<dynamic>? aq = a['qualifications'] as List<dynamic>?;
@@ -347,17 +374,8 @@ class _CompetitionParticipantsScreenState extends State<CompetitionParticipantsS
         }
         return bscore.compareTo(ascore);
       });
-      // Queue pulses for changed ranks within Top 20 (processed in batches of 10)
+      // Pulse effect disabled for inline expansion
       final List<String> changedTop20 = <String>[];
-      for (int i = 0; i < _participants.length && i < 20; i++) {
-        final String? pid = _participants[i]['participant_id'] as String?;
-        if (pid == null) continue;
-        final int newRank = i + 1;
-        final int? prevRank = oldRanks[pid];
-        if (prevRank != null && prevRank != newRank) {
-          changedTop20.add(pid);
-        }
-      }
       _enqueuePulseIds(changedTop20);
       setState(() {});
       _syncPrevRanksAfterFrame();
@@ -618,15 +636,13 @@ class _CompetitionParticipantsScreenState extends State<CompetitionParticipantsS
               : null;
           final totalScore = qualificationData?['qualification_total_score'] as int? ?? 0;
 
-          final String pid = (participant['participant_id'] as String?) ?? '';
+          // participant id and rank aren't used for inline expansion now
           final int currentRank = index + 1;
-          final int prevRank = _prevRankById[pid] ?? currentRank;
-          final bool wasTop = prevRank <= 20;
-          final bool isTop = currentRank <= 20;
-          final bool shouldAnimate = (wasTop || isTop) && _activePulseIds.contains(pid);
-          final bool movedUp = prevRank > currentRank; // smaller rank = moved up
+          // prev rank not used in inline view
+          // top-rank pulse state no longer used in inline view
+          // inline expansion mode: pulse animation state not used
 
-          void _openSetsDrawer() {
+          void _toggleInlineSets() {
             final qData = qualificationData;
             if (qData == null) return;
             final dynamic raw = qData['qualification_sets_data'];
@@ -644,137 +660,20 @@ class _CompetitionParticipantsScreenState extends State<CompetitionParticipantsS
             } else {
               sets = const [];
             }
-
-            showModalBottomSheet<void>(
-              context: context,
-              isScrollControlled: true,
-              builder: (ctx) {
-                final l10n = AppLocalizations.of(ctx)!;
-                final cs = Theme.of(ctx).colorScheme;
-                return SafeArea(
-                  child: Padding(
-                    padding: EdgeInsets.only(
-                      left: 16,
-                      right: 16,
-                      top: 12,
-                      bottom: 16 + MediaQuery.of(ctx).viewPadding.bottom,
-                    ),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            Expanded(
-                              child: Text(
-                                l10n.scoreEntryTitle,
-                                style: Theme.of(ctx).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
-                              ),
-                            ),
-                            IconButton(
-                              onPressed: () => Navigator.of(ctx).pop(),
-                              icon: const Icon(Icons.close),
-                              tooltip: l10n.cancel,
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 8),
-                        Flexible(
-                          child: ListView.separated(
-                            shrinkWrap: true,
-                            itemCount: sets.length,
-                            separatorBuilder: (_, __) => const SizedBox(height: 8),
-                            itemBuilder: (c2, i) {
-                              final item = sets[i];
-                              int setNo = i + 1;
-                              List<dynamic> rawArrows = const [];
-                              if (item is List && item.length >= 2) {
-                                if (item[0] is int) setNo = item[0] as int;
-                                if (item[1] is List) rawArrows = List<dynamic>.from(item[1] as List);
-                              }
-                              final arrowsInt = rawArrows.map<int>((v) {
-                                if (v is String) {
-                                  if (v == 'X') return 10;
-                                  if (v == 'M') return 0;
-                                  return int.tryParse(v) ?? 0;
-                                }
-                                return (v as num?)?.toInt() ?? 0;
-                              }).toList();
-                              final setTotal = arrowsInt.fold<int>(0, (s, a) => s + a);
-                              return Container(
-                                padding: const EdgeInsets.all(12),
-                                decoration: BoxDecoration(
-                                  color: Theme.of(ctx).colorScheme.surface,
-                                  borderRadius: BorderRadius.circular(12),
-                                  border: Border.all(color: cs.outline.withOpacity(0.3)),
-                                ),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Row(
-                                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                      children: [
-                                        Text(
-                                          '${l10n.currentSet} $setNo',
-                                          style: Theme.of(ctx).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
-                                        ),
-                                        Text(
-                                          '${l10n.totalScore}: $setTotal',
-                                          style: Theme.of(ctx).textTheme.bodySmall?.copyWith(color: cs.primary, fontWeight: FontWeight.w600),
-                                        ),
-                                      ],
-                                    ),
-                                    const SizedBox(height: 8),
-                                    Wrap(
-                                      spacing: 6,
-                                      runSpacing: 6,
-                                      children: rawArrows.map<Widget>((v) {
-                                        final label = v is String ? v : ((v as num?)?.toInt() ?? 0).toString();
-                                        final score = v is String
-                                            ? (v == 'X' ? 10 : (v == 'M' ? 0 : int.tryParse(v) ?? 0))
-                                            : ((v as num?)?.toInt() ?? 0);
-                                        Color bg;
-                                        Color fg;
-                                        if (score >= 9) {
-                                          bg = Colors.yellow;
-                                          fg = Colors.black;
-                                        } else if (score >= 7) {
-                                          bg = Colors.red;
-                                          fg = Colors.white;
-                                        } else if (score >= 5) {
-                                          bg = Colors.blue;
-                                          fg = Colors.white;
-                                        } else if (score >= 1) {
-                                          bg = Colors.black;
-                                          fg = Colors.white;
-                                        } else {
-                                          bg = Colors.grey;
-                                          fg = Colors.white;
-                                        }
-                                        return Container(
-                                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                                          decoration: BoxDecoration(
-                                            color: bg,
-                                            borderRadius: BorderRadius.circular(16),
-                                            border: Border.all(color: Colors.black26),
-                                          ),
-                                          child: Text(label, style: TextStyle(color: fg, fontWeight: FontWeight.bold)),
-                                        );
-                                      }).toList(),
-                                    ),
-                                  ],
-                                ),
-                              );
-                            },
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                );
-              },
-            );
+            final String pidForToggle = (participant['participant_id'] as String?) ?? '';
+            setState(() {
+              if (_expandedParticipantIds.contains(pidForToggle)) {
+                _expandedParticipantIds.remove(pidForToggle);
+              } else {
+                _expandedParticipantIds.add(pidForToggle);
+              }
+              // attach the parsed sets to the participant for rendering
+              participant['__parsed_sets__'] = sets;
+            });
           }
+
+          final String pidForIcon = (participant['participant_id'] as String?) ?? '';
+          final bool isExpandedNow = _expandedParticipantIds.contains(pidForIcon);
 
           Widget tile = Card(
             margin: const EdgeInsets.only(bottom: 12),
@@ -785,6 +684,7 @@ class _CompetitionParticipantsScreenState extends State<CompetitionParticipantsS
             ),
             child: ListTile(
               contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+              onTap: _toggleInlineSets,
               leading: Container(
                 width: 32,
                 height: 32,
@@ -842,40 +742,157 @@ class _CompetitionParticipantsScreenState extends State<CompetitionParticipantsS
                   ),
                   const SizedBox(width: 8),
                   IconButton(
-                    onPressed: _openSetsDrawer,
-                    icon: const Icon(Icons.arrow_forward_ios, size: 16),
+                    onPressed: _toggleInlineSets,
                     tooltip: AppLocalizations.of(context)!.scoreEntryTitle,
+                    icon: AnimatedRotation(
+                      duration: const Duration(milliseconds: 200),
+                      turns: isExpandedNow ? 0.25 : 0.0, // right -> down
+                      child: const Icon(Icons.arrow_forward_ios, size: 16),
+                    ),
                   ),
                 ],
               ),
             ),
           );
 
-          // Per-item pulse animation on rank change (robust to reordering)
-          final int pulseKey = _rankPulseCounter[pid] ?? 0;
-          if (!shouldAnimate || pulseKey == 0) {
-            return KeyedSubtree(key: ValueKey<String>('row_$pid'), child: tile);
-          }
+          final String pidRender = (participant['participant_id'] as String?) ?? '';
+          final bool expanded = _expandedParticipantIds.contains(pidRender);
+          final List<dynamic> renderSets = (participant['__parsed_sets__'] as List<dynamic>?) ?? [];
 
-          return TweenAnimationBuilder<double>(
-            key: ValueKey<String>('pulse_${pid}_$pulseKey'),
-            tween: Tween<double>(begin: 0.0, end: 1.0),
-            duration: const Duration(milliseconds: 320),
-            curve: Curves.easeInOutCubicEmphasized,
-            builder: (context, t, child) {
-              final double dy = movedUp ? -4.0 * (1 - t) : 4.0 * (1 - t); // small vertical nudge in px
-              final double opacity = 0.7 + 0.3 * t;
-              return Opacity(
-                opacity: opacity,
-                child: Transform.translate(
-                  offset: Offset(0, dy),
-                  child: child,
-                ),
-              );
-            },
-            child: tile,
+          return Column(
+            children: [
+              KeyedSubtree(key: ValueKey<String>('row_$pidRender'), child: tile),
+              AnimatedSwitcher(
+                duration: const Duration(milliseconds: 500),
+                switchInCurve: Curves.easeInOutCubic,
+                switchOutCurve: Curves.easeInOutCubic,
+                transitionBuilder: (child, animation) {
+                  return ClipRect(
+                    child: SizeTransition(
+                      sizeFactor: animation,
+                      axisAlignment: -1.0, // expand/collapse from top
+                      child: child,
+                    ),
+                  );
+                },
+                child: expanded
+                    ? KeyedSubtree(
+                        key: ValueKey<String>('expanded_$pidRender'),
+                        child: _InlineSets(renderSets: List<dynamic>.from(renderSets)),
+                      )
+                    : const SizedBox.shrink(key: ValueKey<String>('collapsed')),
+              ),
+            ],
           );
+
+          // pulse animation removed for inline expansion return above
         },
+      ),
+    );
+  }
+}
+
+class _InlineSets extends StatelessWidget {
+  final List<dynamic> renderSets;
+  const _InlineSets({required this.renderSets});
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    final cs = Theme.of(context).colorScheme;
+    if (renderSets.isEmpty) {
+      return const SizedBox.shrink();
+    }
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
+      child: Column(
+        children: List.generate(renderSets.length, (i) {
+          final item = renderSets[i];
+          int setNo = i + 1;
+          List<dynamic> rawArrows = const [];
+          if (item is List && item.length >= 2) {
+            if (item[0] is int) setNo = item[0] as int;
+            if (item[1] is List) rawArrows = List<dynamic>.from(item[1] as List);
+          }
+          final arrowsInt = rawArrows.map<int>((v) {
+            if (v is String) {
+              if (v == 'X') return 10;
+              if (v == 'M') return 0;
+              return int.tryParse(v) ?? 0;
+            }
+            return (v as num?)?.toInt() ?? 0;
+          }).toList();
+          final setTotal = arrowsInt.fold<int>(0, (s, a) => s + a);
+          return Transform.scale(
+            scale: 0.85, // shrink set card by ~15%
+            alignment: Alignment.topCenter,
+            child: Container(
+              margin: const EdgeInsets.only(bottom: 1, left: 12, right: 12),
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.surface,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: cs.outline.withOpacity(0.3)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      '${l10n.setLabel(setNo)}',
+                      style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
+                    ),
+                    Text(
+                      '${l10n.totalScore}: $setTotal',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(color: cs.primary, fontWeight: FontWeight.w600),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 6,
+                  children: rawArrows.map<Widget>((v) {
+                    final label = v is String ? v : ((v as num?)?.toInt() ?? 0).toString();
+                    final score = v is String
+                        ? (v == 'X' ? 10 : (v == 'M' ? 0 : int.tryParse(v) ?? 0))
+                        : ((v as num?)?.toInt() ?? 0);
+                    Color bg;
+                    Color fg;
+                    if (score >= 9) {
+                      bg = Colors.yellow;
+                      fg = Colors.black;
+                    } else if (score >= 7) {
+                      bg = Colors.red;
+                      fg = Colors.white;
+                    } else if (score >= 5) {
+                      bg = Colors.blue;
+                      fg = Colors.white;
+                    } else if (score >= 1) {
+                      bg = Colors.black;
+                      fg = Colors.white;
+                    } else {
+                      bg = Colors.grey;
+                      fg = Colors.white;
+                    }
+                    return Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: bg,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: Colors.black26),
+                      ),
+                      child: Text(label, style: TextStyle(color: fg, fontWeight: FontWeight.bold)),
+                    );
+                  }).toList(),
+                ),
+                ],
+              ),
+            ),
+          );
+        }),
       ),
     );
   }

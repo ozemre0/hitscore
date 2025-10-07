@@ -1619,6 +1619,12 @@ abstract class AppLocalizations {
   /// **'Edit - Set {setNumber}'**
   String editSet(int setNumber);
 
+  /// No description provided for @setLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Set {setNumber}'**
+  String setLabel(int setNumber);
+
   /// No description provided for @edit.
   ///
   /// In en, this message translates to:
@@ -1840,6 +1846,30 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Not allowed'**
   String get scoreNotAllowed;
+
+  /// No description provided for @competitionArchiveTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Competition Archive'**
+  String get competitionArchiveTitle;
+
+  /// No description provided for @competitionArchiveSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Browse completed competitions and past results.'**
+  String get competitionArchiveSubtitle;
+
+  /// No description provided for @competitionArchiveEmptyTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'No archived competitions yet'**
+  String get competitionArchiveEmptyTitle;
+
+  /// No description provided for @competitionArchiveEmptyDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Completed competitions will appear here.'**
+  String get competitionArchiveEmptyDesc;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

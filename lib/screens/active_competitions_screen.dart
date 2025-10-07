@@ -772,20 +772,6 @@ class _ActiveCompetitionsScreenState extends State<ActiveCompetitionsScreen> {
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
-                  const SizedBox(width: 8),
-                  if (SupabaseConfig.client.auth.currentUser != null)
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: (canRegister ? Colors.green : Colors.grey).withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: (canRegister ? Colors.green : Colors.grey).withOpacity(0.3)),
-                      ),
-                      child: Text(
-                        canRegister ? l10n.registrationOpen : l10n.registrationClosed,
-                        style: TextStyle(color: canRegister ? Colors.green : Colors.grey, fontWeight: FontWeight.w600, fontSize: 12),
-                      ),
-                    ),
                 ]),
                 if (c['description'] != null && (c['description'] as String).isNotEmpty) ...[
                   const SizedBox(height: 8),

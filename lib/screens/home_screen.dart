@@ -4,6 +4,7 @@ import 'organized/create_competition_screen.dart';
 import 'my_competitions_screen.dart';
 import 'active_competitions_screen.dart';
 import 'organized_competitions_screen.dart';
+import 'competition_archive_screen.dart';
 import '../services/supabase_config.dart';
 import 'settings_screen.dart';
 
@@ -65,6 +66,19 @@ class HomeScreen extends StatelessWidget {
                         },
                       ),
                       const SizedBox(height: 12),
+                        _HomeCardButton(
+                          icon: Icons.inventory_2_outlined,
+                          title: l10n.competitionArchiveTitle,
+                          subtitle: l10n.competitionArchiveSubtitle,
+                          onTap: () {
+                            Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (context) => const CompetitionArchiveScreen(),
+                              ),
+                            );
+                          },
+                        ),
+                        const SizedBox(height: 12),
                       _HomeCardButton(
                         icon: Icons.add_circle_outline,
                         title: l10n.createCompetitionTitle,
