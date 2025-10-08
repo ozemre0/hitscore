@@ -276,6 +276,12 @@
   "roundCountLabel": "Round sayısı",
   "arrowsPerSetLabel": "Seri başı ok sayısı",
   "setsPerRoundLabel": "Round başına seri sayısı",
+  "roundSeparator": "Round {roundNumber}",
+  "@roundSeparator": {
+    "placeholders": {
+      "roundNumber": {}
+    }
+  },
   "myOrganizedCompetitionsTitle": "Düzenlediğim Yarışmalar",
   "myOrganizedCompetitionsSubtitle": "Oluşturduğunuz yarışmaları yönetin.",
   "participantClub": "Kulüp",
@@ -350,5 +356,22 @@
   "setLabel": "Seri {setNumber}",
   "@setLabel": {"placeholders": {"setNumber": {"type": "int"}}},
   "arrows": "Oklar"
+  ,
+  "competitionArchiveTitle": "Arşivlenmiş Yarışmalar",
+  "competitionArchiveEmptyTitle": "Arşivde yarışma yok",
+  "competitionArchiveEmptyDesc": "Tamamlanan veya geçmiş yarışmalar burada görünecek."
+  ,
+  "addOrganizer": "Organizatör ekle",
+  "addOrganizersTitle": "Organizatör Ekle",
+  "addOrganizersSubtitle": "İsim veya profil ID ile ara ve seç.",
+  "searchUserHint": "Kullanıcı ara (isim veya profil ID)",
+  "organizersUpdated": "Organizatörler güncellendi",
+  "update": "Güncelle"
+  ,
+  "searchToFindUsers": "Kullanıcı bulmak için arama yapın"
+  ,
+  "creatorTag": "Oluşturan",
+  "competitionArchiveTitle": "Yarışma Arşivi",
+  "competitionArchiveSubtitle": "Tüm yarışmaları incele, geçmiş ve şimdiki."
 }
 

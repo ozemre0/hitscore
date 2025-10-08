@@ -634,6 +634,9 @@ class AppLocalizationsTr extends AppLocalizations {
   String get requestCancelled => 'İstek iptal edildi';
 
   @override
+  String get pendingClassificationLabel => 'İstenen klasman';
+
+  @override
   String get selectClassificationTitle => 'Klasman seç';
 
   @override
@@ -749,6 +752,11 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get roundCountLabel => 'Round sayısı';
+
+  @override
+  String roundSeparator(int roundNumber) {
+    return 'Round $roundNumber';
+  }
 
   @override
   String get arrowsPerSetLabel => 'Seri başı ok sayısı';
@@ -896,4 +904,51 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get scoreNotAllowed => 'Kapalı';
+
+  @override
+  String get sets => 'Seriler';
+
+  @override
+  String setLabel(int setNumber) {
+    return 'Seri $setNumber';
+  }
+
+  @override
+  String get arrows => 'Oklar';
+
+  @override
+  String get competitionArchiveTitle => 'Yarışma Arşivi';
+
+  @override
+  String get competitionArchiveEmptyTitle => 'Arşivde yarışma yok';
+
+  @override
+  String get competitionArchiveEmptyDesc => 'Tamamlanan veya geçmiş yarışmalar burada görünecek.';
+
+  @override
+  String get addOrganizer => 'Organizatör ekle';
+
+  @override
+  String get addOrganizersTitle => 'Organizatör Ekle';
+
+  @override
+  String get addOrganizersSubtitle => 'İsim veya profil ID ile ara ve seç.';
+
+  @override
+  String get searchUserHint => 'Kullanıcı ara (isim veya profil ID)';
+
+  @override
+  String get organizersUpdated => 'Organizatörler güncellendi';
+
+  @override
+  String get update => 'Güncelle';
+
+  @override
+  String get searchToFindUsers => 'Kullanıcı bulmak için arama yapın';
+
+  @override
+  String get creatorTag => 'Oluşturan';
+
+  @override
+  String get competitionArchiveSubtitle => 'Tüm yarışmaları incele, geçmiş ve şimdiki.';
 }

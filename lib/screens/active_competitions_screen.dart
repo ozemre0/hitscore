@@ -443,11 +443,6 @@ class _ActiveCompetitionsScreenState extends State<ActiveCompetitionsScreen> {
             icon: const Icon(Icons.refresh),
             tooltip: l10n.refresh,
           ),
-          IconButton(
-            onPressed: _openFiltersSheet,
-            icon: const Icon(Icons.filter_list),
-            tooltip: l10n.filter,
-          ),
         ],
       ),
       body: LayoutBuilder(
@@ -506,6 +501,7 @@ class _ActiveCompetitionsScreenState extends State<ActiveCompetitionsScreen> {
                         ),
                       ],
                     ),
+                    const SizedBox(height: 8),
                     const SizedBox(height: 8),
                     const SizedBox(height: 8),
                     Text(l10n.dateRange, style: Theme.of(modalCtx).textTheme.labelLarge),
@@ -678,15 +674,27 @@ class _ActiveCompetitionsScreenState extends State<ActiveCompetitionsScreen> {
       children: [
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-          child: TextField(
-            controller: _searchController,
-            textInputAction: TextInputAction.search,
-            decoration: InputDecoration(
-              prefixIcon: const Icon(Icons.search),
-              hintText: l10n.searchCompetitionHint,
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-              isDense: true,
-            ),
+          child: Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: _searchController,
+                  textInputAction: TextInputAction.search,
+                  decoration: InputDecoration(
+                    prefixIcon: const Icon(Icons.search),
+                    hintText: l10n.searchCompetitionHint,
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    isDense: true,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              OutlinedButton.icon(
+                onPressed: _openFiltersSheet,
+                icon: const Icon(Icons.filter_list),
+                label: Text(l10n.filter),
+              ),
+            ],
           ),
         ),
         const SizedBox(height: 8),

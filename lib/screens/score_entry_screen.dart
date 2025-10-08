@@ -81,6 +81,7 @@ class _ScoreEntryContentState extends ConsumerState<_ScoreEntryContent> {
   int _overwritingSetNumber = 0;
   final ScrollController _scrollController = ScrollController();
   bool _isLoadingExistingData = true;
+  int? _roundCount; // Fetched from organized_competitions_classifications
   
   // Classification parameters
   int get _arrowsPerSet => widget.classification?['arrow_per_set'] ?? 3;
@@ -135,7 +136,7 @@ class _ScoreEntryContentState extends ConsumerState<_ScoreEntryContent> {
       // Find the latest participant_id for this competition
       final participantResponse = await SupabaseConfig.client
           .from('organized_competition_participants')
-          .select('participant_id')
+          .select('participant_id, classification_id')
           .eq('user_id', user.id)
           .eq('organized_competition_id', widget.competitionId)
           .order('created_at', ascending: false)
@@ -151,7 +152,27 @@ class _ScoreEntryContentState extends ConsumerState<_ScoreEntryContent> {
       }
       
       final participantId = participantResponse['participant_id'] as String;
+      final String? classificationId = participantResponse['classification_id']?.toString();
       print('Found participant_id: $participantId');
+      print('Found classification_id: $classificationId');
+
+      // Fetch round_count for this classification if available
+      if (classificationId != null && classificationId.isNotEmpty) {
+        try {
+          final classificationRow = await SupabaseConfig.client
+              .from('organized_competitions_classifications')
+              .select('round_count')
+              .eq('id', classificationId)
+              .maybeSingle();
+          final int? roundCount = classificationRow != null ? (classificationRow['round_count'] as int?) : null;
+          setState(() {
+            _roundCount = roundCount;
+          });
+          print('Loaded round_count: $_roundCount');
+        } catch (e) {
+          print('Error fetching round_count: $e');
+        }
+      }
       
       // Load latest existing qualification data (if multiple rows exist, use the newest)
       final qualificationResponse = await SupabaseConfig.client
@@ -445,7 +466,12 @@ class _ScoreEntryContentState extends ConsumerState<_ScoreEntryContent> {
     return existingSetNumbers.last + 1;
   }
   
-  bool get _canAddMoreSets => _completedSets.length < _setsPerRound;
+  int get _totalAllowedSets {
+    final int rounds = _roundCount ?? 1;
+    return rounds * _setsPerRound;
+  }
+
+  bool get _canAddMoreSets => _completedSets.length < _totalAllowedSets;
 
   @override
   Widget build(BuildContext context) {
@@ -468,6 +494,18 @@ class _ScoreEntryContentState extends ConsumerState<_ScoreEntryContent> {
           Expanded(
                 child: Column(
               children: [
+                // Show round count info if available
+                if (_roundCount != null)
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.start,
+                    children: [
+                      Text(
+                        '${l10n.roundCountLabel}: ${_roundCount!}',
+                        style: Theme.of(context).textTheme.bodyMedium,
+                      ),
+                    ],
+                  ),
+                if (_roundCount != null) const SizedBox(height: 8),
                 // Current set score display
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -595,90 +633,202 @@ class _ScoreEntryContentState extends ConsumerState<_ScoreEntryContent> {
                       : SingleChildScrollView(
                           controller: _scrollController,
                           child: Column(
-                             children: _completedSets.asMap().entries.map((entry) {
-                               final index = entry.key;
-                               final set = entry.value;
-                               return GestureDetector(
-                                 onTap: () => _showSetDialog(index),
-                                 child: Container(
-                                   margin: const EdgeInsets.only(bottom: 8),
-                                   padding: const EdgeInsets.all(12.0),
-                                   decoration: BoxDecoration(
-                                     color: colorScheme.surface,
-                                     borderRadius: BorderRadius.circular(8),
-                                     border: Border.all(
-                                       color: colorScheme.outline.withOpacity(0.3),
-                                       width: 1,
-                                     ),
-                                   ),
-                                   child: Column(
-                                     crossAxisAlignment: CrossAxisAlignment.start,
-                                     children: [
-                                       Row(
-                                         children: [
-                                           Text(
-                                             'Set ${set['setNumber']}',
-                                             style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                                               fontWeight: FontWeight.bold,
-                                             ),
-                                           ),
-                                           const SizedBox(width: 8),
-                                           Icon(
-                                             Icons.touch_app,
-                                             size: 16,
-                                             color: colorScheme.onSurfaceVariant,
-                                           ),
-                                         ],
-                                       ),
-                                       const SizedBox(height: 8),
-                                       Row(
-                                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                         children: [
-                                           Text(
-                                             '${set['totalScore']}/${_arrowsPerSet * 10}',
-                                             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                               color: colorScheme.onSurfaceVariant,
-                                             ),
-                                           ),
-                                           Row(
-                                             children: () {
-                                               final arrows = (set['arrows'] as List<int>);
-                                               final rawArrows = (set['rawArrows'] as List<dynamic>?) ?? arrows;
-                                               return List.generate(arrows.length, (i) {
-                                                 final score = arrows[i];
-                                                 final raw = i < rawArrows.length ? rawArrows[i] : null;
-                                                 final label = (raw == 'X' || raw == 'M')
-                                                     ? raw as String
-                                                     : (score == 0 ? 'M' : score.toString());
-                                                 return Container(
-                                                   width: 32,
-                                                   height: 32,
-                                                   margin: const EdgeInsets.only(left: 4),
-                                                   decoration: BoxDecoration(
-                                                     color: _getColorForScore(score),
-                                                     shape: BoxShape.circle,
-                                                     border: Border.all(color: Colors.black26),
-                                                   ),
-                                                   alignment: Alignment.center,
-                                                   child: Text(
-                                                     label,
-                                                     style: TextStyle(
-                                                       color: _getTextColorForScore(score),
-                                                       fontSize: 15,
-                                                       fontWeight: FontWeight.bold,
-                                                     ),
-                                                   ),
-                                                 );
-                                               });
-                                             }(),
-                                           ),
-                                         ],
-                                       ),
-                                     ],
-                                   ),
-                                 ),
-                               );
-                             }).toList(),
+                            children: () {
+                              final List<Widget> children = [];
+                              // Add initial Round 1 header if there is at least one set
+                              if (_completedSets.isNotEmpty) {
+                                children.add(
+                                  Padding(
+                                    padding: const EdgeInsets.symmetric(vertical: 8.0),
+                                    child: Row(
+                                      children: [
+                                        Expanded(
+                                          child: Container(
+                                            height: 1,
+                                            decoration: BoxDecoration(
+                                              gradient: LinearGradient(
+                                                colors: [
+                                                  Colors.transparent,
+                                                  colorScheme.primary.withOpacity(0.35),
+                                                  Colors.transparent,
+                                                ],
+                                                stops: const [0.0, 0.5, 1.0],
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                        Padding(
+                                          padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                                          child: Text(
+                                            l10n.roundSeparator(1),
+                                            style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                                              color: colorScheme.primary,
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                          ),
+                                        ),
+                                        Expanded(
+                                          child: Container(
+                                            height: 1,
+                                            decoration: BoxDecoration(
+                                              gradient: LinearGradient(
+                                                colors: [
+                                                  Colors.transparent,
+                                                  colorScheme.primary.withOpacity(0.35),
+                                                  Colors.transparent,
+                                                ],
+                                                stops: const [0.0, 0.5, 1.0],
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                );
+                              }
+                              for (int index = 0; index < _completedSets.length; index++) {
+                                final set = _completedSets[index];
+                                children.add(
+                                  GestureDetector(
+                                    onTap: () => _showSetDialog(index),
+                                    child: Container(
+                                      margin: const EdgeInsets.only(bottom: 8),
+                                      padding: const EdgeInsets.all(12.0),
+                                      decoration: BoxDecoration(
+                                        color: colorScheme.surface,
+                                        borderRadius: BorderRadius.circular(8),
+                                        border: Border.all(
+                                          color: colorScheme.outline.withOpacity(0.3),
+                                          width: 1,
+                                        ),
+                                      ),
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Row(
+                                            children: [
+                                              Text(
+                                                'Set ${set['setNumber']}',
+                                                style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                                                  fontWeight: FontWeight.bold,
+                                                ),
+                                              ),
+                                              const SizedBox(width: 8),
+                                              Icon(
+                                                Icons.touch_app,
+                                                size: 16,
+                                                color: colorScheme.onSurfaceVariant,
+                                              ),
+                                            ],
+                                          ),
+                                          const SizedBox(height: 8),
+                                          Row(
+                                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                            children: [
+                                              Text(
+                                                '${set['totalScore']}/${_arrowsPerSet * 10}',
+                                                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                                  color: colorScheme.onSurfaceVariant,
+                                                ),
+                                              ),
+                                              Row(
+                                                children: () {
+                                                  final arrows = (set['arrows'] as List<int>);
+                                                  final rawArrows = (set['rawArrows'] as List<dynamic>?) ?? arrows;
+                                                  return List.generate(arrows.length, (i) {
+                                                    final score = arrows[i];
+                                                    final raw = i < rawArrows.length ? rawArrows[i] : null;
+                                                    final label = (raw == 'X' || raw == 'M')
+                                                        ? raw as String
+                                                        : (score == 0 ? 'M' : score.toString());
+                                                    return Container(
+                                                      width: 32,
+                                                      height: 32,
+                                                      margin: const EdgeInsets.only(left: 4),
+                                                      decoration: BoxDecoration(
+                                                        color: _getColorForScore(score),
+                                                        shape: BoxShape.circle,
+                                                        border: Border.all(color: Colors.black26),
+                                                      ),
+                                                      alignment: Alignment.center,
+                                                      child: Text(
+                                                        label,
+                                                        style: TextStyle(
+                                                          color: _getTextColorForScore(score),
+                                                          fontSize: 15,
+                                                          fontWeight: FontWeight.bold,
+                                                        ),
+                                                      ),
+                                                    );
+                                                  });
+                                                }(),
+                                              ),
+                                            ],
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                );
+                                // Insert a visual separator between rounds
+                                final bool isRoundBoundary = ((index + 1) % _setsPerRound == 0) && (index < _completedSets.length - 1);
+                                if (isRoundBoundary) {
+                                  final currentRound = ((index + 1) / _setsPerRound).ceil();
+                                  final nextRound = currentRound + 1;
+                                  children.add(
+                                    Padding(
+                                      padding: const EdgeInsets.symmetric(vertical: 8.0),
+                                      child: Row(
+                                        children: [
+                                          Expanded(
+                                            child: Container(
+                                              height: 1,
+                                              decoration: BoxDecoration(
+                                                gradient: LinearGradient(
+                                                  colors: [
+                                                    Colors.transparent,
+                                                    colorScheme.primary.withOpacity(0.35),
+                                                    Colors.transparent,
+                                                  ],
+                                                  stops: const [0.0, 0.5, 1.0],
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                          Padding(
+                                            padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                                            child: Text(
+                                              l10n.roundSeparator(nextRound),
+                                              style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                                                color: colorScheme.primary,
+                                                fontWeight: FontWeight.w600,
+                                              ),
+                                            ),
+                                          ),
+                                          Expanded(
+                                            child: Container(
+                                              height: 1,
+                                              decoration: BoxDecoration(
+                                                gradient: LinearGradient(
+                                                  colors: [
+                                                    Colors.transparent,
+                                                    colorScheme.primary.withOpacity(0.35),
+                                                    Colors.transparent,
+                                                  ],
+                                                  stops: const [0.0, 0.5, 1.0],
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  );
+                                }
+                              }
+                              return children;
+                            }(),
                           ),
                         ),
                 ),

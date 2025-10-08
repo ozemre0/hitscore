@@ -100,36 +100,81 @@ final coachAthletesProvider = FutureProvider.family.autoDispose<List<Map<String,
 
   // Debounce-like small delay if search to avoid spamming requests on fast typing
   if (params.search.isNotEmpty) {
-    await Future<void>.delayed(const Duration(milliseconds: 250));
+    await Future<void>.delayed(const Duration(milliseconds: 150));
   }
 
   try {
-    // Step 1: fetch athlete ids linked to this coach and accepted
-    final List<dynamic> links = await SupabaseConfig.client
-        .from('athlete_coach')
-        .select('athlete_id')
-        .eq('coach_id', user.id)
-        .eq('status', 'accepted');
+    // Step 1: (legacy) coach linked athletes — not used for listing when restricting to own club
+    // Kept for potential future use but no longer included in candidateIds
+    try {
+      await SupabaseConfig.client
+          .from('athlete_coach')
+          .select('athlete_id')
+          .eq('coach_id', user.id)
+          .eq('status', 'accepted');
+    } catch (_) {}
 
-    if (links.isEmpty) return [];
+    // Step 2: fetch coach profile to get club_id
+    String? coachClubId;
+    try {
+      final dynamic coachProfile = await SupabaseConfig.client
+          .from('profiles')
+          .select('club_id')
+          .eq('id', user.id)
+          .maybeSingle();
+      coachClubId = coachProfile != null ? coachProfile['club_id'] as String? : null;
+    } catch (_) {
+      coachClubId = null;
+    }
 
-    final List<String> athleteIds = links
-        .map((row) => (row['athlete_id'] as String?) ?? '')
-        .where((id) => id.isNotEmpty)
-        .toSet()
-        .toList();
+    // Step 3: fetch same-club profile ids (all roles)
+    final List<String> sameClubAthleteIds = <String>[];
+    if ((coachClubId ?? '').isNotEmpty) {
+      try {
+        final List<dynamic> sameClubRows = await SupabaseConfig.client
+            .from('profiles')
+            .select('id')
+            .eq('club_id', coachClubId!);
+        for (final row in sameClubRows) {
+          final String? id = row['id'] as String?;
+          if (id != null && id.isNotEmpty && id != user.id) {
+            sameClubAthleteIds.add(id);
+          }
+        }
+      } catch (_) {
+        // ignore club fetch errors; proceed with linked athletes only
+      }
+    }
 
-    // Step 2: fetch profiles for those athleteIds
-    // Build IN list (no quotes for UUID ids)
-    final String inList = '(${athleteIds.join(',')})';
-    final List<dynamic> rawProfiles = await SupabaseConfig.client
-        .from('profiles')
-        .select('id, first_name, last_name, visible_id, photo_url, gender')
-        .filter('id', 'in', inList)
-        .order('first_name', ascending: true);
+    // Step 4: restrict to only same-club users
+    final List<String> candidateIds = sameClubAthleteIds.toSet().toList();
+    if (candidateIds.isEmpty) return [];
 
-    // Step 3: If competitionId is provided, fetch classification info for each athlete
-    Map<String, Map<String, dynamic>> athleteClassifications = {};
+    // Step 5: fetch profiles for candidate ids
+    // If there is a search term, push filtering to the server to reduce payload
+    List<dynamic> rawProfiles;
+    if (params.search.trim().isNotEmpty) {
+      final String q = params.search.trim();
+      rawProfiles = await SupabaseConfig.client
+          .from('profiles')
+          .select('id, first_name, last_name, visible_id, photo_url, gender')
+          .eq('club_id', coachClubId!)
+          .or('first_name.ilike.%$q%,last_name.ilike.%$q%,visible_id.ilike.%$q%')
+          .order('first_name', ascending: true);
+      // Still restrict to candidateIds in memory to be safe
+      final Set<String> idSet = candidateIds.toSet();
+      rawProfiles = rawProfiles.where((p) => idSet.contains(p['id'] as String? ?? '')).toList();
+    } else {
+      final String inList = '(${candidateIds.join(',')})';
+      rawProfiles = await SupabaseConfig.client
+          .from('profiles')
+          .select('id, first_name, last_name, visible_id, photo_url, gender')
+          .filter('id', 'in', inList)
+          .order('first_name', ascending: true);
+    }
+
+    // Step 6: If competitionId is provided, fetch classification info for each candidate
+    Map<String, Map<String, dynamic>> classificationByUserId = {};
     if (params.competitionId != null && params.competitionId!.isNotEmpty) {
       try {
         final List<dynamic> classificationRows = await SupabaseConfig.client
@@ -147,25 +192,23 @@ final coachAthletesProvider = FutureProvider.family.autoDispose<List<Map<String,
               )
             ''')
             .eq('organized_competition_id', params.competitionId!)
-            .inFilter('user_id', athleteIds);
+            .inFilter('user_id', candidateIds);
 
         for (final row in classificationRows) {
           final String? userId = row['user_id'] as String?;
           final Map<String, dynamic>? classification = row['classification'] as Map<String, dynamic>?;
           if (userId != null && classification != null) {
-            athleteClassifications[userId] = classification;
+            classificationByUserId[userId] = classification;
           }
         }
-      } catch (e) {
-        // If classification fetch fails, continue without classification data
-        // Silently continue without classification data
+      } catch (_) {
+        // continue without classification data on error
       }
     }
 
     // Client-side search filter to avoid server-side OR overriding IN
     String normalize(String input) {
       final String lower = input.toLowerCase();
-      // Basic accent folding for Turkish and common Latin accents
       return lower
           .replaceAll('ı', 'i')
           .replaceAll('İ', 'i')
@@ -189,11 +232,13 @@ final coachAthletesProvider = FutureProvider.family.autoDispose<List<Map<String,
 
     final String search = normalize(params.search.trim());
     List<Map<String, dynamic>> normalized = rawProfiles.map<Map<String, dynamic>>((p) {
-      final String? athleteId = p['id'] as String?;
-      final Map<String, dynamic>? classification = athleteId != null ? athleteClassifications[athleteId] : null;
-      
+      final String? uid = p['id'] as String?;
+      final Map<String, dynamic>? classification = uid != null ? classificationByUserId[uid] : null;
       return {
-        'athlete_id': athleteId,
+        // keep expected key for UI
+        'id': uid,
+        // keep legacy key for any other callers
+        'athlete_id': uid,
         'first_name': p['first_name'] as String?,
         'last_name': p['last_name'] as String?,
         'visible_id': p['visible_id'] as String?,
@@ -203,6 +248,7 @@ final coachAthletesProvider = FutureProvider.family.autoDispose<List<Map<String,
       };
     }).toList();
 
+    // Client-side filter becomes no-op when server-side search already applied
     if (search.isNotEmpty) {
       normalized = normalized.where((p) {
         final fn = normalize((p['first_name'] ?? '') as String);
@@ -212,7 +258,10 @@ final coachAthletesProvider = FutureProvider.family.autoDispose<List<Map<String,
       }).toList();
     }
 
-    // Apply pagination after filtering
+    // Apply pagination after filtering (limit <= 0 means no limit)
+    if (params.limit <= 0) {
+      return normalized;
+    }
     final int start = params.offset.clamp(0, normalized.length);
     final int end = (params.offset + params.limit).clamp(0, normalized.length);
     return normalized.sublist(start, end);

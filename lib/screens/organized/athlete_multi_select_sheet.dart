@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../l10n/app_localizations.dart';
 import '../../providers/profile_providers.dart';
@@ -20,11 +21,56 @@ class _UserMultiSelectSheetState extends ConsumerState<UserMultiSelectSheet> {
   final TextEditingController _searchController = TextEditingController();
   final Set<String> _selected = <String>{};
   String _genderFilter = 'all'; // 'all' | 'male' | 'female'
+  Timer? _debounce;
+  String _debouncedQuery = '';
+  final ScrollController _scrollController = ScrollController();
+  final int _pageSize = 120;
+  int _offset = 0;
+  bool _isLoadingMore = false;
+  bool _hasMore = true;
+  List<Map<String, dynamic>> _items = <Map<String, dynamic>>[];
 
   @override
   void dispose() {
+    _debounce?.cancel();
+    _scrollController.dispose();
     _searchController.dispose();
     super.dispose();
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollController.addListener(() {
+      if (_scrollController.position.maxScrollExtent - _scrollController.position.pixels < 400) {
+        _loadNextPage(ref);
+      }
+    });
+  }
+
+  Future<void> _loadNextPage(WidgetRef ref) async {
+    if (_isLoadingMore || !_hasMore) return;
+    _isLoadingMore = true;
+    try {
+      final next = await ref.read(
+        coachAthletesProvider(
+          CoachAthletesParams(
+            search: (_debouncedQuery.isNotEmpty ? _debouncedQuery : _searchController.text.trim()),
+            limit: _pageSize,
+            offset: _offset,
+            competitionId: widget.competitionId,
+          ),
+        ).future,
+      );
+      if (!mounted) return;
+      setState(() {
+        _items.addAll(List<Map<String, dynamic>>.from(next));
+        _offset += next.length;
+        _hasMore = next.length == _pageSize;
+      });
+    } finally {
+      _isLoadingMore = false;
+    }
   }
 
   @override
@@ -32,7 +78,9 @@ class _UserMultiSelectSheetState extends ConsumerState<UserMultiSelectSheet> {
     final l10n = AppLocalizations.of(context)!;
     final media = MediaQuery.of(context);
     final clampedTextScaler = media.textScaler.clamp(maxScaleFactor: 1.3);
-    final params = CoachAthletesParams(search: _searchController.text.trim(), limit: 30, competitionId: widget.competitionId);
+    final effectiveQuery = _debouncedQuery.isNotEmpty ? _debouncedQuery : _searchController.text.trim();
+    // Initial page watch; subsequent pages are prefetched via _loadNextPage
+    final params = CoachAthletesParams(search: effectiveQuery, limit: _pageSize, offset: 0, competitionId: widget.competitionId);
     final asyncUsers = ref.watch(coachAthletesProvider(params));
 
     return MediaQuery(
@@ -67,7 +115,15 @@ class _UserMultiSelectSheetState extends ConsumerState<UserMultiSelectSheet> {
                                   Expanded(
                                     child: TextField(
                                       controller: _searchController,
-                                      onChanged: (_) => setState(() {}),
+                                      onChanged: (_) {
+                                        _debounce?.cancel();
+                                        _debounce = Timer(const Duration(milliseconds: 400), () {
+                                          if (!mounted) return;
+                                          setState(() {
+                                            _debouncedQuery = _searchController.text.trim();
+                                          });
+                                        });
+                                      },
                                       decoration: InputDecoration(
                                         hintText: l10n.searchAthleteHint,
                                         prefixIcon: const Icon(Icons.search),
@@ -105,7 +161,24 @@ class _UserMultiSelectSheetState extends ConsumerState<UserMultiSelectSheet> {
                         Expanded(
                           child: asyncUsers.when(
                             data: (list) {
-                              List<Map<String, dynamic>> items = List<Map<String, dynamic>>.from(list);
+                              // Reset list on new query and prefetch next page
+                              WidgetsBinding.instance.addPostFrameCallback((_) {
+                                if (!mounted) return;
+                                final incoming = List<Map<String, dynamic>>.from(list);
+                                final bool queryChanged = true; // first page always resets
+                                if (queryChanged) {
+                                  setState(() {
+                                    _items = incoming;
+                                    _offset = incoming.length;
+                                    _hasMore = incoming.length == _pageSize;
+                                  });
+                                  if (_hasMore) {
+                                    _loadNextPage(ref);
+                                  }
+                                }
+                              });
+
+                              List<Map<String, dynamic>> items = _items.isNotEmpty ? _items : List<Map<String, dynamic>>.from(list);
                               if (_genderFilter != 'all') {
                                 items = items.where((a) {
                                   final g = ((a['gender'] ?? '') as String).toLowerCase();
@@ -130,10 +203,17 @@ class _UserMultiSelectSheetState extends ConsumerState<UserMultiSelectSheet> {
                                 );
                               }
                               return ListView.builder(
-                                itemCount: items.length,
+                                controller: _scrollController,
+                                itemCount: items.length + (_hasMore ? 1 : 0),
                                 itemBuilder: (context, index) {
+                                  if (_hasMore && index == items.length) {
+                                    return const Padding(
+                                      padding: EdgeInsets.symmetric(vertical: 16),
+                                      child: Center(child: CircularProgressIndicator()),
+                                    );
+                                  }
                                   final a = items[index];
-                                  final String userId = (a['id'] ?? '') as String;
+                                  final String userId = (a['id'] ?? a['athlete_id'] ?? '') as String;
                                   final String first = (a['first_name'] ?? '') as String;
                                   final String last = (a['last_name'] ?? '') as String;
                                   final String name = ('$first $last').trim();

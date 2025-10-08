@@ -1304,7 +1304,7 @@ abstract class AppLocalizations {
   /// No description provided for @scoreAllowedDesc.
   ///
   /// In en, this message translates to:
-  /// **'If enabled, participants can enter scores. Typically enable right before the competition starts; you can change this later.'**
+  /// **'Lets participants enter scores. Enable before the competition; you can change this later.'**
   String get scoreAllowedDesc;
 
   /// No description provided for @requestSent.
@@ -1336,6 +1336,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Request cancelled'**
   String get requestCancelled;
+
+  /// No description provided for @pendingClassificationLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Requested classification'**
+  String get pendingClassificationLabel;
 
   /// No description provided for @selectClassificationTitle.
   ///
@@ -1570,6 +1576,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Sets per round'**
   String get setsPerRoundLabel;
+
+  /// No description provided for @roundSeparator.
+  ///
+  /// In en, this message translates to:
+  /// **'Round {roundNumber}'**
+  String roundSeparator(int roundNumber);
 
   /// No description provided for @myOrganizedCompetitionsTitle.
   ///
@@ -1840,6 +1852,96 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Not allowed'**
   String get scoreNotAllowed;
+
+  /// No description provided for @sets.
+  ///
+  /// In en, this message translates to:
+  /// **'Sets'**
+  String get sets;
+
+  /// No description provided for @setLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Set {setNumber}'**
+  String setLabel(int setNumber);
+
+  /// No description provided for @arrows.
+  ///
+  /// In en, this message translates to:
+  /// **'Arrows'**
+  String get arrows;
+
+  /// No description provided for @competitionArchiveTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Competition Archive'**
+  String get competitionArchiveTitle;
+
+  /// No description provided for @competitionArchiveEmptyTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'No archived competitions'**
+  String get competitionArchiveEmptyTitle;
+
+  /// No description provided for @competitionArchiveEmptyDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Completed or past competitions will appear here.'**
+  String get competitionArchiveEmptyDesc;
+
+  /// No description provided for @addOrganizer.
+  ///
+  /// In en, this message translates to:
+  /// **'Add organizer'**
+  String get addOrganizer;
+
+  /// No description provided for @addOrganizersTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Add Organizers'**
+  String get addOrganizersTitle;
+
+  /// No description provided for @addOrganizersSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Search by name or profile ID and select users.'**
+  String get addOrganizersSubtitle;
+
+  /// No description provided for @searchUserHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Search users (name or profile ID)'**
+  String get searchUserHint;
+
+  /// No description provided for @organizersUpdated.
+  ///
+  /// In en, this message translates to:
+  /// **'Organizers updated'**
+  String get organizersUpdated;
+
+  /// No description provided for @update.
+  ///
+  /// In en, this message translates to:
+  /// **'Update'**
+  String get update;
+
+  /// No description provided for @searchToFindUsers.
+  ///
+  /// In en, this message translates to:
+  /// **'Search to find users'**
+  String get searchToFindUsers;
+
+  /// No description provided for @creatorTag.
+  ///
+  /// In en, this message translates to:
+  /// **'Creator'**
+  String get creatorTag;
+
+  /// No description provided for @competitionArchiveSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Browse all competitions, past and present.'**
+  String get competitionArchiveSubtitle;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

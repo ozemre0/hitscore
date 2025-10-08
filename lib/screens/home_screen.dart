@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import '../l10n/app_localizations.dart';
-import 'organized/create_competition_screen.dart';
 import 'my_competitions_screen.dart';
 import 'active_competitions_screen.dart';
 import 'organized_competitions_screen.dart';
+import 'competition_archive_screen.dart';
 import '../services/supabase_config.dart';
 import 'settings_screen.dart';
 
@@ -41,8 +41,8 @@ class HomeScreen extends StatelessWidget {
                       const SizedBox(height: 16),
                       _HomeCardButton(
                         icon: Icons.emoji_events,
-                        title: l10n.myCompetitionsTitle,
-                        subtitle: l10n.myCompetitionsSubtitle,
+                        title: l10n.participantCompetitionsTitle,
+                        subtitle: l10n.participantCompetitionsSubtitle,
                         onTap: () {
                           Navigator.of(context).push(
                             MaterialPageRoute(
@@ -66,19 +66,6 @@ class HomeScreen extends StatelessWidget {
                       ),
                       const SizedBox(height: 12),
                       _HomeCardButton(
-                        icon: Icons.add_circle_outline,
-                        title: l10n.createCompetitionTitle,
-                        subtitle: l10n.competitionGeneralInfoDesc,
-                        onTap: () {
-                          Navigator.of(context).push(
-                            MaterialPageRoute(
-                              builder: (context) => const CreateCompetitionScreen(),
-                            ),
-                          );
-                        },
-                      ),
-                      const SizedBox(height: 12),
-                      _HomeCardButton(
                         icon: Icons.admin_panel_settings,
                         title: l10n.myOrganizedCompetitionsTitle,
                         subtitle: l10n.myOrganizedCompetitionsSubtitle,
@@ -86,6 +73,19 @@ class HomeScreen extends StatelessWidget {
                           Navigator.of(context).push(
                             MaterialPageRoute(
                               builder: (context) => const OrganizedCompetitionsScreen(),
+                            ),
+                          );
+                        },
+                      ),
+                      const SizedBox(height: 12),
+                      _HomeCardButton(
+                        icon: Icons.public,
+                        title: l10n.competitionArchiveTitle,
+                        subtitle: l10n.competitionArchiveSubtitle,
+                        onTap: () {
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (context) => const CompetitionArchiveScreen(),
                             ),
                           );
                         },

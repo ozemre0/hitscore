@@ -634,6 +634,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get requestCancelled => 'Request cancelled';
 
   @override
+  String get pendingClassificationLabel => 'Requested classification';
+
+  @override
   String get selectClassificationTitle => 'Select classification';
 
   @override
@@ -755,6 +758,11 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get setsPerRoundLabel => 'Sets per round';
+
+  @override
+  String roundSeparator(int roundNumber) {
+    return 'Round $roundNumber';
+  }
 
   @override
   String get myOrganizedCompetitionsTitle => 'My Organized Competitions';
@@ -896,4 +904,51 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get scoreNotAllowed => 'Not allowed';
+
+  @override
+  String get sets => 'Sets';
+
+  @override
+  String setLabel(int setNumber) {
+    return 'Set $setNumber';
+  }
+
+  @override
+  String get arrows => 'Arrows';
+
+  @override
+  String get competitionArchiveTitle => 'Competition Archive';
+
+  @override
+  String get competitionArchiveEmptyTitle => 'No archived competitions';
+
+  @override
+  String get competitionArchiveEmptyDesc => 'Completed or past competitions will appear here.';
+
+  @override
+  String get addOrganizer => 'Add organizer';
+
+  @override
+  String get addOrganizersTitle => 'Add Organizers';
+
+  @override
+  String get addOrganizersSubtitle => 'Search by name or profile ID and select users.';
+
+  @override
+  String get searchUserHint => 'Search users (name or profile ID)';
+
+  @override
+  String get organizersUpdated => 'Organizers updated';
+
+  @override
+  String get update => 'Update';
+
+  @override
+  String get searchToFindUsers => 'Search to find users';
+
+  @override
+  String get creatorTag => 'Creator';
+
+  @override
+  String get competitionArchiveSubtitle => 'Browse all competitions, past and present.';
 }

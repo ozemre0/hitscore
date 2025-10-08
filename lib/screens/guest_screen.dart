@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../l10n/app_localizations.dart';
 import 'login_screen.dart';
 import 'active_competitions_screen.dart';
+import 'competition_archive_screen.dart';
 
 class GuestScreen extends StatelessWidget {
   const GuestScreen({super.key});
@@ -52,11 +53,11 @@ class GuestScreen extends StatelessWidget {
                               child: OutlinedButton.icon(
                                 onPressed: () {
                                   Navigator.of(context).push(
-                                    MaterialPageRoute(builder: (_) => const ActiveCompetitionsScreen()),
+                                    MaterialPageRoute(builder: (_) => const CompetitionArchiveScreen()),
                                   );
                                 },
-                                icon: const Icon(Icons.emoji_events),
-                                label: Text(l10n.activeCompetitionsTitle),
+                                icon: const Icon(Icons.public),
+                                label: Text(l10n.competitionArchiveTitle),
                               ),
                             ),
                           ],

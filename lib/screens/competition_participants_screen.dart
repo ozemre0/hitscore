@@ -37,6 +37,7 @@ class _CompetitionParticipantsScreenState extends State<CompetitionParticipantsS
   final Set<String> _activePulseIds = <String>{};
   final List<String> _pulseQueue = <String>[];
   Timer? _pulseBatchTimer;
+  final Set<String> _expandedParticipantIds = <String>{}; // support multiple open drawers
   
 
   @override
@@ -295,12 +296,17 @@ class _CompetitionParticipantsScreenState extends State<CompetitionParticipantsS
     if (_dirtyParticipantIds.isEmpty) return;
 
     final Map<String, int> updatedScores = {};
+    final Map<String, dynamic> updatedSetsDataByParticipantId = {};
     // Try to get score from last payload if available; otherwise we still mark dirty for re-sort
     if (payload != null) {
       final String? pid = payload['participant_id'] as String?;
       final int? total = payload['qualification_total_score'] as int?;
+      final dynamic setsData = payload['qualification_sets_data'];
       if (pid != null && total != null) {
         updatedScores[pid] = total;
+      }
+      if (pid != null && setsData != null) {
+        updatedSetsDataByParticipantId[pid] = setsData;
       }
     }
 
@@ -320,6 +326,10 @@ class _CompetitionParticipantsScreenState extends State<CompetitionParticipantsS
             changed = true;
           } else {
             // Mark as changed; we will re-sort even if value unknown (server authoritative)
+            changed = true;
+          }
+          if (updatedSetsDataByParticipantId.containsKey(pid)) {
+            q0['qualification_sets_data'] = updatedSetsDataByParticipantId[pid];
             changed = true;
           }
         }
@@ -626,155 +636,25 @@ class _CompetitionParticipantsScreenState extends State<CompetitionParticipantsS
           final bool shouldAnimate = (wasTop || isTop) && _activePulseIds.contains(pid);
           final bool movedUp = prevRank > currentRank; // smaller rank = moved up
 
-          void _openSetsDrawer() {
+          List<dynamic> _parseSets() {
             final qData = qualificationData;
-            if (qData == null) return;
+            if (qData == null) return const [];
             final dynamic raw = qData['qualification_sets_data'];
-            List<dynamic> sets;
-            if (raw == null) {
-              sets = const [];
-            } else if (raw is String) {
+            if (raw == null) return const [];
+            if (raw is String) {
               try {
-                sets = (jsonDecode(raw) as List).toList();
+                return (jsonDecode(raw) as List).toList();
               } catch (_) {
-                sets = const [];
+                return const [];
               }
-            } else if (raw is List) {
-              sets = raw;
-            } else {
-              sets = const [];
             }
-
-            showModalBottomSheet<void>(
-              context: context,
-              isScrollControlled: true,
-              builder: (ctx) {
-                final l10n = AppLocalizations.of(ctx)!;
-                final cs = Theme.of(ctx).colorScheme;
-                return SafeArea(
-                  child: Padding(
-                    padding: EdgeInsets.only(
-                      left: 16,
-                      right: 16,
-                      top: 12,
-                      bottom: 16 + MediaQuery.of(ctx).viewPadding.bottom,
-                    ),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            Expanded(
-                              child: Text(
-                                l10n.scoreEntryTitle,
-                                style: Theme.of(ctx).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
-                              ),
-                            ),
-                            IconButton(
-                              onPressed: () => Navigator.of(ctx).pop(),
-                              icon: const Icon(Icons.close),
-                              tooltip: l10n.cancel,
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 8),
-                        Flexible(
-                          child: ListView.separated(
-                            shrinkWrap: true,
-                            itemCount: sets.length,
-                            separatorBuilder: (_, __) => const SizedBox(height: 8),
-                            itemBuilder: (c2, i) {
-                              final item = sets[i];
-                              int setNo = i + 1;
-                              List<dynamic> rawArrows = const [];
-                              if (item is List && item.length >= 2) {
-                                if (item[0] is int) setNo = item[0] as int;
-                                if (item[1] is List) rawArrows = List<dynamic>.from(item[1] as List);
-                              }
-                              final arrowsInt = rawArrows.map<int>((v) {
-                                if (v is String) {
-                                  if (v == 'X') return 10;
-                                  if (v == 'M') return 0;
-                                  return int.tryParse(v) ?? 0;
-                                }
-                                return (v as num?)?.toInt() ?? 0;
-                              }).toList();
-                              final setTotal = arrowsInt.fold<int>(0, (s, a) => s + a);
-                              return Container(
-                                padding: const EdgeInsets.all(12),
-                                decoration: BoxDecoration(
-                                  color: Theme.of(ctx).colorScheme.surface,
-                                  borderRadius: BorderRadius.circular(12),
-                                  border: Border.all(color: cs.outline.withOpacity(0.3)),
-                                ),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Row(
-                                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                      children: [
-                                        Text(
-                                          '${l10n.currentSet} $setNo',
-                                          style: Theme.of(ctx).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
-                                        ),
-                                        Text(
-                                          '${l10n.totalScore}: $setTotal',
-                                          style: Theme.of(ctx).textTheme.bodySmall?.copyWith(color: cs.primary, fontWeight: FontWeight.w600),
-                                        ),
-                                      ],
-                                    ),
-                                    const SizedBox(height: 8),
-                                    Wrap(
-                                      spacing: 6,
-                                      runSpacing: 6,
-                                      children: rawArrows.map<Widget>((v) {
-                                        final label = v is String ? v : ((v as num?)?.toInt() ?? 0).toString();
-                                        final score = v is String
-                                            ? (v == 'X' ? 10 : (v == 'M' ? 0 : int.tryParse(v) ?? 0))
-                                            : ((v as num?)?.toInt() ?? 0);
-                                        Color bg;
-                                        Color fg;
-                                        if (score >= 9) {
-                                          bg = Colors.yellow;
-                                          fg = Colors.black;
-                                        } else if (score >= 7) {
-                                          bg = Colors.red;
-                                          fg = Colors.white;
-                                        } else if (score >= 5) {
-                                          bg = Colors.blue;
-                                          fg = Colors.white;
-                                        } else if (score >= 1) {
-                                          bg = Colors.black;
-                                          fg = Colors.white;
-                                        } else {
-                                          bg = Colors.grey;
-                                          fg = Colors.white;
-                                        }
-                                        return Container(
-                                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                                          decoration: BoxDecoration(
-                                            color: bg,
-                                            borderRadius: BorderRadius.circular(16),
-                                            border: Border.all(color: Colors.black26),
-                                          ),
-                                          child: Text(label, style: TextStyle(color: fg, fontWeight: FontWeight.bold)),
-                                        );
-                                      }).toList(),
-                                    ),
-                                  ],
-                                ),
-                              );
-                            },
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                );
-              },
-            );
+            if (raw is List) return raw;
+            return const [];
           }
+
+          final bool expanded = _expandedParticipantIds.contains(pid);
+          final List<dynamic> sets = expanded ? _parseSets() : const [];
+          final cs = Theme.of(context).colorScheme;
 
           Widget tile = Card(
             margin: const EdgeInsets.only(bottom: 12),
@@ -842,19 +722,139 @@ class _CompetitionParticipantsScreenState extends State<CompetitionParticipantsS
                   ),
                   const SizedBox(width: 8),
                   IconButton(
-                    onPressed: _openSetsDrawer,
-                    icon: const Icon(Icons.arrow_forward_ios, size: 16),
-                    tooltip: AppLocalizations.of(context)!.scoreEntryTitle,
+                    onPressed: () {
+                      setState(() {
+                        if (_expandedParticipantIds.contains(pid)) {
+                          _expandedParticipantIds.remove(pid);
+                        } else {
+                          _expandedParticipantIds.add(pid);
+                        }
+                      });
+                    },
+                    icon: Icon(expanded ? Icons.keyboard_arrow_down : Icons.keyboard_arrow_right, size: 22),
+                    tooltip: null,
                   ),
                 ],
               ),
+              onTap: () {
+                setState(() {
+                  if (_expandedParticipantIds.contains(pid)) {
+                    _expandedParticipantIds.remove(pid);
+                  } else {
+                    _expandedParticipantIds.add(pid);
+                  }
+                });
+              },
             ),
+          );
+
+          final Widget details = AnimatedSize(
+            duration: const Duration(milliseconds: 220),
+            curve: Curves.easeInOut,
+            child: expanded && sets.isNotEmpty
+                ? Padding(
+                    padding: const EdgeInsets.fromLTRB(12, 0, 12, 4),
+                    child: ListView.separated(
+                      physics: const NeverScrollableScrollPhysics(),
+                      shrinkWrap: true,
+                      itemCount: sets.length,
+                      separatorBuilder: (_, __) => const SizedBox(height: 8),
+                      itemBuilder: (c2, i) {
+                        final item = sets[i];
+                        int setNo = i + 1;
+                        List<dynamic> rawArrows = const [];
+                        if (item is List && item.length >= 2) {
+                          if (item[0] is int) setNo = item[0] as int;
+                          if (item[1] is List) rawArrows = List<dynamic>.from(item[1] as List);
+                        }
+                        final arrowsInt = rawArrows.map<int>((v) {
+                          if (v is String) {
+                            if (v == 'X') return 10;
+                            if (v == 'M') return 0;
+                            return int.tryParse(v) ?? 0;
+                          }
+                          return (v as num?)?.toInt() ?? 0;
+                        }).toList();
+                        final setTotal = arrowsInt.fold<int>(0, (s, a) => s + a);
+                        return Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: Theme.of(context).colorScheme.surface,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: cs.outline.withOpacity(0.3)),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Text(l10n.setLabel(setNo), style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700)),
+                                  Text(
+                                    '${l10n.totalScore}: $setTotal',
+                                    style: Theme.of(context).textTheme.bodySmall?.copyWith(color: cs.primary, fontWeight: FontWeight.w600),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 8),
+                              Wrap(
+                                spacing: 6,
+                                runSpacing: 6,
+                                children: rawArrows.map<Widget>((v) {
+                                  final label = v is String ? v : ((v as num?)?.toInt() ?? 0).toString();
+                                  final score = v is String
+                                      ? (v == 'X' ? 10 : (v == 'M' ? 0 : int.tryParse(v) ?? 0))
+                                      : ((v as num?)?.toInt() ?? 0);
+                                  Color bg;
+                                  Color fg;
+                                  if (score >= 9) {
+                                    bg = Colors.yellow;
+                                    fg = Colors.black;
+                                  } else if (score >= 7) {
+                                    bg = Colors.red;
+                                    fg = Colors.white;
+                                  } else if (score >= 5) {
+                                    bg = Colors.blue;
+                                    fg = Colors.white;
+                                  } else if (score >= 1) {
+                                    bg = Colors.black;
+                                    fg = Colors.white;
+                                  } else {
+                                    bg = Colors.grey;
+                                    fg = Colors.white;
+                                  }
+                                  return Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                    decoration: BoxDecoration(
+                                      color: bg,
+                                      borderRadius: BorderRadius.circular(16),
+                                      border: Border.all(color: Colors.black26),
+                                    ),
+                                    child: Text(label, style: TextStyle(color: fg, fontWeight: FontWeight.bold)),
+                                  );
+                                }).toList(),
+                              ),
+                            ],
+                          ),
+                        );
+                      },
+                    ),
+                  )
+                : const SizedBox.shrink(),
           );
 
           // Per-item pulse animation on rank change (robust to reordering)
           final int pulseKey = _rankPulseCounter[pid] ?? 0;
           if (!shouldAnimate || pulseKey == 0) {
-            return KeyedSubtree(key: ValueKey<String>('row_$pid'), child: tile);
+            return KeyedSubtree(
+              key: ValueKey<String>('row_$pid'),
+              child: Column(
+                children: [
+                  tile,
+                  details,
+                ],
+              ),
+            );
           }
 
           return TweenAnimationBuilder<double>(
@@ -873,7 +873,12 @@ class _CompetitionParticipantsScreenState extends State<CompetitionParticipantsS
                 ),
               );
             },
-            child: tile,
+            child: Column(
+              children: [
+                tile,
+                details,
+              ],
+            ),
           );
         },
       ),

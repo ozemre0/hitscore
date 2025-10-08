@@ -276,6 +276,12 @@
   "roundCountLabel": "Round count",
   "arrowsPerSetLabel": "Arrows per set",
   "setsPerRoundLabel": "Sets per round",
+  "roundSeparator": "Round {roundNumber}",
+  "@roundSeparator": {
+    "placeholders": {
+      "roundNumber": {}
+    }
+  },
   "myOrganizedCompetitionsTitle": "My Organized Competitions",
   "myOrganizedCompetitionsSubtitle": "Manage competitions you have created.",
   "participantClub": "Club",
@@ -352,5 +358,22 @@
   "setLabel": "Set {setNumber}",
   "@setLabel": {"placeholders": {"setNumber": {"type": "int"}}},
   "arrows": "Arrows"
+  ,
+  "competitionArchiveTitle": "Competition Archive",
+  "competitionArchiveEmptyTitle": "No archived competitions",
+  "competitionArchiveEmptyDesc": "Completed or past competitions will appear here."
+  ,
+  "addOrganizer": "Add organizer",
+  "addOrganizersTitle": "Add Organizers",
+  "addOrganizersSubtitle": "Search by name or profile ID and select users.",
+  "searchUserHint": "Search users (name or profile ID)",
+  "organizersUpdated": "Organizers updated",
+  "update": "Update"
+  ,
+  "searchToFindUsers": "Search to find users"
+  ,
+  "creatorTag": "Creator",
+  "competitionArchiveTitle": "Competition Archive",
+  "competitionArchiveSubtitle": "Browse all competitions, past and present."
 }
 

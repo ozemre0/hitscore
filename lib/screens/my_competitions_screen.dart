@@ -22,13 +22,7 @@ class _ParticipantCompetitionsScreenState extends ConsumerState<ParticipantCompe
     return Scaffold(
       appBar: AppBar(
         title: Text(l10n.participantCompetitionsTitle),
-        actions: [
-          IconButton(
-            onPressed: () => _contentKey.currentState?._openFiltersSheet(),
-            icon: const Icon(Icons.filter_list),
-            tooltip: l10n.filter,
-          ),
-        ],
+        actions: const [],
       ),
       body: LayoutBuilder(
         builder: (context, constraints) {
