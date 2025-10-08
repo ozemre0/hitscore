@@ -373,5 +373,8 @@
   "creatorTag": "Oluşturan",
   "competitionArchiveTitle": "Yarışma Arşivi",
   "competitionArchiveSubtitle": "Tüm yarışmaları incele, geçmiş ve şimdiki."
+  ,
+  "arrowMissSymbol": "M",
+  "arrowXSymbol": "X"
 }
 

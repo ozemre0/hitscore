@@ -821,10 +821,23 @@ class _CompetitionParticipantsScreenState extends State<CompetitionParticipantsS
                                     spacing: 6,
                                     runSpacing: 6,
                                     children: rawArrows.map<Widget>((v) {
-                                      final label = v is String ? v : ((v as num?)?.toInt() ?? 0).toString();
-                                      final score = v is String
-                                          ? (v == 'X' ? 10 : (v == 'M' ? 0 : int.tryParse(v) ?? 0))
+                                      final l10n = AppLocalizations.of(context)!;
+                                      final int score = v is String
+                                          ? (v == l10n.arrowXSymbol ? 10 : (v == l10n.arrowMissSymbol ? 0 : int.tryParse(v) ?? 0))
                                           : ((v as num?)?.toInt() ?? 0);
+                                      final String label;
+                                      if (v is String) {
+                                        label = v;
+                                      } else {
+                                        // Use localized symbols for special cases
+                                        if (score == 10) {
+                                          label = l10n.arrowXSymbol; // prefer X symbol for inner-10 if needed
+                                        } else if (score == 0) {
+                                          label = l10n.arrowMissSymbol;
+                                        } else {
+                                          label = score.toString();
+                                        }
+                                      }
                                       Color bg;
                                       Color fg;
                                       if (score >= 9) {

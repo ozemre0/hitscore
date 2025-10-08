@@ -1942,6 +1942,16 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Browse all competitions, past and present.'**
   String get competitionArchiveSubtitle;
+
+  /// No description provided for @arrowMissSymbol.
+  ///
+  /// Symbol used to represent a miss arrow.
+  String get arrowMissSymbol;
+
+  /// No description provided for @arrowXSymbol.
+  ///
+  /// Symbol used to represent an inner-10 (X) arrow.
+  String get arrowXSymbol;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

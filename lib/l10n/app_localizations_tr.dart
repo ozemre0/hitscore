@@ -951,4 +951,10 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get competitionArchiveSubtitle => 'Tüm yarışmaları incele, geçmiş ve şimdiki.';
+
+  @override
+  String get arrowMissSymbol => 'M';
+
+  @override
+  String get arrowXSymbol => 'X';
 }

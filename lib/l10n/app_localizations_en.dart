@@ -951,4 +951,10 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get competitionArchiveSubtitle => 'Browse all competitions, past and present.';
+
+  @override
+  String get arrowMissSymbol => 'M';
+
+  @override
+  String get arrowXSymbol => 'X';
 }

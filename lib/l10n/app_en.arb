@@ -375,5 +375,8 @@
   "creatorTag": "Creator",
   "competitionArchiveTitle": "Competition Archive",
   "competitionArchiveSubtitle": "Browse all competitions, past and present."
+  ,
+  "arrowMissSymbol": "M",
+  "arrowXSymbol": "X"
 }
 
