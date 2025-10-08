@@ -247,6 +247,7 @@
   "addToCompetition": "Add to competition"
   ,
   "searchCompetitionHint": "Search competitions",
+  "alreadyRequestedThisClassification": "You already have a pending request for this classification",
   
   "pendingRequestsCount": "Pending requests: {count}",
   "@pendingRequestsCount": {"placeholders": {"count": {"type": "int"}}},
@@ -378,5 +379,13 @@
   ,
   "arrowMissSymbol": "M",
   "arrowXSymbol": "X"
+  ,
+  "noArrowsYet": "No arrows yet",
+  "undo": "Undo",
+  "reset": "Reset",
+  "complete": "Complete",
+  "maximumSetsReached": "Maximum sets reached ({setsPerRound}). You cannot add more sets.",
+  "@maximumSetsReached": {"placeholders": {"setsPerRound": {"type": "int"}}},
+  "noScoreYet": "No score yet"
 }
 

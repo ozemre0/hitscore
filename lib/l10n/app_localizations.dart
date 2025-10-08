@@ -1421,6 +1421,12 @@ abstract class AppLocalizations {
   /// **'Search competitions'**
   String get searchCompetitionHint;
 
+  /// No description provided for @alreadyRequestedThisClassification.
+  ///
+  /// In en, this message translates to:
+  /// **'You already have a pending request for this classification'**
+  String get alreadyRequestedThisClassification;
+
   /// No description provided for @pendingRequestsCount.
   ///
   /// In en, this message translates to:
@@ -1952,6 +1958,42 @@ abstract class AppLocalizations {
   ///
   /// Symbol used to represent an inner-10 (X) arrow.
   String get arrowXSymbol;
+  
+  /// No description provided for @noArrowsYet.
+  ///
+  /// In en, this message translates to:
+  /// **'No arrows yet'**
+  String get noArrowsYet;
+  
+  /// No description provided for @undo.
+  ///
+  /// In en, this message translates to:
+  /// **'Undo'**
+  String get undo;
+  
+  /// No description provided for @reset.
+  ///
+  /// In en, this message translates to:
+  /// **'Reset'**
+  String get reset;
+  
+  /// No description provided for @complete.
+  ///
+  /// In en, this message translates to:
+  /// **'Complete'**
+  String get complete;
+  
+  /// No description provided for @maximumSetsReached.
+  ///
+  /// In en, this message translates to:
+  /// **'Maximum sets reached ({setsPerRound}). You cannot add more sets.'**
+  String maximumSetsReached(int setsPerRound);
+  
+  /// No description provided for @noScoreYet.
+  ///
+  /// In en, this message translates to:
+  /// **'No score yet'**
+  String get noScoreYet;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

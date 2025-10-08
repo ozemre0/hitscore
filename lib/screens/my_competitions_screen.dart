@@ -897,7 +897,7 @@ class _SimpleParticipationCard extends StatelessWidget {
                           child: Text(
                             hasQualificationData 
                                 ? '$currentScore / $maxScore'
-                                : 'Henüz skor girilmemiş',
+                                : l10n.noScoreYet,
                             style: Theme.of(context).textTheme.bodySmall?.copyWith(
                               color: hasQualificationData 
                                   ? colorScheme.primary

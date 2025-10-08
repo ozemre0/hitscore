@@ -514,18 +514,7 @@ class _ScoreEntryContentState extends ConsumerState<_ScoreEntryContent> {
           Expanded(
                 child: Column(
               children: [
-                // Show round count info if available
-                if (_roundCount != null)
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.start,
-                    children: [
-                      Text(
-                        '${l10n.roundCountLabel}: ${_roundCount!}',
-                        style: Theme.of(context).textTheme.bodyMedium,
-                      ),
-                    ],
-                  ),
-                if (_roundCount != null) const SizedBox(height: 8),
+                // Round count is kept for logic but intentionally not shown in UI
                 // Current set score display
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -537,7 +526,7 @@ class _ScoreEntryContentState extends ConsumerState<_ScoreEntryContent> {
                       ),
                     ),
                     Text(
-                      'Total: $_currentSetScore',
+                      '${l10n.totalScore}: $_currentSetScore',
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                         fontWeight: FontWeight.w500,
                       ),
@@ -553,7 +542,7 @@ class _ScoreEntryContentState extends ConsumerState<_ScoreEntryContent> {
                       mainAxisAlignment: MainAxisAlignment.end,
                       children: [
                         Text(
-                          'Overall Total: $_totalScore',
+                          '${l10n.totalScore}: $_totalScore',
                           style: Theme.of(context).textTheme.bodySmall?.copyWith(
                             fontWeight: FontWeight.w600,
                             color: colorScheme.primary,
@@ -570,7 +559,7 @@ class _ScoreEntryContentState extends ConsumerState<_ScoreEntryContent> {
                   children: [
                     if (_currentArrows.isEmpty)
                       Text(
-                        'No arrows yet',
+                        l10n.noArrowsYet,
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
                           color: colorScheme.onSurfaceVariant,
                         ),
@@ -634,7 +623,7 @@ class _ScoreEntryContentState extends ConsumerState<_ScoreEntryContent> {
                             ? l10n.overwritingSet(_overwritingSetNumber)
                             : _canAddMoreSets 
                               ? l10n.tapScoreToContinue(_currentSet)
-                              : 'Maximum sets reached ($_setsPerRound). You cannot add more sets.',
+                              : l10n.maximumSetsReached(_setsPerRound),
                           style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                             color: colorScheme.onSurfaceVariant,
                           ),
@@ -729,7 +718,7 @@ class _ScoreEntryContentState extends ConsumerState<_ScoreEntryContent> {
                                           Row(
                                             children: [
                                               Text(
-                                                'Set ${set['setNumber']}',
+                                                l10n.setLabel(set['setNumber'] as int),
                                                 style: Theme.of(context).textTheme.titleSmall?.copyWith(
                                                   fontWeight: FontWeight.bold,
                                                 ),
@@ -948,7 +937,7 @@ class _ScoreEntryContentState extends ConsumerState<_ScoreEntryContent> {
                     child: OutlinedButton.icon(
                       onPressed: _currentArrows.isNotEmpty ? _undoLastArrow : null,
                       icon: const Icon(Icons.undo, size: 16),
-                      label: const Text('Undo'),
+                      label: Text(l10n.undo),
                       style: OutlinedButton.styleFrom(
                         side: BorderSide(color: colorScheme.outline),
                         foregroundColor: colorScheme.onSurface,
@@ -960,7 +949,7 @@ class _ScoreEntryContentState extends ConsumerState<_ScoreEntryContent> {
                     child: OutlinedButton.icon(
                       onPressed: _currentArrows.isNotEmpty ? _resetCurrentSet : null,
                       icon: const Icon(Icons.refresh, size: 16),
-                      label: const Text('Reset'),
+                      label: Text(l10n.reset),
                       style: OutlinedButton.styleFrom(
                         side: BorderSide(color: colorScheme.outline),
                         foregroundColor: colorScheme.onSurface,
@@ -972,7 +961,7 @@ class _ScoreEntryContentState extends ConsumerState<_ScoreEntryContent> {
                     child: OutlinedButton.icon(
                       onPressed: _currentArrows.length == _arrowsPerSet ? _completeSet : null,
                       icon: const Icon(Icons.check, size: 16),
-                      label: const Text('Complete'),
+                      label: Text(l10n.complete),
                       style: OutlinedButton.styleFrom(
                         side: BorderSide(color: colorScheme.outline),
                         foregroundColor: colorScheme.onSurface,

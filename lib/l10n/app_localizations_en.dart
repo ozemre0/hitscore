@@ -678,6 +678,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get searchCompetitionHint => 'Search competitions';
 
   @override
+  String get alreadyRequestedThisClassification => 'You already have a pending request for this classification';
+
+  @override
   String pendingRequestsCount(int count) {
     return 'Pending requests: $count';
   }
@@ -957,4 +960,24 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get arrowXSymbol => 'X';
+
+  @override
+  String get noArrowsYet => 'No arrows yet';
+
+  @override
+  String get undo => 'Undo';
+
+  @override
+  String get reset => 'Reset';
+
+  @override
+  String get complete => 'Complete';
+
+  @override
+  String maximumSetsReached(int setsPerRound) {
+    return 'Maximum sets reached ($setsPerRound). You cannot add more sets.';
+  }
+
+  @override
+  String get noScoreYet => 'No score yet';
 }

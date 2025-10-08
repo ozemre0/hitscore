@@ -678,6 +678,9 @@ class AppLocalizationsTr extends AppLocalizations {
   String get searchCompetitionHint => 'Yarışma ara';
 
   @override
+  String get alreadyRequestedThisClassification => 'Bu klasman için zaten bekleyen bir isteğiniz var';
+
+  @override
   String pendingRequestsCount(int count) {
     return 'Bekleyen istek: $count';
   }
@@ -957,4 +960,24 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get arrowXSymbol => 'X';
+
+  @override
+  String get noArrowsYet => 'Henüz ok yok';
+
+  @override
+  String get undo => 'Geri al';
+
+  @override
+  String get reset => 'Sıfırla';
+
+  @override
+  String get complete => 'Tamamla';
+
+  @override
+  String maximumSetsReached(int setsPerRound) {
+    return 'Maksimum seri sayısına ulaşıldı ($setsPerRound). Daha fazla seri ekleyemezsiniz.';
+  }
+
+  @override
+  String get noScoreYet => 'Henüz skor girilmemiş';
 }

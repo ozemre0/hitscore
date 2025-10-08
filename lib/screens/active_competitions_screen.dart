@@ -191,6 +191,28 @@ class _ActiveCompetitionsScreenState extends State<ActiveCompetitionsScreen> {
       final classificationId = await _pickClassification(competition['organized_competition_id'] as String);
       if (classificationId == null) return; // user cancelled
 
+      // 1.5) Prevent duplicate pending requests for the same classification
+      try {
+        final existing = await SupabaseConfig.client
+            .from('organized_competition_participants')
+            .select('participant_id')
+            .eq('organized_competition_id', competition['organized_competition_id'])
+            .eq('classification_id', classificationId)
+            .eq('user_id', user.id)
+            .limit(1)
+            .maybeSingle();
+        if (existing != null) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text(l10n.alreadyRequestedThisClassification)),
+            );
+          }
+          return;
+        }
+      } catch (_) {
+        // Ignore select error and proceed; server will still protect with unique/constraints if any
+      }
+
       // 2) Insert pending request with classification
       final participantId = const Uuid().v4();
       

@@ -247,6 +247,7 @@
   "addToCompetition": "Yarışmaya ekle"
   ,
   "searchCompetitionHint": "Yarışma ara",
+  "alreadyRequestedThisClassification": "Bu klasman için zaten bekleyen bir isteğiniz var",
   
   "pendingRequestsCount": "Bekleyen istek: {count}",
   "@pendingRequestsCount": {"placeholders": {"count": {"type": "int"}}},
@@ -376,5 +377,13 @@
   ,
   "arrowMissSymbol": "M",
   "arrowXSymbol": "X"
+  ,
+  "noArrowsYet": "Henüz ok yok",
+  "undo": "Geri al",
+  "reset": "Sıfırla",
+  "complete": "Tamamla",
+  "maximumSetsReached": "Maksimum seri sayısına ulaşıldı ({setsPerRound}). Daha fazla seri ekleyemezsiniz.",
+  "@maximumSetsReached": {"placeholders": {"setsPerRound": {"type": "int"}}},
+  "noScoreYet": "Henüz skor girilmemiş"
 }
 
