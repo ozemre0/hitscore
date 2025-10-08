@@ -468,7 +468,37 @@ class _ParticipantCompetitionsContentState extends ConsumerState<_ParticipantCom
           classification: classification,
         ),
       ),
-    );
+    ).then((result) {
+      if (!mounted) return;
+      if (result is Map && result['updatedQualification'] != null) {
+        final updated = Map<String, dynamic>.from(result['updatedQualification'] as Map);
+        setState(() {
+          // Find and update this participation's qualification fields in-place
+          for (int i = 0; i < _participations.length; i++) {
+            final p = _participations[i];
+            if ((p['organized_competition_id'] as String?) == competitionId) {
+              // qualification is a list; ensure first item exists
+              List<dynamic> q = [];
+              final qData = p['qualification'];
+              if (qData is List) {
+                q = List<dynamic>.from(qData);
+              } else if (qData is Map<String, dynamic>) {
+                q = [qData];
+              }
+              if (q.isEmpty) q = [{}];
+              final Map<String, dynamic> q0 = Map<String, dynamic>.from(q.first as Map? ?? {});
+              q0['qualification_total_score'] = updated['qualification_total_score'];
+              q0['qualification_sets_data'] = updated['qualification_sets_data'];
+              q[0] = q0;
+              p['qualification'] = q;
+              _participations[i] = p;
+              break;
+            }
+          }
+          _applyFilters();
+        });
+      }
+    });
   }
 
   Future<void> _leaveCompetition(String competitionId) async {

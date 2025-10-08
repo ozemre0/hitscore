@@ -82,6 +82,8 @@ class _ScoreEntryContentState extends ConsumerState<_ScoreEntryContent> {
   final ScrollController _scrollController = ScrollController();
   bool _isLoadingExistingData = true;
   int? _roundCount; // Fetched from organized_competitions_classifications
+  int? _lastSavedTotalScore;
+  List<dynamic>? _lastSavedSetsData;
   
   // Classification parameters
   int get _arrowsPerSet => widget.classification?['arrow_per_set'] ?? 3;
@@ -434,6 +436,8 @@ class _ScoreEntryContentState extends ConsumerState<_ScoreEntryContent> {
       }
       
       print('Score saved successfully: $totalScore points');
+      _lastSavedTotalScore = totalScore;
+      _lastSavedSetsData = setsData;
       print('Supabase e gönderildi: qualification_sets_data=$setsData, qualification_total_score=$totalScore');
     } catch (e) {
       print('Error saving score: $e');
@@ -484,7 +488,23 @@ class _ScoreEntryContentState extends ConsumerState<_ScoreEntryContent> {
       );
     }
 
-    return Padding(
+    return WillPopScope(
+      onWillPop: () async {
+        // Prepare result payload with latest data (saved or current state)
+        final total = _lastSavedTotalScore ?? _completedSets.fold<int>(0, (sum, set) => sum + (set['totalScore'] as int));
+        final setsData = _lastSavedSetsData ?? _completedSets.map((set) => [
+          set['setNumber'],
+          (set['rawArrows'] as List<dynamic>? ?? (set['arrows'] as List<int>).toList()),
+        ]).toList();
+        Navigator.of(context).pop({
+          'updatedQualification': {
+            'qualification_total_score': total,
+            'qualification_sets_data': setsData,
+          }
+        });
+        return false;
+      },
+      child: Padding(
       padding: const EdgeInsets.all(16.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -966,6 +986,7 @@ class _ScoreEntryContentState extends ConsumerState<_ScoreEntryContent> {
           ),
         ],
       ),
+    ),
     );
   }
 
