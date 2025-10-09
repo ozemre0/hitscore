@@ -1619,11 +1619,23 @@ abstract class AppLocalizations {
   /// **'Current Set'**
   String get currentSet;
 
+  /// No description provided for @total.
+  ///
+  /// In en, this message translates to:
+  /// **'Total'**
+  String get total;
+
   /// No description provided for @totalScore.
   ///
   /// In en, this message translates to:
   /// **'Total Score'**
   String get totalScore;
+
+  /// No description provided for @average.
+  ///
+  /// In en, this message translates to:
+  /// **'Average'**
+  String get average;
 
   /// No description provided for @tapScoreToContinue.
   ///

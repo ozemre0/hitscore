@@ -783,7 +783,13 @@ class AppLocalizationsTr extends AppLocalizations {
   String get currentSet => 'Mevcut Seri';
 
   @override
+  String get total => 'Toplam';
+
+  @override
   String get totalScore => 'Toplam Skor';
+
+  @override
+  String get average => 'Ortalama';
 
   @override
   String tapScoreToContinue(int setNumber) {

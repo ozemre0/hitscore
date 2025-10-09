@@ -41,6 +41,60 @@ class _CompetitionParticipantsScreenState extends State<CompetitionParticipantsS
   Timer? _pulseBatchTimer;
   final Set<String> _expandedParticipantIds = <String>{}; // support multiple open drawers
   
+  double _computeAverageFromParticipant(Map<String, dynamic> participant) {
+    try {
+      final List<dynamic>? qualifications = participant['qualifications'] as List<dynamic>?;
+      if (qualifications == null || qualifications.isEmpty) return 0.0;
+      final Map<String, dynamic>? q0 = qualifications.first as Map<String, dynamic>?;
+      if (q0 == null) return 0.0;
+      final dynamic sets = q0['qualification_sets_data'];
+      List<dynamic> rawList;
+      if (sets == null) return 0.0;
+      if (sets is String) {
+        try {
+          rawList = (jsonDecode(sets) as List).toList();
+        } catch (_) {
+          return 0.0;
+        }
+      } else if (sets is List) {
+        rawList = sets;
+      } else {
+        return 0.0;
+      }
+
+      int count = 0;
+      int sum = 0;
+      for (final item in rawList) {
+        if (item is List && item.length >= 2 && item[1] is List) {
+          final List<dynamic> arrows = List<dynamic>.from(item[1] as List);
+          for (final v in arrows) {
+            count++;
+            if (v is String) {
+              final String s = v.toUpperCase();
+              if (s == 'X') {
+                sum += 10;
+              } else if (s == 'M') {
+                sum += 0;
+              } else {
+                sum += int.tryParse(v) ?? 0;
+              }
+            } else {
+              sum += (v as num?)?.toInt() ?? 0;
+            }
+          }
+        }
+      }
+      if (count == 0) return 0.0;
+      return sum / count;
+    } catch (_) {
+      return 0.0;
+    }
+  }
+
+  String _formatTruncate3(double value) {
+    final double truncated = (value * 1000).floor() / 1000.0;
+    return truncated.toStringAsFixed(3);
+  }
 
   @override
   void initState() {
@@ -149,24 +203,11 @@ class _CompetitionParticipantsScreenState extends State<CompetitionParticipantsS
 
       final participants = List<Map<String, dynamic>>.from(response);
       
-      // Sort participants by qualification_total_score (highest to lowest)
+      // Sort participants by average score (highest to lowest)
       participants.sort((a, b) {
-        final aQualifications = a['qualifications'] as List<dynamic>?;
-        final bQualifications = b['qualifications'] as List<dynamic>?;
-        
-        int aScore = 0;
-        if (aQualifications != null && aQualifications.isNotEmpty) {
-          final firstQual = aQualifications.first as Map<String, dynamic>?;
-          aScore = firstQual?['qualification_total_score'] as int? ?? 0;
-        }
-        
-        int bScore = 0;
-        if (bQualifications != null && bQualifications.isNotEmpty) {
-          final firstQual = bQualifications.first as Map<String, dynamic>?;
-          bScore = firstQual?['qualification_total_score'] as int? ?? 0;
-        }
-        
-        return bScore.compareTo(aScore); // Descending order (highest first)
+        final double aAvg = _computeAverageFromParticipant(a);
+        final double bAvg = _computeAverageFromParticipant(b);
+        return bAvg.compareTo(aAvg);
       });
       
       if (mounted) {
@@ -356,21 +397,11 @@ class _CompetitionParticipantsScreenState extends State<CompetitionParticipantsS
     if (changed) {
       // Keep a snapshot of previous ranks before we change order
       final Map<String, int> oldRanks = Map<String, int>.from(_prevRankById);
-      // Re-sort by score desc
+      // Re-sort by computed average desc
       _participants.sort((a, b) {
-        final List<dynamic>? aq = a['qualifications'] as List<dynamic>?;
-        final List<dynamic>? bq = b['qualifications'] as List<dynamic>?;
-        int ascore = 0;
-        if (aq != null && aq.isNotEmpty) {
-          final Map<String, dynamic>? q = aq.first as Map<String, dynamic>?;
-          ascore = q?['qualification_total_score'] as int? ?? 0;
-        }
-        int bscore = 0;
-        if (bq != null && bq.isNotEmpty) {
-          final Map<String, dynamic>? q = bq.first as Map<String, dynamic>?;
-          bscore = q?['qualification_total_score'] as int? ?? 0;
-        }
-        return bscore.compareTo(ascore);
+        final double aAvg = _computeAverageFromParticipant(a);
+        final double bAvg = _computeAverageFromParticipant(b);
+        return bAvg.compareTo(aAvg);
       });
       // Queue pulses for changed ranks within Top 20 (processed in batches of 10)
       final List<String> changedTop20 = <String>[];
@@ -672,17 +703,19 @@ class _CompetitionParticipantsScreenState extends State<CompetitionParticipantsS
           final cs = Theme.of(context).colorScheme;
 
           Widget tile = Card(
-            margin: const EdgeInsets.only(bottom: 12),
+            margin: const EdgeInsets.only(bottom: 4),
             elevation: 0,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(12),
               side: BorderSide(color: colorScheme.outline.withOpacity(0.2), width: 1),
             ),
             child: ListTile(
-              contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 6, vertical: 0),
+              dense: true,
+              visualDensity: const VisualDensity(horizontal: -3, vertical: -3),
               leading: Container(
-                width: 32,
-                height: 32,
+                width: 28,
+                height: 28,
                 decoration: BoxDecoration(
                   color: colorScheme.primary.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(16),
@@ -697,13 +730,14 @@ class _CompetitionParticipantsScreenState extends State<CompetitionParticipantsS
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                       color: colorScheme.primary,
                       fontWeight: FontWeight.bold,
+                      height: 1.0,
                     ),
                   ),
                 ),
               ),
               title: Text(
                 fullName.isNotEmpty ? fullName : l10n.participantAthleteId,
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600, height: 1.0),
                 overflow: TextOverflow.ellipsis,
                 maxLines: 1,
               ),
@@ -712,6 +746,7 @@ class _CompetitionParticipantsScreenState extends State<CompetitionParticipantsS
                       clubName,
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                         color: colorScheme.onSurfaceVariant,
+                        height: 1.0,
                       ),
                       overflow: TextOverflow.ellipsis,
                       maxLines: 1,
@@ -721,6 +756,7 @@ class _CompetitionParticipantsScreenState extends State<CompetitionParticipantsS
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                         color: colorScheme.onSurfaceVariant.withOpacity(0.6),
                         fontStyle: FontStyle.italic,
+                        height: 1.0,
                       ),
                       overflow: TextOverflow.ellipsis,
                       maxLines: 1,
@@ -728,15 +764,75 @@ class _CompetitionParticipantsScreenState extends State<CompetitionParticipantsS
               trailing: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text(
-                    '$totalScore',
-                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      color: colorScheme.primary,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(width: 8),
+                  Builder(builder: (context) {
+                    final sets = qualificationData?['qualification_sets_data'];
+                    List<dynamic> rawList;
+                    if (sets == null) {
+                      rawList = const [];
+                    } else if (sets is String) {
+                      try {
+                        rawList = (jsonDecode(sets) as List).toList();
+                      } catch (_) {
+                        rawList = const [];
+                      }
+                    } else if (sets is List) {
+                      rawList = sets;
+                    } else {
+                      rawList = const [];
+                    }
+
+                    int arrowCount = 0;
+                    int pointsSum = 0;
+                    for (final item in rawList) {
+                      if (item is List && item.length >= 2 && item[1] is List) {
+                        final List<dynamic> arrows = List<dynamic>.from(item[1] as List);
+                        for (final v in arrows) {
+                          arrowCount++;
+                          if (v is String) {
+                            if (v == AppLocalizations.of(context)!.arrowXSymbol) {
+                              pointsSum += 10;
+                            } else if (v == AppLocalizations.of(context)!.arrowMissSymbol) {
+                              pointsSum += 0;
+                            } else {
+                              pointsSum += int.tryParse(v) ?? 0;
+                            }
+                          } else {
+                            pointsSum += (v as num?)?.toInt() ?? 0;
+                          }
+                        }
+                      }
+                    }
+
+                    final double avg = arrowCount > 0 ? pointsSum / arrowCount : 0.0;
+                    final l10n = AppLocalizations.of(context)!;
+                    final textTheme = Theme.of(context).textTheme;
+                    return Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          '$totalScore',
+                          style: textTheme.titleMedium?.copyWith(
+                            color: colorScheme.primary,
+                            fontWeight: FontWeight.bold,
+                            height: 1.0,
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          '• ${_formatTruncate3(avg)}',
+                          style: textTheme.bodyMedium?.copyWith(
+                            color: colorScheme.onSurfaceVariant,
+                            height: 1.0,
+                          ),
+                        ),
+                      ],
+                    );
+                  }),
+                  const SizedBox(width: 6),
                   IconButton(
+                    visualDensity: const VisualDensity(horizontal: -3, vertical: -3),
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
                     onPressed: () {
                       setState(() {
                         if (_expandedParticipantIds.contains(pid)) {
@@ -768,7 +864,7 @@ class _CompetitionParticipantsScreenState extends State<CompetitionParticipantsS
             curve: Curves.easeInOut,
             child: expanded && sets.isNotEmpty
                 ? Padding(
-                    padding: const EdgeInsets.fromLTRB(12, 0, 12, 4),
+                    padding: const EdgeInsets.fromLTRB(8, 0, 8, 2),
                     child: Column(
                       children: () {
                         final List<Widget> roundChildren = [];
@@ -796,76 +892,80 @@ class _CompetitionParticipantsScreenState extends State<CompetitionParticipantsS
 
                           roundChildren.add(
                             Container(
-                              padding: const EdgeInsets.all(12),
-                              margin: const EdgeInsets.only(bottom: 8),
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                              margin: const EdgeInsets.only(bottom: 6),
                               decoration: BoxDecoration(
                                 color: Theme.of(context).colorScheme.surface,
                                 borderRadius: BorderRadius.circular(12),
                                 border: Border.all(color: cs.outline.withOpacity(0.3)),
                               ),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
+                              child: Row(
                                 children: [
-                                  Row(
-                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                    children: [
-                                      Text(l10n.setLabel(setNo), style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700)),
-                                      Text(
-                                        '${l10n.totalScore}: $setTotal',
-                                        style: Theme.of(context).textTheme.bodySmall?.copyWith(color: cs.primary, fontWeight: FontWeight.w600),
-                                      ),
-                                    ],
+                                  Text(
+                                    '$setNo',
+                                    style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
                                   ),
-                                  const SizedBox(height: 8),
-                                  Wrap(
-                                    spacing: 6,
-                                    runSpacing: 6,
-                                    children: rawArrows.map<Widget>((v) {
-                                      final l10n = AppLocalizations.of(context)!;
-                                      final int score = v is String
-                                          ? (v == l10n.arrowXSymbol ? 10 : (v == l10n.arrowMissSymbol ? 0 : int.tryParse(v) ?? 0))
-                                          : ((v as num?)?.toInt() ?? 0);
-                                      final String label;
-                                      if (v is String) {
-                                        label = v;
-                                      } else {
-                                        // Use localized symbols for special cases
-                                        if (score == 10) {
-                                          label = l10n.arrowXSymbol; // prefer X symbol for inner-10 if needed
-                                        } else if (score == 0) {
-                                          label = l10n.arrowMissSymbol;
-                                        } else {
-                                          label = score.toString();
-                                        }
-                                      }
-                                      Color bg;
-                                      Color fg;
-                                      if (score >= 9) {
-                                        bg = Colors.yellow;
-                                        fg = Colors.black;
-                                      } else if (score >= 7) {
-                                        bg = Colors.red;
-                                        fg = Colors.white;
-                                      } else if (score >= 5) {
-                                        bg = Colors.blue;
-                                        fg = Colors.white;
-                                      } else if (score >= 1) {
-                                        bg = Colors.black;
-                                        fg = Colors.white;
-                                      } else {
-                                        bg = Colors.grey;
-                                        fg = Colors.white;
-                                      }
-                                      return Container(
-                                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                                        decoration: BoxDecoration(
-                                          color: bg,
-                                          borderRadius: BorderRadius.circular(16),
-                                          border: Border.all(color: Colors.black26),
-                                        ),
-                                        child: Text(label, style: TextStyle(color: fg, fontWeight: FontWeight.bold)),
-                                      );
-                                    }).toList(),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: SingleChildScrollView(
+                                      scrollDirection: Axis.horizontal,
+                                      child: Row(
+                                        children: rawArrows.map<Widget>((v) {
+                                          final l10n = AppLocalizations.of(context)!;
+                                          final int score = v is String
+                                              ? (v == l10n.arrowXSymbol ? 10 : (v == l10n.arrowMissSymbol ? 0 : int.tryParse(v) ?? 0))
+                                              : ((v as num?)?.toInt() ?? 0);
+                                          final String label;
+                                          if (v is String) {
+                                            label = v;
+                                          } else {
+                                            // Use localized symbols for special cases
+                                            if (score == 10) {
+                                              label = l10n.arrowXSymbol; // prefer X symbol for inner-10 if needed
+                                            } else if (score == 0) {
+                                              label = l10n.arrowMissSymbol;
+                                            } else {
+                                              label = score.toString();
+                                            }
+                                          }
+                                          Color bg;
+                                          Color fg;
+                                          if (score >= 9) {
+                                            bg = Colors.yellow;
+                                            fg = Colors.black;
+                                          } else if (score >= 7) {
+                                            bg = Colors.red;
+                                            fg = Colors.white;
+                                          } else if (score >= 5) {
+                                            bg = Colors.blue;
+                                            fg = Colors.white;
+                                          } else if (score >= 1) {
+                                            bg = Colors.black;
+                                            fg = Colors.white;
+                                          } else {
+                                            bg = Colors.grey;
+                                            fg = Colors.white;
+                                          }
+                                          return Padding(
+                                            padding: const EdgeInsets.only(right: 6),
+                                            child: Container(
+                                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                              decoration: BoxDecoration(
+                                                color: bg,
+                                                borderRadius: BorderRadius.circular(16),
+                                                border: Border.all(color: Colors.black26),
+                                              ),
+                                              child: Text(label, style: TextStyle(color: fg, fontWeight: FontWeight.bold)),
+                                            ),
+                                          );
+                                        }).toList(),
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Text(
+                                    '${l10n.total}: $setTotal',
+                                    style: Theme.of(context).textTheme.bodySmall?.copyWith(color: cs.primary, fontWeight: FontWeight.w600),
                                   ),
                                 ],
                               ),
@@ -937,7 +1037,7 @@ class _RoundSeparator extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8.0),
+      padding: const EdgeInsets.symmetric(vertical: 3.0),
       child: Row(
         children: [
           Expanded(

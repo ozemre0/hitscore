@@ -783,7 +783,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get currentSet => 'Current Set';
 
   @override
+  String get total => 'Total';
+
+  @override
   String get totalScore => 'Total Score';
+
+  @override
+  String get average => 'Average';
 
   @override
   String tapScoreToContinue(int setNumber) {
