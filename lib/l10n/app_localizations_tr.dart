@@ -428,19 +428,19 @@ class AppLocalizationsTr extends AppLocalizations {
   String get ageGroupSenior => 'Büyükler';
 
   @override
-  String get bowTypeRecurve => 'Recurve';
+  String get bowTypeRecurve => 'Klasik';
 
   @override
-  String get bowTypeCompound => 'Compound';
+  String get bowTypeCompound => 'Makaralı';
 
   @override
   String get bowTypeBarebow => 'Barebow';
 
   @override
-  String get environmentIndoor => 'Indoor';
+  String get environmentIndoor => 'Salon';
 
   @override
-  String get environmentOutdoor => 'Outdoor';
+  String get environmentOutdoor => 'Açık Hava';
 
   @override
   String get genderMale => 'Erkek';

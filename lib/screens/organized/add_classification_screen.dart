@@ -93,6 +93,42 @@ class _AddClassificationScreenState extends State<AddClassificationScreen> {
       _bowTypes = [l10n.bowTypeRecurve, l10n.bowTypeCompound, l10n.bowTypeBarebow];
       _environments = [l10n.environmentIndoor, l10n.environmentOutdoor];
       _genders = [l10n.genderMale, l10n.genderFemale, l10n.genderMixed];
+      // Normalize any pre-filled selections coming from DB or route args (EN/TR) to current l10n labels
+      if (_selectedBowType != null) {
+        final map = <String, String>{
+          'Recurve': l10n.bowTypeRecurve,
+          'Compound': l10n.bowTypeCompound,
+          'Barebow': l10n.bowTypeBarebow,
+          // Turkish variants (old and new)
+          'Klasik Yay': l10n.bowTypeRecurve,
+          'Makaralı Yay': l10n.bowTypeCompound,
+          'Klasik': l10n.bowTypeRecurve,
+          'Makaralı': l10n.bowTypeCompound,
+        };
+        _selectedBowType = map[_selectedBowType!] ?? _selectedBowType;
+      }
+      if (_selectedEnvironment != null) {
+        final map = <String, String>{
+          'Indoor': l10n.environmentIndoor,
+          'Outdoor': l10n.environmentOutdoor,
+          // Turkish variants
+          'Salon': l10n.environmentIndoor,
+          'Açık Hava': l10n.environmentOutdoor,
+        };
+        _selectedEnvironment = map[_selectedEnvironment!] ?? _selectedEnvironment;
+      }
+      if (_selectedGender != null) {
+        final map = <String, String>{
+          'Male': l10n.genderMale,
+          'Female': l10n.genderFemale,
+          'Mixed': l10n.genderMixed,
+          // Turkish variants
+          'Erkek': l10n.genderMale,
+          'Kadın': l10n.genderFemale,
+          'Karma': l10n.genderMixed,
+        };
+        _selectedGender = map[_selectedGender!] ?? _selectedGender;
+      }
       if (mounted) setState(() => _isLoading = false);
     }
   }

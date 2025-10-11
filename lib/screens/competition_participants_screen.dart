@@ -27,7 +27,7 @@ class _CompetitionParticipantsScreenState extends State<CompetitionParticipantsS
   String? _selectedClassificationId;
   String? _selectedClassificationName;
   int _setsPerRound = 10;
-  int _roundCount = 1;
+  
   RealtimeChannel? _qualificationsChannel;
   Timer? _autoRefreshTimer;
   final Set<String> _dirtyParticipantIds = <String>{};
@@ -174,7 +174,6 @@ class _CompetitionParticipantsScreenState extends State<CompetitionParticipantsS
             .eq('id', classificationId)
             .maybeSingle();
         if (cl != null) {
-          _roundCount = (cl['round_count'] as int?) ?? 1;
           _setsPerRound = (cl['set_per_round'] as int?) ?? 10;
         }
       } catch (_) {}
@@ -562,10 +561,54 @@ class _CompetitionParticipantsScreenState extends State<CompetitionParticipantsS
           final localeCode = Localizations.localeOf(context).languageCode;
           
           final name = classification['name'] ?? '';
-          final bowType = classification['bow_type'] ?? '';
-          final gender = classification['gender'] ?? '';
+          final rawBowType = (classification['bow_type'] ?? '').toString();
+          final rawGender = (classification['gender'] ?? '').toString();
           final distance = classification['distance']?.toString() ?? '';
-          final environment = classification['environment'] ?? '';
+          final rawEnvironment = (classification['environment'] ?? '').toString();
+          // Localize DB-stored English/TR values to current locale labels
+          String mapBow(String v) {
+            switch (v) {
+              case 'Recurve':
+              case 'Klasik Yay':
+              case 'Klasik':
+                return l10n.bowTypeRecurve;
+              case 'Compound':
+              case 'Makaralı Yay':
+              case 'Makaralı':
+                return l10n.bowTypeCompound;
+              case 'Barebow':
+                return l10n.bowTypeBarebow;
+            }
+            return v;
+          }
+          String mapEnv(String v) {
+            switch (v) {
+              case 'Indoor':
+              case 'Salon':
+                return l10n.environmentIndoor;
+              case 'Outdoor':
+              case 'Açık Hava':
+                return l10n.environmentOutdoor;
+            }
+            return v;
+          }
+          String mapGender(String v) {
+            switch (v) {
+              case 'Male':
+              case 'Erkek':
+                return l10n.genderMale;
+              case 'Female':
+              case 'Kadın':
+                return l10n.genderFemale;
+              case 'Mixed':
+              case 'Karma':
+                return l10n.genderMixed;
+            }
+            return v;
+          }
+          final bowType = mapBow(rawBowType);
+          final gender = mapGender(rawGender);
+          final environment = mapEnv(rawEnvironment);
           final ageGroupName = ageGroups == null
               ? ''
               : (localeCode == 'tr' ? (ageGroups['age_group_tr'] ?? '') : (ageGroups['age_group_en'] ?? ''));
@@ -804,7 +847,6 @@ class _CompetitionParticipantsScreenState extends State<CompetitionParticipantsS
                     }
 
                     final double avg = arrowCount > 0 ? pointsSum / arrowCount : 0.0;
-                    final l10n = AppLocalizations.of(context)!;
                     final textTheme = Theme.of(context).textTheme;
                     return Row(
                       mainAxisSize: MainAxisSize.min,
@@ -860,11 +902,11 @@ class _CompetitionParticipantsScreenState extends State<CompetitionParticipantsS
           );
 
           final Widget details = AnimatedSize(
-            duration: const Duration(milliseconds: 220),
+            duration: const Duration(milliseconds: 180),
             curve: Curves.easeInOut,
             child: expanded && sets.isNotEmpty
                 ? Padding(
-                    padding: const EdgeInsets.fromLTRB(8, 0, 8, 2),
+                    padding: const EdgeInsets.fromLTRB(6, 0, 6, 2),
                     child: Column(
                       children: () {
                         final List<Widget> roundChildren = [];
@@ -889,23 +931,24 @@ class _CompetitionParticipantsScreenState extends State<CompetitionParticipantsS
                             return (v as num?)?.toInt() ?? 0;
                           }).toList();
                           final setTotal = arrowsInt.fold<int>(0, (s, a) => s + a);
+                          final maxSetPoints = (arrowsInt.length) * 10;
 
                           roundChildren.add(
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                              margin: const EdgeInsets.only(bottom: 6),
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
+                              margin: const EdgeInsets.only(bottom: 4),
                               decoration: BoxDecoration(
                                 color: Theme.of(context).colorScheme.surface,
-                                borderRadius: BorderRadius.circular(12),
+                                borderRadius: BorderRadius.circular(8),
                                 border: Border.all(color: cs.outline.withOpacity(0.3)),
                               ),
                               child: Row(
                                 children: [
                                   Text(
                                     '$setNo',
-                                    style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
+                                    style: Theme.of(context).textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w700),
                                   ),
-                                  const SizedBox(width: 12),
+                                  const SizedBox(width: 8),
                                   Expanded(
                                     child: SingleChildScrollView(
                                       scrollDirection: Axis.horizontal,
@@ -947,25 +990,37 @@ class _CompetitionParticipantsScreenState extends State<CompetitionParticipantsS
                                             fg = Colors.white;
                                           }
                                           return Padding(
-                                            padding: const EdgeInsets.only(right: 6),
+                                            padding: const EdgeInsets.only(right: 4),
                                             child: Container(
-                                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
                                               decoration: BoxDecoration(
                                                 color: bg,
-                                                borderRadius: BorderRadius.circular(16),
+                                                borderRadius: BorderRadius.circular(10),
                                                 border: Border.all(color: Colors.black26),
                                               ),
-                                              child: Text(label, style: TextStyle(color: fg, fontWeight: FontWeight.bold)),
+                                              child: Text(
+                                                label,
+                                                style: TextStyle(
+                                                  color: fg,
+                                                  fontWeight: FontWeight.w600,
+                                                  fontSize: 12,
+                                                  height: 1.0,
+                                                ),
+                                              ),
                                             ),
                                           );
                                         }).toList(),
                                       ),
                                     ),
                                   ),
-                                  const SizedBox(width: 12),
+                                  const SizedBox(width: 8),
                                   Text(
-                                    '${l10n.total}: $setTotal',
-                                    style: Theme.of(context).textTheme.bodySmall?.copyWith(color: cs.primary, fontWeight: FontWeight.w600),
+                                    '${l10n.total}: $setTotal/$maxSetPoints',
+                                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                                      color: cs.primary,
+                                      fontWeight: FontWeight.w700,
+                                      height: 1.0,
+                                    ),
                                   ),
                                 ],
                               ),
@@ -1037,7 +1092,7 @@ class _RoundSeparator extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 3.0),
+      padding: const EdgeInsets.symmetric(vertical: 2.0),
       child: Row(
         children: [
           Expanded(

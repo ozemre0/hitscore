@@ -302,12 +302,56 @@ class _CompetitionClassificationsScreenState extends State<CompetitionClassifica
                 else
                   ...List.generate(_classifications.length, (index) {
                     final classification = _classifications[index];
+                    // Localize bow/environment/gender regardless of stored language
+                    String mapBow(String v) {
+                      switch (v) {
+                        case 'Recurve':
+                        case 'Klasik Yay':
+                        case 'Klasik':
+                          return l10n.bowTypeRecurve;
+                        case 'Compound':
+                        case 'Makaralı Yay':
+                        case 'Makaralı':
+                          return l10n.bowTypeCompound;
+                        case 'Barebow':
+                          return l10n.bowTypeBarebow;
+                      }
+                      return v;
+                    }
+                    String mapEnv(String v) {
+                      switch (v) {
+                        case 'Indoor':
+                        case 'Salon':
+                          return l10n.environmentIndoor;
+                        case 'Outdoor':
+                        case 'Açık Hava':
+                          return l10n.environmentOutdoor;
+                      }
+                      return v;
+                    }
+                    String mapGender(String v) {
+                      switch (v) {
+                        case 'Male':
+                        case 'Erkek':
+                          return l10n.genderMale;
+                        case 'Female':
+                        case 'Kadın':
+                          return l10n.genderFemale;
+                        case 'Mixed':
+                        case 'Karma':
+                          return l10n.genderMixed;
+                      }
+                      return v;
+                    }
+                    final localizedBow = mapBow('${classification['bowType'] ?? classification['bow_type'] ?? ''}');
+                    final localizedGender = mapGender('${classification['gender'] ?? ''}');
+                    final localizedEnv = mapEnv('${classification['environment'] ?? ''}');
                     return Card(
                       margin: const EdgeInsets.only(bottom: 8),
                       child: ListTile(
                         leading: CircleAvatar(child: Text('${index + 1}')),
                         title: Text(classification['name']),
-                        subtitle: Text('${classification['ageGroup']} • ${classification['bowType']} • ${classification['gender']} • ${classification['distance']}m • ${classification['environment']}'),
+                        subtitle: Text('${classification['ageGroup']} • $localizedBow • $localizedGender • ${classification['distance']}m • $localizedEnv'),
                         trailing: Row(mainAxisSize: MainAxisSize.min, children: [
                           IconButton(onPressed: () => _editClassification(index), icon: const Icon(Icons.edit)),
                           IconButton(onPressed: () => _deleteClassification(index), icon: const Icon(Icons.delete), color: Colors.red),
