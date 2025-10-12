@@ -159,11 +159,15 @@ class _CompetitionClassificationsScreenState extends State<CompetitionClassifica
           'available_score_buttons': classification['available_score_buttons'],
         };
         
-        print('DEBUG: Processing classification: ${classificationData['name']}');
+        print('DEBUG: Processing classification: ${classification['ageGroup']} ${classification['bowType']} ${classification['gender']}');
         
-        // Check if this classification already exists (by name and competition)
+        // Check if this classification already exists (by properties and competition)
         final existing = existingClassifications.firstWhere(
-          (existing) => existing['name'] == classification['name'],
+          (existing) => existing['age_group_id'] == classification['ageGroupId'] &&
+                       existing['bow_type'] == classification['bowType'] &&
+                       existing['gender'] == classification['gender'] &&
+                       existing['distance'] == classification['distance'] &&
+                       existing['environment'] == classification['environment'],
           orElse: () => <String, dynamic>{},
         );
         
@@ -184,9 +188,21 @@ class _CompetitionClassificationsScreenState extends State<CompetitionClassifica
       }
       
       // Remove classifications that are no longer in the list
-      final currentNames = _classifications.map((c) => c['name']).toList();
+      final currentClassifications = _classifications.map((c) => {
+        'age_group_id': c['ageGroupId'],
+        'bow_type': c['bowType'],
+        'gender': c['gender'],
+        'distance': c['distance'],
+        'environment': c['environment'],
+      }).toList();
       final toDelete = existingClassifications.where(
-        (existing) => !currentNames.contains(existing['name'])
+        (existing) => !currentClassifications.any((current) => 
+          current['age_group_id'] == existing['age_group_id'] &&
+          current['bow_type'] == existing['bow_type'] &&
+          current['gender'] == existing['gender'] &&
+          current['distance'] == existing['distance'] &&
+          current['environment'] == existing['environment']
+        )
       ).toList();
       
       if (toDelete.isNotEmpty) {
@@ -256,6 +272,10 @@ class _CompetitionClassificationsScreenState extends State<CompetitionClassifica
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 if (_competitionData != null)
                   Card(
+                    shape: RoundedRectangleBorder(
+                      side: BorderSide(color: Theme.of(context).colorScheme.outline),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                     child: Padding(
                       padding: const EdgeInsets.all(16.0),
                       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -281,11 +301,23 @@ class _CompetitionClassificationsScreenState extends State<CompetitionClassifica
                 const SizedBox(height: 24),
                 Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
                   Text(l10n.classifications, style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold)),
-                  ElevatedButton.icon(onPressed: _addClassification, icon: const Icon(Icons.add), label: Text(l10n.addClassification)),
+                  ElevatedButton.icon(
+                    onPressed: _addClassification, 
+                    icon: const Icon(Icons.add), 
+                    label: Text(l10n.addClassification),
+                    style: ElevatedButton.styleFrom(
+                      side: BorderSide(color: Theme.of(context).colorScheme.outline),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                    ),
+                  ),
                 ]),
                 const SizedBox(height: 16),
                 if (_classifications.isEmpty)
                   Card(
+                    shape: RoundedRectangleBorder(
+                      side: BorderSide(color: Theme.of(context).colorScheme.outline),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                     child: Padding(
                       padding: const EdgeInsets.all(32.0),
                       child: Center(
@@ -348,9 +380,13 @@ class _CompetitionClassificationsScreenState extends State<CompetitionClassifica
                     final localizedEnv = mapEnv('${classification['environment'] ?? ''}');
                     return Card(
                       margin: const EdgeInsets.only(bottom: 8),
+                      shape: RoundedRectangleBorder(
+                        side: BorderSide(color: Theme.of(context).colorScheme.outline),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
                       child: ListTile(
                         leading: CircleAvatar(child: Text('${index + 1}')),
-                        title: Text(classification['name']),
+                        title: Text(classification['name'] ?? ''),
                         subtitle: Text('${classification['ageGroup']} • $localizedBow • $localizedGender • ${classification['distance']}m • $localizedEnv'),
                         trailing: Row(mainAxisSize: MainAxisSize.min, children: [
                           IconButton(onPressed: () => _editClassification(index), icon: const Icon(Icons.edit)),
@@ -361,7 +397,16 @@ class _CompetitionClassificationsScreenState extends State<CompetitionClassifica
                   }),
                 const SizedBox(height: 32),
                 Row(children: [
-                  Expanded(child: OutlinedButton(onPressed: () => Navigator.of(context).pop(), child: Text(l10n.back))),
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () => Navigator.of(context).pop(), 
+                      child: Text(l10n.back),
+                      style: OutlinedButton.styleFrom(
+                        side: BorderSide(color: Theme.of(context).colorScheme.outline),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                      ),
+                    ),
+                  ),
                   const SizedBox(width: 16),
                   Expanded(
                     flex: 2,
@@ -369,6 +414,10 @@ class _CompetitionClassificationsScreenState extends State<CompetitionClassifica
                       onPressed: _isLoading ? null : _saveClassifications,
                       icon: _isLoading ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)) : const Icon(Icons.check),
                       label: Text(_isLoading ? l10n.savingGeneric : l10n.completeCompetition),
+                      style: ElevatedButton.styleFrom(
+                        side: BorderSide(color: Theme.of(context).colorScheme.outline),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                      ),
                     ),
                   ),
                 ]),

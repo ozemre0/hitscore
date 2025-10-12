@@ -403,6 +403,22 @@
   "cutoffSettings": "Cutoff Settings",
   "cutoffSettingsSubtitle": "Set the cutoff rank for elimination participants",
   "cutoffRank": "Cutoff Rank",
+  "cutoffLimit": "Cutoff Limit",
+  "cutoffLimitDescription": "The first {count} ranked athletes are included in the elimination system",
+  "athleteCount": "Athlete Count",
+  "enterValueBetween": "Enter a value between 8-256",
+  "possibleBracketCombinations": "Possible Bracket Combinations",
+  "availableOptionsForCutoff": "Available options for Cutoff ({count} athletes):",
+  "personBracket": "{count} Person Bracket",
+  "allAthletesInMainTable": "All athletes in the main table",
+  "preliminaryElimination": "Preliminary Round: {total} athletes → {winners} winners",
+  "allAthletesInMainTableShort": "All athletes in main table",
+  "preliminaryEliminationShort": "Preliminary: {total} athletes → {winners} winners",
+  "close": "Close",
+  "showAllMatches": "Show All Matches",
+  "detailedMatchSchedule": "Detailed Match Schedule",
+  "mainTableStart": "Main Table Start ({count} athletes)",
+  "preliminaryEliminationStart": "Preliminary Elimination ({total} → {target} athletes)",
   "byeSettings": "Bye Settings",
   "byeSettingsSubtitle": "Configure bye (automatic advancement) settings",
   "allowByes": "Allow Byes",
@@ -496,6 +512,9 @@
   "startTieBreak": "Start Tie Break",
   "completeMatch": "Complete Match",
   "matchCompleted": "Match Completed",
-  "matchCompletedDescription": "The match has been successfully completed and saved"
+  "matchCompletedDescription": "The match has been successfully completed and saved",
+  "classificationNamePreview": "Classification Name Preview",
+  "classificationNamePreviewEmpty": "Select classification properties to see the auto-generated name",
+  "autoSelected": "Auto Selected"
 }
 

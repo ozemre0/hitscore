@@ -11,7 +11,6 @@ class AddClassificationScreen extends StatefulWidget {
 }
 
 class _AddClassificationScreenState extends State<AddClassificationScreen> {
-  final TextEditingController _nameController = TextEditingController();
   final TextEditingController _customDistanceController = TextEditingController();
   final TextEditingController _roundCountController = TextEditingController();
   final TextEditingController _arrowsPerSetController = TextEditingController();
@@ -31,13 +30,97 @@ class _AddClassificationScreenState extends State<AddClassificationScreen> {
   int? _selectedDistance;
   Set<String> _selectedScoreButtons = {};
   bool _isLoading = false;
+  bool _optionsInitialized = false;
+
+  // Generate automatic classification name based on selected properties
+  String _generateClassificationName() {
+    // Don't generate name if age groups are not loaded yet
+    if (_ageGroups.isEmpty) {
+      return '';
+    }
+    
+    if (_selectedAgeGroup == null || 
+        _selectedBowType == null || 
+        _selectedGender == null || 
+        _selectedEnvironment == null ||
+        (_selectedDistance == null && _customDistanceController.text.trim().isEmpty)) {
+      return '';
+    }
+
+    final locale = Localizations.localeOf(context).languageCode;
+    
+    // Get age group name safely
+    String ageGroupName = '';
+    try {
+      final selectedAgeGroup = _ageGroups.firstWhere(
+        (age) => age['age_group_id'].toString() == _selectedAgeGroup!,
+        orElse: () => <String, dynamic>{},
+      );
+      ageGroupName = selectedAgeGroup.isNotEmpty 
+          ? (locale == 'tr' ? selectedAgeGroup['age_group_tr'] : selectedAgeGroup['age_group_en'])
+          : '';
+    } catch (e) {
+      // If age group not found, use empty string
+      ageGroupName = '';
+    }
+
+    // Get distance
+    final distance = _selectedDistance ?? int.tryParse(_customDistanceController.text.trim());
+    final distanceText = distance != null ? '${distance}m' : '';
+
+    // Build name parts
+    final parts = <String>[];
+    if (ageGroupName.isNotEmpty) parts.add(ageGroupName);
+    if (_selectedGender != null) parts.add(_selectedGender!);
+    if (_selectedBowType != null) parts.add(_selectedBowType!);
+    if (distanceText.isNotEmpty) parts.add(distanceText);
+    if (_selectedEnvironment != null) parts.add(_selectedEnvironment!);
+
+    return parts.join(' ');
+  }
+
+  // Auto-select score buttons based on bow type and environment
+  void _autoSelectScoreButtons() {
+    if (_selectedBowType == null || _selectedEnvironment == null) {
+      return;
+    }
+
+    Set<String> autoSelectedButtons = {};
+
+    // Normalize bow type and environment for comparison
+    final bowType = _selectedBowType!.toLowerCase();
+    final environment = _selectedEnvironment!.toLowerCase();
+    
+    // Check for Turkish/English variations
+    final isCompound = bowType.contains('makaralı') || bowType.contains('compound');
+    final isRecurve = bowType.contains('klasik') || bowType.contains('recurve');
+    final isBarebow = bowType.contains('barebow');
+    final isIndoor = environment.contains('salon') || environment.contains('indoor');
+    final isOutdoor = environment.contains('açık') || environment.contains('outdoor');
+
+    if (isCompound && isOutdoor) {
+      // Makaralı + Outdoor: X 10 9 8 7 6M
+      autoSelectedButtons = {'X', '10', '9', '8', '7', '6', 'M'};
+    } else if (isIndoor) {
+      // Any bow type + Indoor: 10 9 8 7 6 M
+      autoSelectedButtons = {'10', '9', '8', '7', '6', 'M'};
+    } else if ((isRecurve || isBarebow) && isOutdoor) {
+      // Klasik/Barebow + Outdoor: X 10 9 8 7 6 5 4 3 2 1 M
+      autoSelectedButtons = {'X', '10', '9', '8', '7', '6', '5', '4', '3', '2', '1', 'M'};
+    }
+
+    if (autoSelectedButtons.isNotEmpty) {
+      setState(() {
+        _selectedScoreButtons = autoSelectedButtons;
+      });
+    }
+  }
 
   @override
   void initState() {
     super.initState();
     final init = widget.initialClassification;
     if (init != null) {
-      _nameController.text = init['name'] ?? '';
       _selectedAgeGroup = (init['ageGroupId'] ?? init['age_group_id'])?.toString();
       _selectedBowType = init['bowType'] ?? init['bow_type'];
       _selectedEnvironment = init['environment'];
@@ -68,7 +151,9 @@ class _AddClassificationScreenState extends State<AddClassificationScreen> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    _initializeOptions();
+    if (!_optionsInitialized) {
+      _initializeOptions();
+    }
   }
 
   Future<void> _initializeOptions() async {
@@ -129,13 +214,17 @@ class _AddClassificationScreenState extends State<AddClassificationScreen> {
         };
         _selectedGender = map[_selectedGender!] ?? _selectedGender;
       }
-      if (mounted) setState(() => _isLoading = false);
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+          _optionsInitialized = true;
+        });
+      }
     }
   }
 
   @override
   void dispose() {
-    _nameController.dispose();
     _customDistanceController.dispose();
     _roundCountController.dispose();
     _arrowsPerSetController.dispose();
@@ -145,8 +234,7 @@ class _AddClassificationScreenState extends State<AddClassificationScreen> {
 
   void _save() {
     final l10n = AppLocalizations.of(context)!;
-    if (_nameController.text.trim().isEmpty ||
-        _selectedAgeGroup == null ||
+    if (_selectedAgeGroup == null ||
         _selectedBowType == null ||
         _selectedEnvironment == null ||
         _selectedGender == null ||
@@ -189,7 +277,7 @@ class _AddClassificationScreenState extends State<AddClassificationScreen> {
     print('DEBUG: Formatted score buttons string: $scoreButtonsString');
 
     Navigator.of(context).pop({
-      'name': _nameController.text.trim(),
+      'name': _generateClassificationName(),
       'ageGroup': Localizations.localeOf(context).languageCode == 'tr' ? selectedAgeGroup['age_group_tr'] : selectedAgeGroup['age_group_en'],
       'ageGroupId': selectedAgeGroup['age_group_id'],
       'bowType': _selectedBowType!,
@@ -223,12 +311,57 @@ class _AddClassificationScreenState extends State<AddClassificationScreen> {
               ),
               child: Column(
                 children: [
-                  TextField(
-                    controller: _nameController,
-                    decoration: InputDecoration(
-                      labelText: l10n.classificationNameLabel,
-                      border: const OutlineInputBorder(),
-                      hintText: '${l10n.ageGroupSenior} ${l10n.male} ${l10n.bowTypeRecurve} 70m',
+                  // Auto-generated name preview
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).colorScheme.surfaceVariant,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: Theme.of(context).colorScheme.outline,
+                        width: 1,
+                      ),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Icon(
+                              Icons.auto_awesome,
+                              size: 20,
+                              color: Theme.of(context).colorScheme.primary,
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              l10n.classificationNamePreview,
+                              style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                                fontWeight: FontWeight.w600,
+                                color: Theme.of(context).colorScheme.primary,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        Builder(
+                          builder: (context) {
+                            final generatedName = _generateClassificationName();
+                            final isEmpty = generatedName.isEmpty;
+                            return Text(
+                              isEmpty 
+                                  ? l10n.classificationNamePreviewEmpty
+                                  : generatedName,
+                              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                fontWeight: FontWeight.w500,
+                                color: isEmpty 
+                                    ? Theme.of(context).colorScheme.onSurfaceVariant
+                                    : Theme.of(context).colorScheme.onSurface,
+                              ),
+                            );
+                          },
+                        ),
+                      ],
                     ),
                   ),
                   const SizedBox(height: 16),
@@ -246,14 +379,20 @@ class _AddClassificationScreenState extends State<AddClassificationScreen> {
                     value: _selectedBowType,
                     decoration: InputDecoration(labelText: l10n.bowTypeLabel, border: const OutlineInputBorder()),
                     items: _bowTypes.map((bow) => DropdownMenuItem(value: bow, child: Text(bow))).toList(),
-                    onChanged: (value) => setState(() => _selectedBowType = value),
+                    onChanged: (value) {
+                      setState(() => _selectedBowType = value);
+                      _autoSelectScoreButtons();
+                    },
                   ),
                   const SizedBox(height: 16),
                   DropdownButtonFormField<String>(
                     value: _selectedEnvironment,
                     decoration: InputDecoration(labelText: l10n.environmentLabel, border: const OutlineInputBorder()),
                     items: _environments.map((env) => DropdownMenuItem(value: env, child: Text(env))).toList(),
-                    onChanged: (value) => setState(() => _selectedEnvironment = value),
+                    onChanged: (value) {
+                      setState(() => _selectedEnvironment = value);
+                      _autoSelectScoreButtons();
+                    },
                   ),
                   const SizedBox(height: 16),
                   DropdownButtonFormField<String>(
@@ -300,9 +439,40 @@ class _AddClassificationScreenState extends State<AddClassificationScreen> {
                   ),
                   const SizedBox(height: 16),
                   // Score Buttons Selection
-                  Text(
-                    l10n.availableScoreButtonsLabel,
-                    style: Theme.of(context).textTheme.titleMedium,
+                  Row(
+                    children: [
+                      Text(
+                        l10n.availableScoreButtonsLabel,
+                        style: Theme.of(context).textTheme.titleMedium,
+                      ),
+                      const Spacer(),
+                      if (_selectedBowType != null && _selectedEnvironment != null)
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: Theme.of(context).colorScheme.primaryContainer,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.auto_awesome,
+                                size: 16,
+                                color: Theme.of(context).colorScheme.primary,
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                l10n.autoSelected,
+                                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                  color: Theme.of(context).colorScheme.primary,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                    ],
                   ),
                   const SizedBox(height: 8),
                   Text(
@@ -317,8 +487,22 @@ class _AddClassificationScreenState extends State<AddClassificationScreen> {
                     runSpacing: 8,
                     children: _scoreButtons.map((button) {
                       final isSelected = _selectedScoreButtons.contains(button);
-                      return FilterChip(
-                        label: Text(button),
+                      return Container(
+                        constraints: const BoxConstraints(
+                          minWidth: 48,
+                          minHeight: 40,
+                        ),
+                        child: FilterChip(
+                        label: Text(
+                          button,
+                          style: TextStyle(
+                            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                            fontSize: 14, // Sabit font boyutu
+                            color: isSelected 
+                                ? Theme.of(context).colorScheme.onPrimary
+                                : Theme.of(context).colorScheme.onSurface,
+                          ),
+                        ),
                         selected: isSelected,
                         onSelected: (selected) {
                           setState(() {
@@ -331,8 +515,22 @@ class _AddClassificationScreenState extends State<AddClassificationScreen> {
                             }
                           });
                         },
-                        selectedColor: Theme.of(context).colorScheme.primaryContainer,
-                        checkmarkColor: Theme.of(context).colorScheme.onPrimaryContainer,
+                        selectedColor: Theme.of(context).colorScheme.primary,
+                        checkmarkColor: Theme.of(context).colorScheme.onPrimary,
+                        showCheckmark: true,
+                        elevation: 0, // Sabit elevation
+                        side: BorderSide(
+                          color: isSelected 
+                              ? Theme.of(context).colorScheme.primary
+                              : Theme.of(context).colorScheme.outline,
+                          width: isSelected ? 2 : 1,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        // Sabit boyut için padding ekle
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      ),
                       );
                     }).toList(),
                   ),

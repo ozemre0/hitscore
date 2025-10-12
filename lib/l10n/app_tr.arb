@@ -401,6 +401,22 @@
   "cutoffSettings": "Kesme Sınırı Ayarları",
   "cutoffSettingsSubtitle": "Eleme turuna katılacak sporcular için kesme sırası belirleyin",
   "cutoffRank": "Kesme Sırası",
+  "cutoffLimit": "Kesme Sınırı",
+  "cutoffLimitDescription": "İlk {count} sıradaki sporcu eleme sistemine dahil olur",
+  "athleteCount": "Sporcu Sayısı",
+  "enterValueBetween": "8-256 arasında bir değer girin",
+  "possibleBracketCombinations": "Olası Bracket Kombinasyonları",
+  "availableOptionsForCutoff": "Cutoff ({count} sporcu) için mevcut seçenekler:",
+  "personBracket": "{count} Kişilik Bracket",
+  "allAthletesInMainTable": "Tüm sporcular ana tabloda",
+  "preliminaryElimination": "Ön Eleme: {total} sporcu → {winners} kazanan",
+  "allAthletesInMainTableShort": "Tüm sporcular ana tabloda",
+  "preliminaryEliminationShort": "Ön Eleme: {total} sporcu → {winners} kazanan",
+  "close": "Kapat",
+  "showAllMatches": "Tüm Maçları Göster",
+  "detailedMatchSchedule": "Detaylı Maç Programı",
+  "mainTableStart": "Ana Tablo Başlangıcı ({count} sporcu)",
+  "preliminaryEliminationStart": "Ön Eleme ({total} → {target} sporcu)",
   "byeSettings": "Bay Geçme Ayarları",
   "byeSettingsSubtitle": "Bay geçme (otomatik yükselme) ayarlarını yapılandırın",
   "allowByes": "Bay Geçmeye İzin Ver",
@@ -494,6 +510,9 @@
   "startTieBreak": "Beraberlik Atışı Başlat",
   "completeMatch": "Maçı Tamamla",
   "matchCompleted": "Maç Tamamlandı",
-  "matchCompletedDescription": "Maç başarıyla tamamlandı ve kaydedildi"
+  "matchCompletedDescription": "Maç başarıyla tamamlandı ve kaydedildi",
+  "classificationNamePreview": "Klasman İsmi Önizleme",
+  "classificationNamePreviewEmpty": "Otomatik oluşturulan ismi görmek için klasman özelliklerini seçin",
+  "autoSelected": "Otomatik Seçildi"
 }
 

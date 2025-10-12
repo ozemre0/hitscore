@@ -253,14 +253,14 @@ class _EliminationSettingsScreenState extends State<EliminationSettingsScreen> {
           children: [
             // Cutoff Slider Section
             Text(
-              'Kesme Sınırı',
+              l10n.cutoffLimit,
               style: Theme.of(context).textTheme.titleMedium?.copyWith(
                 fontWeight: FontWeight.w600,
               ),
             ),
             const SizedBox(height: 8),
             Text(
-              'İlk $_cutoffRank sıradaki sporcu eleme sistemine dahil olur',
+              l10n.cutoffLimitDescription(_cutoffRank.toString()),
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
                 color: colorScheme.onSurfaceVariant,
               ),
@@ -270,7 +270,7 @@ class _EliminationSettingsScreenState extends State<EliminationSettingsScreen> {
               children: [
                 Expanded(
                   child: Text(
-                    'Sporcu Sayısı',
+                    l10n.athleteCount,
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                       fontWeight: FontWeight.w500,
                     ),
@@ -384,7 +384,7 @@ class _EliminationSettingsScreenState extends State<EliminationSettingsScreen> {
             ),
             const SizedBox(height: 8),
             Text(
-              '8-256 arasında bir değer girin',
+              l10n.enterValueBetween,
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
                 color: colorScheme.onSurfaceVariant,
               ),
@@ -394,14 +394,14 @@ class _EliminationSettingsScreenState extends State<EliminationSettingsScreen> {
             
             // Bracket Combinations Section
             Text(
-              'Olası Bracket Kombinasyonları',
+              l10n.possibleBracketCombinations,
               style: Theme.of(context).textTheme.titleMedium?.copyWith(
                 fontWeight: FontWeight.w600,
               ),
             ),
             const SizedBox(height: 8),
             Text(
-              'Cutoff ($_cutoffRank sporcu) için mevcut seçenekler:',
+              l10n.availableOptionsForCutoff(_cutoffRank.toString()),
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
                 color: colorScheme.onSurfaceVariant,
               ),
@@ -474,7 +474,7 @@ class _EliminationSettingsScreenState extends State<EliminationSettingsScreen> {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
-                                    '${combination['targetSize']} Kişilik Bracket',
+                                    l10n.personBracket(combination['targetSize'].toString()),
                                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                                       fontWeight: FontWeight.bold,
                                     ),
@@ -501,7 +501,7 @@ class _EliminationSettingsScreenState extends State<EliminationSettingsScreen> {
                                 isExpanded ? Icons.expand_less : Icons.expand_more,
                                 color: Theme.of(context).colorScheme.primary,
                               ),
-                              tooltip: isExpanded ? 'Kapat' : 'Tüm Maçları Göster',
+                              tooltip: isExpanded ? l10n.close : l10n.showAllMatches,
                             ),
                             
                             // Recommended badge
@@ -513,7 +513,7 @@ class _EliminationSettingsScreenState extends State<EliminationSettingsScreen> {
                                   borderRadius: BorderRadius.circular(12),
                                 ),
                                 child: Text(
-                                  'Önerilen',
+                                  l10n.recommended,
                                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
                                     color: Theme.of(context).colorScheme.onSecondary,
                                     fontWeight: FontWeight.w500,
@@ -551,7 +551,7 @@ class _EliminationSettingsScreenState extends State<EliminationSettingsScreen> {
                                 ),
                                 const SizedBox(width: 8),
                                 Text(
-                                  'Detaylı Maç Programı',
+                                  l10n.detailedMatchSchedule,
                                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                                     fontWeight: FontWeight.bold,
                                     color: Theme.of(context).colorScheme.primary,
@@ -646,28 +646,37 @@ class _EliminationSettingsScreenState extends State<EliminationSettingsScreen> {
   }
   
   String _getShortDescription(int targetSize) {
+    final l10n = AppLocalizations.of(context);
+    if (l10n == null) return '';
+    
     if (_cutoffRank <= targetSize) {
-      return 'Tüm sporcular ana tabloda';
+      return l10n.allAthletesInMainTableShort;
     } else {
       int excess = _cutoffRank - targetSize;
       int eliminationParticipants = excess * 2;
-      return 'Ön Eleme: $eliminationParticipants sporcu → $excess kazanan';
+      return l10n.preliminaryEliminationShort(
+          eliminationParticipants.toString(), 
+          excess.toString()
+      );
     }
   }
 
   String _getCombinationDescription(int targetSize) {
+    final l10n = AppLocalizations.of(context);
+    if (l10n == null) return '';
+    
     if (_cutoffRank <= targetSize) {
       // Direkt hedef boyuta ulaşılabilir - Ana tablo başlangıcı
-      return 'Ana Tablo Başlangıcı ($_cutoffRank sporcu)\n${_getMainTableMatches(targetSize)}';
+      return '${l10n.mainTableStart(_cutoffRank.toString())}\n${_getMainTableMatches(targetSize)}';
     } else {
       // Eleme turu gerekli
       int excess = _cutoffRank - targetSize;
       int eliminationParticipants = excess * 2;
       int directQualifiers = _cutoffRank - eliminationParticipants;
       
-      String description = 'Ön Eleme ($_cutoffRank → $targetSize sporcu)\n';
+      String description = '${l10n.preliminaryEliminationStart(_cutoffRank.toString(), targetSize.toString())}\n';
       description += _getEliminationMatches(directQualifiers + 1, _cutoffRank);
-      description += '\n\nAna Tablo Başlangıcı ($targetSize sporcu)\n';
+      description += '\n\n${l10n.mainTableStart(targetSize.toString())}\n';
       description += _getMainTableMatches(targetSize);
       
       return description;

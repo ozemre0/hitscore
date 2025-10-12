@@ -172,6 +172,7 @@ class _CreateCompetitionScreenState extends State<CreateCompetitionScreen> {
         'score_allowed': _scoreAllowed,
         'competition_visible_id': visibleId,
         'created_by': user.id,
+        'organizer_ids': [user.id], // Include creator in organizer_ids to satisfy constraint
         'status': 'draft',
       };
       await SupabaseConfig.client.from('organized_competitions').insert(competitionData);

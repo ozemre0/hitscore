@@ -724,15 +724,15 @@ class _CompetitionParticipantsScreenState extends State<CompetitionParticipantsS
                       ],
                     ),
                   const SizedBox(height: 2),
-                  // Classification name and Athlete ID in same row
-                  Row(
-                    children: [
-                      if (classification != null && (classification['name'] ?? '').toString().isNotEmpty) ...[
+                  // Classification info and Athlete ID
+                  if (classification != null) ...[
+                    Row(
+                      children: [
                         Icon(Icons.category, size: 14, color: colorScheme.primary),
                         const SizedBox(width: 4),
                         Expanded(
                           child: Text(
-                            '${l10n.participantClassification}: ${classification['name']}',
+                            '${l10n.participantClassification}: ${classification['age_group']} • ${classification['bow_type']} • ${classification['gender']} • ${classification['distance']}m • ${classification['environment']}',
                             style: Theme.of(context).textTheme.bodySmall?.copyWith(
                               fontWeight: FontWeight.w500,
                               color: colorScheme.primary,
@@ -740,7 +740,11 @@ class _CompetitionParticipantsScreenState extends State<CompetitionParticipantsS
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
-                      ] else ...[
+                      ],
+                    ),
+                    const SizedBox(height: 2),
+                    Row(
+                      children: [
                         Icon(Icons.badge, size: 14, color: colorScheme.onSurfaceVariant),
                         const SizedBox(width: 4),
                         Expanded(
@@ -753,11 +757,25 @@ class _CompetitionParticipantsScreenState extends State<CompetitionParticipantsS
                           ),
                         ),
                       ],
-                    ],
-                  ),
+                    ),
+                  ] else ...[
+                    Row(
+                      children: [
+                        Icon(Icons.badge, size: 14, color: colorScheme.onSurfaceVariant),
+                        const SizedBox(width: 4),
+                        Expanded(
+                          child: Text(
+                            '${l10n.participantAthleteId}: $visibleId',
+                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              color: colorScheme.onSurfaceVariant,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
                   const SizedBox(height: 2),
-                  // Athlete ID (if classification exists)
-                  if (classification != null && (classification['name'] ?? '').toString().isNotEmpty)
                     Row(
                       children: [
                         Icon(Icons.badge, size: 14, color: colorScheme.onSurfaceVariant),

@@ -2494,6 +2494,120 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Active'**
   String get active;
+
+  /// No description provided for @cutoffLimit.
+  ///
+  /// In en, this message translates to:
+  /// **'Cutoff Limit'**
+  String get cutoffLimit;
+
+  /// No description provided for @cutoffLimitDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'The first {count} ranked athletes are included in the elimination system'**
+  String cutoffLimitDescription(String count);
+
+  /// No description provided for @athleteCount.
+  ///
+  /// In en, this message translates to:
+  /// **'Athlete Count'**
+  String get athleteCount;
+
+  /// No description provided for @enterValueBetween.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter a value between 8-256'**
+  String get enterValueBetween;
+
+  /// No description provided for @possibleBracketCombinations.
+  ///
+  /// In en, this message translates to:
+  /// **'Possible Bracket Combinations'**
+  String get possibleBracketCombinations;
+
+  /// No description provided for @availableOptionsForCutoff.
+  ///
+  /// In en, this message translates to:
+  /// **'Available options for Cutoff ({count} athletes):'**
+  String availableOptionsForCutoff(String count);
+
+  /// No description provided for @personBracket.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} Person Bracket'**
+  String personBracket(String count);
+
+  /// No description provided for @allAthletesInMainTable.
+  ///
+  /// In en, this message translates to:
+  /// **'All athletes in the main table'**
+  String get allAthletesInMainTable;
+
+  /// No description provided for @preliminaryElimination.
+  ///
+  /// In en, this message translates to:
+  /// **'Preliminary Round: {total} athletes → {winners} winners'**
+  String preliminaryElimination(String total, String winners);
+
+  /// No description provided for @allAthletesInMainTableShort.
+  ///
+  /// In en, this message translates to:
+  /// **'All athletes in main table'**
+  String get allAthletesInMainTableShort;
+
+  /// No description provided for @preliminaryEliminationShort.
+  ///
+  /// In en, this message translates to:
+  /// **'Preliminary: {total} athletes → {winners} winners'**
+  String preliminaryEliminationShort(String total, String winners);
+
+  /// No description provided for @close.
+  ///
+  /// In en, this message translates to:
+  /// **'Close'**
+  String get close;
+
+  /// No description provided for @showAllMatches.
+  ///
+  /// In en, this message translates to:
+  /// **'Show All Matches'**
+  String get showAllMatches;
+
+  /// No description provided for @detailedMatchSchedule.
+  ///
+  /// In en, this message translates to:
+  /// **'Detailed Match Schedule'**
+  String get detailedMatchSchedule;
+
+  /// No description provided for @mainTableStart.
+  ///
+  /// In en, this message translates to:
+  /// **'Main Table Start ({count} athletes)'**
+  String mainTableStart(String count);
+
+  /// No description provided for @preliminaryEliminationStart.
+  ///
+  /// In en, this message translates to:
+  /// **'Preliminary Elimination ({total} → {target} athletes)'**
+  String preliminaryEliminationStart(String total, String target);
+
+  /// No description provided for @classificationNamePreview.
+  ///
+  /// In en, this message translates to:
+  /// **'Classification Name Preview'**
+  String get classificationNamePreview;
+
+  /// No description provided for @classificationNamePreviewEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'Select classification properties to see the auto-generated name'**
+  String get classificationNamePreviewEmpty;
+
+  /// No description provided for @autoSelected.
+  ///
+  /// In en, this message translates to:
+  /// **'Auto Selected'**
+  String get autoSelected;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

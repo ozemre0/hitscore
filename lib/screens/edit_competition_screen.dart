@@ -408,9 +408,13 @@ class _EditCompetitionScreenState extends State<EditCompetitionScreen> {
                       onTap: () => _selectDateTime(_endDateController, _endDate, (d) => _endDate = d),
                     ),
                     // registration date section removed
-                    const SizedBox(height: 32),
+                    const SizedBox(height: 24),
                     // Classifications Section
                     Card(
+                      shape: RoundedRectangleBorder(
+                        side: BorderSide(color: Theme.of(context).colorScheme.outline),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
                       child: Padding(
                         padding: const EdgeInsets.all(16.0),
                         child: Column(

@@ -231,12 +231,23 @@ class _UserMultiSelectSheetState extends ConsumerState<UserMultiSelectSheet> {
                                   
                                   // Get classification info
                                   final Map<String, dynamic>? classification = a['classification'] as Map<String, dynamic>?;
-                                  final String classificationName = classification != null ? (classification['name'] ?? '') as String : '';
                                   final Map<String, dynamic>? ageGroups = classification != null ? classification['age_groups'] as Map<String, dynamic>? : null;
                                   final String localeCode = Localizations.localeOf(context).languageCode;
                                   final String ageGroupText = ageGroups == null
                                       ? (classification != null ? (classification['age_group_id']?.toString() ?? '') : '')
                                       : (localeCode == 'tr' ? (ageGroups['age_group_tr'] ?? '') : (ageGroups['age_group_en'] ?? ''));
+                                  
+                                  // Build classification display text from properties
+                                  String classificationDisplayText = '';
+                                  if (classification != null) {
+                                    final parts = <String>[];
+                                    if (ageGroupText.isNotEmpty) parts.add(ageGroupText);
+                                    if (classification['bow_type'] != null) parts.add(classification['bow_type']);
+                                    if (classification['gender'] != null) parts.add(classification['gender']);
+                                    if (classification['distance'] != null) parts.add('${classification['distance']}m');
+                                    if (classification['environment'] != null) parts.add(classification['environment']);
+                                    classificationDisplayText = parts.join(' • ');
+                                  }
 
                                   return CheckboxListTile(
                                     value: selected,
@@ -274,8 +285,8 @@ class _UserMultiSelectSheetState extends ConsumerState<UserMultiSelectSheet> {
                                       }
                                       
                                       // Add classification info if available
-                                      if (classificationName.isNotEmpty) {
-                                        subtitleParts.add('${l10n.classification}: $classificationName');
+                                      if (classificationDisplayText.isNotEmpty) {
+                                        subtitleParts.add('${l10n.classification}: $classificationDisplayText');
                                       }
                                       
                                       // Add age group if available
