@@ -6,6 +6,7 @@ import 'organized_competitions_screen.dart';
 import 'competition_archive_screen.dart';
 import '../services/supabase_config.dart';
 import 'settings_screen.dart';
+import 'notifications_screen.dart';
 
 class HomeScreen extends StatelessWidget {
   final String displayName;
@@ -268,6 +269,16 @@ class _HomeDrawer extends StatelessWidget {
                   ),
                 ],
               ),
+            ),
+            ListTile(
+              leading: const Icon(Icons.notifications_outlined),
+              title: Text(l10n.notificationsTitle),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.of(context).push(
+                  MaterialPageRoute(builder: (ctx) => const NotificationsScreen()),
+                );
+              },
             ),
             ListTile(
               leading: const Icon(Icons.settings_outlined),

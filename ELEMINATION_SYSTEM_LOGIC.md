@@ -383,8 +383,7 @@ FUNCTION distributeByes(participants, byeCount, strategy):
     DEFAULT:
       RETURN participants.take(byeCount)
 ```
-
-## 🎯 Kullanıcı Kesme Sınırı + Kombinasyon Sistemi
+0## 🎯 Kullanıcı Kesme Sınırı + Kombinasyon Sistemi
 
 ### 1. Kullanıcı Kesme Sınırı Mantığı
 

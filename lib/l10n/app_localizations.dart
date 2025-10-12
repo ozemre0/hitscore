@@ -548,7 +548,7 @@ abstract class AppLocalizations {
   /// No description provided for @saveAndContinue.
   ///
   /// In en, this message translates to:
-  /// **'Save and continue'**
+  /// **'Save and Continue'**
   String get saveAndContinue;
 
   /// No description provided for @competitionNameRequired.
@@ -1364,7 +1364,7 @@ abstract class AppLocalizations {
   /// No description provided for @addAthletes.
   ///
   /// In en, this message translates to:
-  /// **'Add Athletes'**
+  /// **'Add Participants'**
   String get addAthletes;
 
   /// No description provided for @searchAthleteHint.
@@ -1587,7 +1587,7 @@ abstract class AppLocalizations {
   ///
   /// In en, this message translates to:
   /// **'Round {roundNumber}'**
-  String roundSeparator(int roundNumber);
+  String roundSeparator(Object roundNumber);
 
   /// No description provided for @myOrganizedCompetitionsTitle.
   ///
@@ -1619,23 +1619,11 @@ abstract class AppLocalizations {
   /// **'Current Set'**
   String get currentSet;
 
-  /// No description provided for @total.
-  ///
-  /// In en, this message translates to:
-  /// **'Total'**
-  String get total;
-
   /// No description provided for @totalScore.
   ///
   /// In en, this message translates to:
   /// **'Total Score'**
   String get totalScore;
-
-  /// No description provided for @average.
-  ///
-  /// In en, this message translates to:
-  /// **'Average'**
-  String get average;
 
   /// No description provided for @tapScoreToContinue.
   ///
@@ -1963,49 +1951,549 @@ abstract class AppLocalizations {
 
   /// No description provided for @arrowMissSymbol.
   ///
-  /// Symbol used to represent a miss arrow.
+  /// In en, this message translates to:
+  /// **'M'**
   String get arrowMissSymbol;
 
   /// No description provided for @arrowXSymbol.
   ///
-  /// Symbol used to represent an inner-10 (X) arrow.
+  /// In en, this message translates to:
+  /// **'X'**
   String get arrowXSymbol;
-  
+
   /// No description provided for @noArrowsYet.
   ///
   /// In en, this message translates to:
   /// **'No arrows yet'**
   String get noArrowsYet;
-  
+
   /// No description provided for @undo.
   ///
   /// In en, this message translates to:
   /// **'Undo'**
   String get undo;
-  
+
   /// No description provided for @reset.
   ///
   /// In en, this message translates to:
   /// **'Reset'**
   String get reset;
-  
+
   /// No description provided for @complete.
   ///
   /// In en, this message translates to:
   /// **'Complete'**
   String get complete;
-  
+
   /// No description provided for @maximumSetsReached.
   ///
   /// In en, this message translates to:
   /// **'Maximum sets reached ({setsPerRound}). You cannot add more sets.'**
   String maximumSetsReached(int setsPerRound);
-  
+
   /// No description provided for @noScoreYet.
   ///
   /// In en, this message translates to:
   /// **'No score yet'**
   String get noScoreYet;
+
+  /// No description provided for @notificationsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Notifications'**
+  String get notificationsTitle;
+
+  /// No description provided for @notificationsWelcomeTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Stay Updated'**
+  String get notificationsWelcomeTitle;
+
+  /// No description provided for @notificationsWelcomeSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Get the latest updates about your competitions and activities'**
+  String get notificationsWelcomeSubtitle;
+
+  /// No description provided for @noNotificationsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'No notifications yet'**
+  String get noNotificationsTitle;
+
+  /// No description provided for @noNotificationsSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'When you have new notifications, they will appear here'**
+  String get noNotificationsSubtitle;
+
+  /// No description provided for @total.
+  ///
+  /// In en, this message translates to:
+  /// **'Total'**
+  String get total;
+
+  /// No description provided for @eliminationSettingsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Elimination Settings'**
+  String get eliminationSettingsTitle;
+
+  /// No description provided for @eliminationSettingsSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Configure elimination system for your competition'**
+  String get eliminationSettingsSubtitle;
+
+  /// No description provided for @bowTypeSelection.
+  ///
+  /// In en, this message translates to:
+  /// **'Bow Type Selection'**
+  String get bowTypeSelection;
+
+  /// No description provided for @bowTypeSelectionSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Select the bow type for elimination matches'**
+  String get bowTypeSelectionSubtitle;
+
+  /// No description provided for @recurveBow.
+  ///
+  /// In en, this message translates to:
+  /// **'Recurve'**
+  String get recurveBow;
+
+  /// No description provided for @barebowBow.
+  ///
+  /// In en, this message translates to:
+  /// **'Barebow'**
+  String get barebowBow;
+
+  /// No description provided for @compoundBow.
+  ///
+  /// In en, this message translates to:
+  /// **'Compound'**
+  String get compoundBow;
+
+  /// No description provided for @cutoffSettings.
+  ///
+  /// In en, this message translates to:
+  /// **'Cutoff Settings'**
+  String get cutoffSettings;
+
+  /// No description provided for @cutoffSettingsSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Set the cutoff rank for elimination participants'**
+  String get cutoffSettingsSubtitle;
+
+  /// No description provided for @cutoffRank.
+  ///
+  /// In en, this message translates to:
+  /// **'Cutoff Rank'**
+  String get cutoffRank;
+
+  /// No description provided for @byeSettings.
+  ///
+  /// In en, this message translates to:
+  /// **'Bye Settings'**
+  String get byeSettings;
+
+  /// No description provided for @byeSettingsSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Configure bye (automatic advancement) settings'**
+  String get byeSettingsSubtitle;
+
+  /// No description provided for @allowByes.
+  ///
+  /// In en, this message translates to:
+  /// **'Allow Byes'**
+  String get allowByes;
+
+  /// No description provided for @allowByesSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Enable automatic advancement for top-ranked participants'**
+  String get allowByesSubtitle;
+
+  /// No description provided for @byeStrategy.
+  ///
+  /// In en, this message translates to:
+  /// **'Bye Strategy'**
+  String get byeStrategy;
+
+  /// No description provided for @highestRankingStrategy.
+  ///
+  /// In en, this message translates to:
+  /// **'Highest Ranking'**
+  String get highestRankingStrategy;
+
+  /// No description provided for @evenDistributionStrategy.
+  ///
+  /// In en, this message translates to:
+  /// **'Even Distribution'**
+  String get evenDistributionStrategy;
+
+  /// No description provided for @performanceBasedStrategy.
+  ///
+  /// In en, this message translates to:
+  /// **'Performance Based'**
+  String get performanceBasedStrategy;
+
+  /// No description provided for @bracketSettings.
+  ///
+  /// In en, this message translates to:
+  /// **'Bracket Settings'**
+  String get bracketSettings;
+
+  /// No description provided for @bracketSettingsSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Select bracket size for elimination'**
+  String get bracketSettingsSubtitle;
+
+  /// No description provided for @eliminationPreview.
+  ///
+  /// In en, this message translates to:
+  /// **'Elimination Preview'**
+  String get eliminationPreview;
+
+  /// No description provided for @noValidCombinations.
+  ///
+  /// In en, this message translates to:
+  /// **'No valid combinations available'**
+  String get noValidCombinations;
+
+  /// No description provided for @recommended.
+  ///
+  /// In en, this message translates to:
+  /// **'Recommended'**
+  String get recommended;
+
+  /// No description provided for @eliminationBracketTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Elimination Bracket'**
+  String get eliminationBracketTitle;
+
+  /// No description provided for @totalParticipants.
+  ///
+  /// In en, this message translates to:
+  /// **'Participants'**
+  String get totalParticipants;
+
+  /// No description provided for @activeMatches.
+  ///
+  /// In en, this message translates to:
+  /// **'Active'**
+  String get activeMatches;
+
+  /// No description provided for @currentRound.
+  ///
+  /// In en, this message translates to:
+  /// **'Round'**
+  String get currentRound;
+
+  /// No description provided for @round.
+  ///
+  /// In en, this message translates to:
+  /// **'Round'**
+  String get round;
+
+  /// No description provided for @bracketTree.
+  ///
+  /// In en, this message translates to:
+  /// **'Bracket Tree'**
+  String get bracketTree;
+
+  /// No description provided for @bracketVisualizationComingSoon.
+  ///
+  /// In en, this message translates to:
+  /// **'Bracket Visualization'**
+  String get bracketVisualizationComingSoon;
+
+  /// No description provided for @bracketVisualizationSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Interactive bracket tree view coming soon'**
+  String get bracketVisualizationSubtitle;
+
+  /// No description provided for @matches.
+  ///
+  /// In en, this message translates to:
+  /// **'Matches'**
+  String get matches;
+
+  /// No description provided for @noMatchesInRound.
+  ///
+  /// In en, this message translates to:
+  /// **'No matches in this round'**
+  String get noMatchesInRound;
+
+  /// No description provided for @noMatchesInRoundSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Matches will appear here when created'**
+  String get noMatchesInRoundSubtitle;
+
+  /// No description provided for @scoreMatch.
+  ///
+  /// In en, this message translates to:
+  /// **'Score'**
+  String get scoreMatch;
+
+  /// No description provided for @bye.
+  ///
+  /// In en, this message translates to:
+  /// **'Bye'**
+  String get bye;
+
+  /// No description provided for @unknown.
+  ///
+  /// In en, this message translates to:
+  /// **'Unknown'**
+  String get unknown;
+
+  /// No description provided for @eliminationSettings.
+  ///
+  /// In en, this message translates to:
+  /// **'Settings'**
+  String get eliminationSettings;
+
+  /// No description provided for @exportResults.
+  ///
+  /// In en, this message translates to:
+  /// **'Export Results'**
+  String get exportResults;
+
+  /// No description provided for @eliminationStatusTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Elimination Status'**
+  String get eliminationStatusTitle;
+
+  /// No description provided for @statusActive.
+  ///
+  /// In en, this message translates to:
+  /// **'Active'**
+  String get statusActive;
+
+  /// No description provided for @statusEliminated.
+  ///
+  /// In en, this message translates to:
+  /// **'Eliminated'**
+  String get statusEliminated;
+
+  /// No description provided for @statusChampion.
+  ///
+  /// In en, this message translates to:
+  /// **'Champion'**
+  String get statusChampion;
+
+  /// No description provided for @statusUnknown.
+  ///
+  /// In en, this message translates to:
+  /// **'Unknown'**
+  String get statusUnknown;
+
+  /// No description provided for @currentPosition.
+  ///
+  /// In en, this message translates to:
+  /// **'Current Position'**
+  String get currentPosition;
+
+  /// No description provided for @bracketPosition.
+  ///
+  /// In en, this message translates to:
+  /// **'Position'**
+  String get bracketPosition;
+
+  /// No description provided for @byeStatusMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'You have a bye and advance automatically to the next round'**
+  String get byeStatusMessage;
+
+  /// No description provided for @nextMatch.
+  ///
+  /// In en, this message translates to:
+  /// **'Next Match'**
+  String get nextMatch;
+
+  /// No description provided for @you.
+  ///
+  /// In en, this message translates to:
+  /// **'You'**
+  String get you;
+
+  /// No description provided for @tbd.
+  ///
+  /// In en, this message translates to:
+  /// **'TBD'**
+  String get tbd;
+
+  /// No description provided for @scheduledTime.
+  ///
+  /// In en, this message translates to:
+  /// **'Scheduled'**
+  String get scheduledTime;
+
+  /// No description provided for @noUpcomingMatch.
+  ///
+  /// In en, this message translates to:
+  /// **'No upcoming match'**
+  String get noUpcomingMatch;
+
+  /// No description provided for @myMatches.
+  ///
+  /// In en, this message translates to:
+  /// **'My Matches'**
+  String get myMatches;
+
+  /// No description provided for @noMatchHistory.
+  ///
+  /// In en, this message translates to:
+  /// **'No match history yet'**
+  String get noMatchHistory;
+
+  /// No description provided for @victory.
+  ///
+  /// In en, this message translates to:
+  /// **'Victory'**
+  String get victory;
+
+  /// No description provided for @defeat.
+  ///
+  /// In en, this message translates to:
+  /// **'Defeat'**
+  String get defeat;
+
+  /// No description provided for @statistics.
+  ///
+  /// In en, this message translates to:
+  /// **'Statistics'**
+  String get statistics;
+
+  /// No description provided for @matchesPlayed.
+  ///
+  /// In en, this message translates to:
+  /// **'Played'**
+  String get matchesPlayed;
+
+  /// No description provided for @wins.
+  ///
+  /// In en, this message translates to:
+  /// **'Wins'**
+  String get wins;
+
+  /// No description provided for @losses.
+  ///
+  /// In en, this message translates to:
+  /// **'Losses'**
+  String get losses;
+
+  /// No description provided for @matchScoringTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Match Scoring'**
+  String get matchScoringTitle;
+
+  /// No description provided for @participant1.
+  ///
+  /// In en, this message translates to:
+  /// **'Participant 1'**
+  String get participant1;
+
+  /// No description provided for @participant2.
+  ///
+  /// In en, this message translates to:
+  /// **'Participant 2'**
+  String get participant2;
+
+  /// No description provided for @selectSet.
+  ///
+  /// In en, this message translates to:
+  /// **'Select Set'**
+  String get selectSet;
+
+  /// No description provided for @set.
+  ///
+  /// In en, this message translates to:
+  /// **'Set'**
+  String get set;
+
+  /// No description provided for @scoring.
+  ///
+  /// In en, this message translates to:
+  /// **'Scoring'**
+  String get scoring;
+
+  /// No description provided for @score.
+  ///
+  /// In en, this message translates to:
+  /// **'Score'**
+  String get score;
+
+  /// No description provided for @saveSet.
+  ///
+  /// In en, this message translates to:
+  /// **'Save Set'**
+  String get saveSet;
+
+  /// No description provided for @completedSets.
+  ///
+  /// In en, this message translates to:
+  /// **'Completed Sets'**
+  String get completedSets;
+
+  /// No description provided for @tieBreak.
+  ///
+  /// In en, this message translates to:
+  /// **'Tie Break'**
+  String get tieBreak;
+
+  /// No description provided for @tieBreakDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'The match is tied. A tie break shoot-off is required.'**
+  String get tieBreakDescription;
+
+  /// No description provided for @startTieBreak.
+  ///
+  /// In en, this message translates to:
+  /// **'Start Tie Break'**
+  String get startTieBreak;
+
+  /// No description provided for @completeMatch.
+  ///
+  /// In en, this message translates to:
+  /// **'Complete Match'**
+  String get completeMatch;
+
+  /// No description provided for @matchCompleted.
+  ///
+  /// In en, this message translates to:
+  /// **'Match Completed'**
+  String get matchCompleted;
+
+  /// No description provided for @matchCompletedDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'The match has been successfully completed and saved'**
+  String get matchCompletedDescription;
+
+  /// No description provided for @completed.
+  ///
+  /// In en, this message translates to:
+  /// **'Completed'**
+  String get completed;
+
+  /// No description provided for @active.
+  ///
+  /// In en, this message translates to:
+  /// **'Active'**
+  String get active;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

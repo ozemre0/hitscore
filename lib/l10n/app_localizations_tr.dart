@@ -236,7 +236,7 @@ class AppLocalizationsTr extends AppLocalizations {
   String get savingInProgress => 'Kaydediliyor...';
 
   @override
-  String get saveAndContinue => 'Kaydet ve devam et';
+  String get saveAndContinue => 'Kaydet ve Devam Et';
 
   @override
   String get competitionNameRequired => 'Yarışma adı zorunludur';
@@ -646,7 +646,7 @@ class AppLocalizationsTr extends AppLocalizations {
   String get noClassificationsAvailable => 'Bu yarışma için klasman yok';
 
   @override
-  String get addAthletes => 'Sporcu Ekle';
+  String get addAthletes => 'Katılımcı Ekle';
 
   @override
   String get searchAthleteHint => 'Sporcu ara';
@@ -757,15 +757,15 @@ class AppLocalizationsTr extends AppLocalizations {
   String get roundCountLabel => 'Round sayısı';
 
   @override
-  String roundSeparator(int roundNumber) {
-    return 'Round $roundNumber';
-  }
-
-  @override
   String get arrowsPerSetLabel => 'Seri başı ok sayısı';
 
   @override
   String get setsPerRoundLabel => 'Round başına seri sayısı';
+
+  @override
+  String roundSeparator(Object roundNumber) {
+    return 'Round $roundNumber';
+  }
 
   @override
   String get myOrganizedCompetitionsTitle => 'Düzenlediğim Yarışmalar';
@@ -783,13 +783,7 @@ class AppLocalizationsTr extends AppLocalizations {
   String get currentSet => 'Mevcut Seri';
 
   @override
-  String get total => 'Toplam';
-
-  @override
   String get totalScore => 'Toplam Skor';
-
-  @override
-  String get average => 'Ortalama';
 
   @override
   String tapScoreToContinue(int setNumber) {
@@ -986,4 +980,253 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get noScoreYet => 'Henüz skor girilmemiş';
+
+  @override
+  String get notificationsTitle => 'Bildirimler';
+
+  @override
+  String get notificationsWelcomeTitle => 'Güncel Kalın';
+
+  @override
+  String get notificationsWelcomeSubtitle => 'Yarışmalarınız ve aktiviteleriniz hakkında en son güncellemeleri alın';
+
+  @override
+  String get noNotificationsTitle => 'Henüz bildirim yok';
+
+  @override
+  String get noNotificationsSubtitle => 'Yeni bildirimleriniz olduğunda burada görünecek';
+
+  @override
+  String get total => 'Toplam';
+
+  @override
+  String get eliminationSettingsTitle => 'Eleme Ayarları';
+
+  @override
+  String get eliminationSettingsSubtitle => 'Yarışmanız için eleme sistemini yapılandırın';
+
+  @override
+  String get bowTypeSelection => 'Yay Türü Seçimi';
+
+  @override
+  String get bowTypeSelectionSubtitle => 'Eleme maçları için yay türünü seçin';
+
+  @override
+  String get recurveBow => 'Klasik Yay';
+
+  @override
+  String get barebowBow => 'Çıplak Yay';
+
+  @override
+  String get compoundBow => 'Makaralı Yay';
+
+  @override
+  String get cutoffSettings => 'Kesme Sınırı Ayarları';
+
+  @override
+  String get cutoffSettingsSubtitle => 'Eleme turuna katılacak sporcular için kesme sırası belirleyin';
+
+  @override
+  String get cutoffRank => 'Kesme Sırası';
+
+  @override
+  String get byeSettings => 'Bay Geçme Ayarları';
+
+  @override
+  String get byeSettingsSubtitle => 'Bay geçme (otomatik yükselme) ayarlarını yapılandırın';
+
+  @override
+  String get allowByes => 'Bay Geçmeye İzin Ver';
+
+  @override
+  String get allowByesSubtitle => 'En yüksek sıralamalı sporcular için otomatik yükselmeyi etkinleştir';
+
+  @override
+  String get byeStrategy => 'Bay Geçme Stratejisi';
+
+  @override
+  String get highestRankingStrategy => 'En Yüksek Sıralama';
+
+  @override
+  String get evenDistributionStrategy => 'Eşit Dağılım';
+
+  @override
+  String get performanceBasedStrategy => 'Performans Bazlı';
+
+  @override
+  String get bracketSettings => 'Bracket Ayarları';
+
+  @override
+  String get bracketSettingsSubtitle => 'Eleme için bracket boyutunu seçin';
+
+  @override
+  String get eliminationPreview => 'Eleme Önizleme';
+
+  @override
+  String get noValidCombinations => 'Geçerli kombinasyon yok';
+
+  @override
+  String get recommended => 'Önerilen';
+
+  @override
+  String get eliminationBracketTitle => 'Eleme Bracket';
+
+  @override
+  String get totalParticipants => 'Katılımcı';
+
+  @override
+  String get activeMatches => 'Aktif';
+
+  @override
+  String get currentRound => 'Tur';
+
+  @override
+  String get round => 'Tur';
+
+  @override
+  String get bracketTree => 'Bracket Ağacı';
+
+  @override
+  String get bracketVisualizationComingSoon => 'Bracket Görselleştirme';
+
+  @override
+  String get bracketVisualizationSubtitle => 'İnteraktif bracket ağacı görünümü yakında gelecek';
+
+  @override
+  String get matches => 'Maçlar';
+
+  @override
+  String get noMatchesInRound => 'Bu turda maç yok';
+
+  @override
+  String get noMatchesInRoundSubtitle => 'Maçlar oluşturulduğunda burada görünecek';
+
+  @override
+  String get scoreMatch => 'Skor';
+
+  @override
+  String get bye => 'Bay';
+
+  @override
+  String get unknown => 'Bilinmeyen';
+
+  @override
+  String get eliminationSettings => 'Ayarlar';
+
+  @override
+  String get exportResults => 'Sonuçları Dışa Aktar';
+
+  @override
+  String get eliminationStatusTitle => 'Eleme Durumu';
+
+  @override
+  String get statusActive => 'Aktif';
+
+  @override
+  String get statusEliminated => 'Elendi';
+
+  @override
+  String get statusChampion => 'Şampiyon';
+
+  @override
+  String get statusUnknown => 'Bilinmeyen';
+
+  @override
+  String get currentPosition => 'Mevcut Pozisyon';
+
+  @override
+  String get bracketPosition => 'Pozisyon';
+
+  @override
+  String get byeStatusMessage => 'Bay geçtiniz ve otomatik olarak sonraki tura yükseldiniz';
+
+  @override
+  String get nextMatch => 'Sonraki Maç';
+
+  @override
+  String get you => 'Sen';
+
+  @override
+  String get tbd => 'Belirlenecek';
+
+  @override
+  String get scheduledTime => 'Planlanma';
+
+  @override
+  String get noUpcomingMatch => 'Yaklaşan maç yok';
+
+  @override
+  String get myMatches => 'Maçlarım';
+
+  @override
+  String get noMatchHistory => 'Henüz maç geçmişi yok';
+
+  @override
+  String get victory => 'Zafer';
+
+  @override
+  String get defeat => 'Mağlubiyet';
+
+  @override
+  String get statistics => 'İstatistikler';
+
+  @override
+  String get matchesPlayed => 'Oynanan';
+
+  @override
+  String get wins => 'Galibiyet';
+
+  @override
+  String get losses => 'Mağlubiyet';
+
+  @override
+  String get matchScoringTitle => 'Maç Skor Girişi';
+
+  @override
+  String get participant1 => 'Katılımcı 1';
+
+  @override
+  String get participant2 => 'Katılımcı 2';
+
+  @override
+  String get selectSet => 'Seri Seç';
+
+  @override
+  String get set => 'Seri';
+
+  @override
+  String get scoring => 'Skor Girişi';
+
+  @override
+  String get score => 'Skor';
+
+  @override
+  String get saveSet => 'Seriyi Kaydet';
+
+  @override
+  String get completedSets => 'Tamamlanan Seriler';
+
+  @override
+  String get tieBreak => 'Beraberlik Atışı';
+
+  @override
+  String get tieBreakDescription => 'Maç berabere. Beraberlik atışı gerekiyor.';
+
+  @override
+  String get startTieBreak => 'Beraberlik Atışı Başlat';
+
+  @override
+  String get completeMatch => 'Maçı Tamamla';
+
+  @override
+  String get matchCompleted => 'Maç Tamamlandı';
+
+  @override
+  String get matchCompletedDescription => 'Maç başarıyla tamamlandı ve kaydedildi';
+
+  @override
+  String get completed => 'Tamamlandı';
+
+  @override
+  String get active => 'Aktif';
 }

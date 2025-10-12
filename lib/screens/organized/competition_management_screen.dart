@@ -3,6 +3,7 @@ import '../../l10n/app_localizations.dart';
 import 'athlete_multi_select_sheet.dart';
 // import 'competition_classifications_screen.dart';
 import '../../services/supabase_config.dart';
+import '../elimination/elimination_settings_screen.dart';
 
 class CompetitionParticipantsScreen extends StatefulWidget {
   final String competitionId;
@@ -290,6 +291,11 @@ class _CompetitionParticipantsScreenState extends State<CompetitionParticipantsS
         title: Text(l10n.participantsTitle),
         actions: [
           IconButton(
+            onPressed: _navigateToElimination,
+            icon: const Icon(Icons.emoji_events),
+            tooltip: 'Eleme Sistemi',
+          ),
+          IconButton(
             onPressed: () async {
               // Open full-screen selector page instead of bottom sheet
               final result = await Navigator.of(context).push<UserMultiSelectResult>(
@@ -454,6 +460,20 @@ class _CompetitionParticipantsScreenState extends State<CompetitionParticipantsS
     }
   }
 
+  Future<void> _navigateToElimination() async {
+    // Şimdilik basit bir placeholder - gerçek implementasyonda yarışma adını alacak
+    final competitionName = 'Yarışma'; // TODO: Gerçek yarışma adını al
+    
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => EliminationSettingsScreen(
+          competitionId: widget.competitionId,
+          competitionName: competitionName,
+        ),
+      ),
+    );
+  }
+
   Widget _buildBody(AppLocalizations l10n, ColorScheme colorScheme) {
     if (_isLoading) {
       return const Center(child: CircularProgressIndicator());
@@ -522,17 +542,71 @@ class _CompetitionParticipantsScreenState extends State<CompetitionParticipantsS
 
     return RefreshIndicator(
       onRefresh: _loadParticipants,
-      child: ListView.builder(
-        padding: const EdgeInsets.all(16.0),
-        itemCount: _participants.length,
+      child: Column(
+        children: [
+          // Eleme Sistemi Kartı
+          Container(
+            margin: const EdgeInsets.all(16.0),
+            child: Card(
+              elevation: 0,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+                side: BorderSide(color: colorScheme.primary.withOpacity(0.3), width: 1.2),
+              ),
+              child: InkWell(
+                borderRadius: BorderRadius.circular(16),
+                onTap: _navigateToElimination,
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 56,
+                        height: 56,
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(16),
+                          color: colorScheme.primary.withOpacity(0.1),
+                        ),
+                        child: Icon(Icons.emoji_events, color: colorScheme.primary, size: 28),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Eleme Sistemi',
+                              style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                                fontWeight: FontWeight.bold,
+                                color: colorScheme.primary,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              'Eleme ayarlarını yapılandır ve bracket oluştur',
+                              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                color: colorScheme.onSurfaceVariant,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Icon(Icons.chevron_right, color: colorScheme.primary),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+          // Katılımcı Listesi
+          Expanded(
+            child: ListView.builder(
+              padding: const EdgeInsets.fromLTRB(16.0, 0, 16.0, 16.0),
+              itemCount: _participants.length,
         itemBuilder: (context, index) {
           final p = _participants[index];
           final classification = p['classification'] as Map<String, dynamic>?;
-          final ageGroups = classification != null ? classification['age_groups'] as Map<String, dynamic>? : null;
-          final localeCode = Localizations.localeOf(context).languageCode;
-          final ageGroupText = ageGroups == null
-              ? (classification != null ? (classification['age_group_id']?.toString() ?? '-') : '-')
-              : (localeCode == 'tr' ? (ageGroups['age_group_tr'] ?? '-') : (ageGroups['age_group_en'] ?? '-'));
           final status = p['status'] as String? ?? 'unknown';
           final isPending = status == 'pending';
           final isAccepted = status == 'accepted';
@@ -542,77 +616,100 @@ class _CompetitionParticipantsScreenState extends State<CompetitionParticipantsS
           final lastName = p['last_name'] as String? ?? '';
           final fullName = '${firstName.trim()} ${lastName.trim()}'.trim();
           return Card(
-            margin: const EdgeInsets.only(bottom: 12),
+            margin: const EdgeInsets.only(bottom: 8),
             elevation: 0,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(12),
               side: BorderSide(color: colorScheme.outline.withOpacity(0.2), width: 1),
             ),
             child: Padding(
-              padding: const EdgeInsets.all(16.0),
+              padding: const EdgeInsets.fromLTRB(10.0, 2.0, 10.0, 10.0),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Status indicator
-                  if (isPending || isAccepted || isCancelled)
-                    Container(
-                      margin: const EdgeInsets.only(bottom: 12),
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: isPending 
-                            ? colorScheme.primaryContainer
-                            : isAccepted 
-                                ? colorScheme.tertiaryContainer
-                                : colorScheme.errorContainer,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
-                          color: isPending 
-                              ? colorScheme.primary.withOpacity(0.3)
-                              : isAccepted 
-                                  ? colorScheme.tertiary.withOpacity(0.3)
-                                  : colorScheme.error.withOpacity(0.3),
-                        ),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            isPending 
-                                ? Icons.schedule
-                                : isAccepted 
-                                    ? Icons.check_circle
-                                    : Icons.cancel,
-                            size: 16,
+                  // Status indicator with change status button
+                  Row(
+                    children: [
+                      if (isPending || isAccepted || isCancelled)
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                          decoration: BoxDecoration(
                             color: isPending 
-                                ? colorScheme.primary
+                                ? colorScheme.primaryContainer
                                 : isAccepted 
-                                    ? colorScheme.tertiary
-                                    : colorScheme.error,
-                          ),
-                          const SizedBox(width: 4),
-                          Text(
-                            isPending 
-                                ? l10n.pendingStatus
-                                : isAccepted 
-                                    ? l10n.acceptedStatus
-                                    : l10n.cancelledStatus,
-                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                    ? colorScheme.tertiaryContainer
+                                    : colorScheme.errorContainer,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
                               color: isPending 
-                                  ? colorScheme.primary
+                                  ? colorScheme.primary.withOpacity(0.3)
                                   : isAccepted 
-                                      ? colorScheme.tertiary
-                                      : colorScheme.error,
-                              fontWeight: FontWeight.w500,
+                                      ? colorScheme.tertiary.withOpacity(0.3)
+                                      : colorScheme.error.withOpacity(0.3),
                             ),
                           ),
-                        ],
-                      ),
-                    ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                isPending 
+                                    ? Icons.schedule
+                                    : isAccepted 
+                                        ? Icons.check_circle
+                                        : Icons.cancel,
+                                size: 14,
+                                color: isPending 
+                                    ? colorScheme.primary
+                                    : isAccepted 
+                                        ? colorScheme.tertiary
+                                        : colorScheme.error,
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                isPending 
+                                    ? l10n.pendingStatus
+                                    : isAccepted 
+                                        ? l10n.acceptedStatus
+                                        : l10n.cancelledStatus,
+                                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                  color: isPending 
+                                      ? colorScheme.primary
+                                      : isAccepted 
+                                          ? colorScheme.tertiary
+                                          : colorScheme.error,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      const Spacer(),
+                      if (isAccepted || isCancelled)
+                        OutlinedButton.icon(
+                          onPressed: () => _showChangeStatusDialog(
+                            p['participant_id'] as String,
+                            fullName.isNotEmpty ? fullName : visibleId,
+                            status,
+                          ),
+                          icon: const Icon(Icons.edit, size: 14),
+                          label: Text(
+                            l10n.changeStatus,
+                            style: Theme.of(context).textTheme.bodySmall,
+                          ),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: colorScheme.primary,
+                            side: BorderSide(color: colorScheme.primary),
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                            minimumSize: Size.zero,
+                          ),
+                        ),
+                    ],
+                  ),
                   // Participant name
                   if (fullName.isNotEmpty)
                     Row(
                       children: [
-                        Icon(Icons.person_outline, size: 18, color: colorScheme.primary),
+                        Icon(Icons.person_outline, size: 16, color: colorScheme.primary),
                         const SizedBox(width: 6),
                         Expanded(
                           child: Text(
@@ -626,140 +723,99 @@ class _CompetitionParticipantsScreenState extends State<CompetitionParticipantsS
                         ),
                       ],
                     ),
-                  if (fullName.isNotEmpty) const SizedBox(height: 4),
-                  
-                  
-                  // Classification name - make it prominent
-                  if (classification != null && (classification['name'] ?? '').toString().isNotEmpty) ...[
-                    Row(
-                      children: [
-                        Icon(Icons.category, size: 18, color: colorScheme.primary),
-                        const SizedBox(width: 6),
+                  const SizedBox(height: 2),
+                  // Classification name and Athlete ID in same row
+                  Row(
+                    children: [
+                      if (classification != null && (classification['name'] ?? '').toString().isNotEmpty) ...[
+                        Icon(Icons.category, size: 14, color: colorScheme.primary),
+                        const SizedBox(width: 4),
                         Expanded(
                           child: Text(
                             '${l10n.participantClassification}: ${classification['name']}',
-                            style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                              fontWeight: FontWeight.w600,
+                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              fontWeight: FontWeight.w500,
                               color: colorScheme.primary,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ] else ...[
+                        Icon(Icons.badge, size: 14, color: colorScheme.onSurfaceVariant),
+                        const SizedBox(width: 4),
+                        Expanded(
+                          child: Text(
+                            '${l10n.participantAthleteId}: $visibleId',
+                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              color: colorScheme.onSurfaceVariant,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                  const SizedBox(height: 2),
+                  // Athlete ID (if classification exists)
+                  if (classification != null && (classification['name'] ?? '').toString().isNotEmpty)
+                    Row(
+                      children: [
+                        Icon(Icons.badge, size: 14, color: colorScheme.onSurfaceVariant),
+                        const SizedBox(width: 4),
+                        Expanded(
+                          child: Text(
+                            '${l10n.participantAthleteId}: $visibleId',
+                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              color: colorScheme.onSurfaceVariant,
                             ),
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 8),
-                  ],
-                  // Athlete ID
-                  Row(
-                    children: [
-                      Icon(Icons.badge, size: 18, color: colorScheme.onSurfaceVariant),
-                      const SizedBox(width: 6),
-                      Expanded(
-                        child: Text(
-                          '${l10n.participantAthleteId}: $visibleId',
-                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            color: colorScheme.onSurfaceVariant,
-                          ),
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      Icon(Icons.person, size: 18, color: colorScheme.onSurfaceVariant),
-                      const SizedBox(width: 6),
-                      Expanded(
-                        child: Text(
-                          '${l10n.participantGender}: ${classification != null ? (classification['gender'] ?? '-') : '-'}',
-                          style: Theme.of(context).textTheme.bodySmall?.copyWith(color: colorScheme.onSurfaceVariant),
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 4),
-                  Row(
-                    children: [
-                      Icon(Icons.cake, size: 18, color: colorScheme.onSurfaceVariant),
-                      const SizedBox(width: 6),
-                      Expanded(
-                        child: Text(
-                          '${l10n.participantAgeGroup}: $ageGroupText',
-                          style: Theme.of(context).textTheme.bodySmall?.copyWith(color: colorScheme.onSurfaceVariant),
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 4),
-                  Row(
-                    children: [
-                      Icon(Icons.architecture, size: 18, color: colorScheme.onSurfaceVariant),
-                      const SizedBox(width: 6),
-                      Expanded(
-                        child: Text(
-                          '${l10n.participantEquipment}: ${classification != null ? (classification['bow_type'] ?? '-') : '-'}',
-                          style: Theme.of(context).textTheme.bodySmall?.copyWith(color: colorScheme.onSurfaceVariant),
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                    ],
-                  ),
-                  // Action buttons
+                  // Action buttons for pending
                   if (isPending) ...[
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 6),
                     Row(
                       children: [
                         Expanded(
-                          child: OutlinedButton.icon(
+                          child: OutlinedButton(
                             onPressed: () => _showRejectDialog(
                               p['participant_id'] as String,
                               fullName.isNotEmpty ? fullName : visibleId,
                             ),
-                            icon: const Icon(Icons.close, size: 18),
-                            label: Text(l10n.rejectRequest),
                             style: OutlinedButton.styleFrom(
                               foregroundColor: colorScheme.error,
                               side: BorderSide(color: colorScheme.error),
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                              minimumSize: Size.zero,
+                            ),
+                            child: Text(
+                              l10n.rejectRequest,
+                              style: Theme.of(context).textTheme.bodySmall,
                             ),
                           ),
                         ),
-                        const SizedBox(width: 12),
+                        const SizedBox(width: 6),
                         Expanded(
-                          child: OutlinedButton.icon(
+                          child: OutlinedButton(
                             onPressed: () => _showAcceptDialog(
                               p['participant_id'] as String,
                               fullName.isNotEmpty ? fullName : visibleId,
                             ),
-                            icon: const Icon(Icons.check, size: 18),
-                            label: Text(l10n.acceptRequest),
                             style: OutlinedButton.styleFrom(
                               foregroundColor: colorScheme.primary,
                               side: BorderSide(color: colorScheme.primary),
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                              minimumSize: Size.zero,
+                            ),
+                            child: Text(
+                              l10n.acceptRequest,
+                              style: Theme.of(context).textTheme.bodySmall,
                             ),
                           ),
                         ),
                       ],
-                    ),
-                  ] else if (isAccepted || isCancelled) ...[
-                    const SizedBox(height: 16),
-                    SizedBox(
-                      width: double.infinity,
-                      child: OutlinedButton.icon(
-                        onPressed: () => _showChangeStatusDialog(
-                          p['participant_id'] as String,
-                          fullName.isNotEmpty ? fullName : visibleId,
-                          status,
-                        ),
-                        icon: const Icon(Icons.edit, size: 18),
-                        label: Text(l10n.changeStatus),
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: colorScheme.primary,
-                          side: BorderSide(color: colorScheme.primary),
-                        ),
-                      ),
                     ),
                   ],
                 ],
@@ -767,6 +823,9 @@ class _CompetitionParticipantsScreenState extends State<CompetitionParticipantsS
             ),
           );
         },
+            ),
+          ),
+        ],
       ),
     );
   }

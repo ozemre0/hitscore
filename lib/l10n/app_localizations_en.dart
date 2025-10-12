@@ -236,7 +236,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get savingInProgress => 'Saving...';
 
   @override
-  String get saveAndContinue => 'Save and continue';
+  String get saveAndContinue => 'Save and Continue';
 
   @override
   String get competitionNameRequired => 'Competition name is required';
@@ -646,7 +646,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get noClassificationsAvailable => 'No classifications available for this competition';
 
   @override
-  String get addAthletes => 'Add Athletes';
+  String get addAthletes => 'Add Participants';
 
   @override
   String get searchAthleteHint => 'Search athletes';
@@ -763,7 +763,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get setsPerRoundLabel => 'Sets per round';
 
   @override
-  String roundSeparator(int roundNumber) {
+  String roundSeparator(Object roundNumber) {
     return 'Round $roundNumber';
   }
 
@@ -783,13 +783,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get currentSet => 'Current Set';
 
   @override
-  String get total => 'Total';
-
-  @override
   String get totalScore => 'Total Score';
-
-  @override
-  String get average => 'Average';
 
   @override
   String tapScoreToContinue(int setNumber) {
@@ -986,4 +980,253 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get noScoreYet => 'No score yet';
+
+  @override
+  String get notificationsTitle => 'Notifications';
+
+  @override
+  String get notificationsWelcomeTitle => 'Stay Updated';
+
+  @override
+  String get notificationsWelcomeSubtitle => 'Get the latest updates about your competitions and activities';
+
+  @override
+  String get noNotificationsTitle => 'No notifications yet';
+
+  @override
+  String get noNotificationsSubtitle => 'When you have new notifications, they will appear here';
+
+  @override
+  String get total => 'Total';
+
+  @override
+  String get eliminationSettingsTitle => 'Elimination Settings';
+
+  @override
+  String get eliminationSettingsSubtitle => 'Configure elimination system for your competition';
+
+  @override
+  String get bowTypeSelection => 'Bow Type Selection';
+
+  @override
+  String get bowTypeSelectionSubtitle => 'Select the bow type for elimination matches';
+
+  @override
+  String get recurveBow => 'Recurve';
+
+  @override
+  String get barebowBow => 'Barebow';
+
+  @override
+  String get compoundBow => 'Compound';
+
+  @override
+  String get cutoffSettings => 'Cutoff Settings';
+
+  @override
+  String get cutoffSettingsSubtitle => 'Set the cutoff rank for elimination participants';
+
+  @override
+  String get cutoffRank => 'Cutoff Rank';
+
+  @override
+  String get byeSettings => 'Bye Settings';
+
+  @override
+  String get byeSettingsSubtitle => 'Configure bye (automatic advancement) settings';
+
+  @override
+  String get allowByes => 'Allow Byes';
+
+  @override
+  String get allowByesSubtitle => 'Enable automatic advancement for top-ranked participants';
+
+  @override
+  String get byeStrategy => 'Bye Strategy';
+
+  @override
+  String get highestRankingStrategy => 'Highest Ranking';
+
+  @override
+  String get evenDistributionStrategy => 'Even Distribution';
+
+  @override
+  String get performanceBasedStrategy => 'Performance Based';
+
+  @override
+  String get bracketSettings => 'Bracket Settings';
+
+  @override
+  String get bracketSettingsSubtitle => 'Select bracket size for elimination';
+
+  @override
+  String get eliminationPreview => 'Elimination Preview';
+
+  @override
+  String get noValidCombinations => 'No valid combinations available';
+
+  @override
+  String get recommended => 'Recommended';
+
+  @override
+  String get eliminationBracketTitle => 'Elimination Bracket';
+
+  @override
+  String get totalParticipants => 'Participants';
+
+  @override
+  String get activeMatches => 'Active';
+
+  @override
+  String get currentRound => 'Round';
+
+  @override
+  String get round => 'Round';
+
+  @override
+  String get bracketTree => 'Bracket Tree';
+
+  @override
+  String get bracketVisualizationComingSoon => 'Bracket Visualization';
+
+  @override
+  String get bracketVisualizationSubtitle => 'Interactive bracket tree view coming soon';
+
+  @override
+  String get matches => 'Matches';
+
+  @override
+  String get noMatchesInRound => 'No matches in this round';
+
+  @override
+  String get noMatchesInRoundSubtitle => 'Matches will appear here when created';
+
+  @override
+  String get scoreMatch => 'Score';
+
+  @override
+  String get bye => 'Bye';
+
+  @override
+  String get unknown => 'Unknown';
+
+  @override
+  String get eliminationSettings => 'Settings';
+
+  @override
+  String get exportResults => 'Export Results';
+
+  @override
+  String get eliminationStatusTitle => 'Elimination Status';
+
+  @override
+  String get statusActive => 'Active';
+
+  @override
+  String get statusEliminated => 'Eliminated';
+
+  @override
+  String get statusChampion => 'Champion';
+
+  @override
+  String get statusUnknown => 'Unknown';
+
+  @override
+  String get currentPosition => 'Current Position';
+
+  @override
+  String get bracketPosition => 'Position';
+
+  @override
+  String get byeStatusMessage => 'You have a bye and advance automatically to the next round';
+
+  @override
+  String get nextMatch => 'Next Match';
+
+  @override
+  String get you => 'You';
+
+  @override
+  String get tbd => 'TBD';
+
+  @override
+  String get scheduledTime => 'Scheduled';
+
+  @override
+  String get noUpcomingMatch => 'No upcoming match';
+
+  @override
+  String get myMatches => 'My Matches';
+
+  @override
+  String get noMatchHistory => 'No match history yet';
+
+  @override
+  String get victory => 'Victory';
+
+  @override
+  String get defeat => 'Defeat';
+
+  @override
+  String get statistics => 'Statistics';
+
+  @override
+  String get matchesPlayed => 'Played';
+
+  @override
+  String get wins => 'Wins';
+
+  @override
+  String get losses => 'Losses';
+
+  @override
+  String get matchScoringTitle => 'Match Scoring';
+
+  @override
+  String get participant1 => 'Participant 1';
+
+  @override
+  String get participant2 => 'Participant 2';
+
+  @override
+  String get selectSet => 'Select Set';
+
+  @override
+  String get set => 'Set';
+
+  @override
+  String get scoring => 'Scoring';
+
+  @override
+  String get score => 'Score';
+
+  @override
+  String get saveSet => 'Save Set';
+
+  @override
+  String get completedSets => 'Completed Sets';
+
+  @override
+  String get tieBreak => 'Tie Break';
+
+  @override
+  String get tieBreakDescription => 'The match is tied. A tie break shoot-off is required.';
+
+  @override
+  String get startTieBreak => 'Start Tie Break';
+
+  @override
+  String get completeMatch => 'Complete Match';
+
+  @override
+  String get matchCompleted => 'Match Completed';
+
+  @override
+  String get matchCompletedDescription => 'The match has been successfully completed and saved';
+
+  @override
+  String get completed => 'Completed';
+
+  @override
+  String get active => 'Active';
 }
