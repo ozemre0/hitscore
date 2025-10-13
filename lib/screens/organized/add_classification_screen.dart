@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../../l10n/app_localizations.dart';
 import '../../services/supabase_config.dart';
 
@@ -113,6 +114,32 @@ class _AddClassificationScreenState extends State<AddClassificationScreen> {
       setState(() {
         _selectedScoreButtons = autoSelectedButtons;
       });
+    }
+  }
+
+  // Auto-fill round settings based on environment
+  void _autoFillRoundSettings() {
+    if (_selectedEnvironment == null) {
+      return;
+    }
+
+    final environment = _selectedEnvironment!.toLowerCase();
+    final isIndoor = environment.contains('salon') || environment.contains('indoor');
+    final isOutdoor = environment.contains('açık') || environment.contains('outdoor');
+
+    if (isOutdoor) {
+      // Outdoor settings: 2 rounds, 6 arrows per set, 6 sets per round
+      _roundCountController.text = '2';
+      _arrowsPerSetController.text = '6';
+      _setsPerRoundController.text = '6';
+    } else if (isIndoor) {
+      // Indoor settings: 18m distance, 2 rounds, 3 arrows per set, 10 sets per round
+      setState(() {
+        _selectedDistance = 18;
+      });
+      _roundCountController.text = '2';
+      _arrowsPerSetController.text = '3';
+      _setsPerRoundController.text = '10';
     }
   }
 
@@ -277,7 +304,6 @@ class _AddClassificationScreenState extends State<AddClassificationScreen> {
     print('DEBUG: Formatted score buttons string: $scoreButtonsString');
 
     Navigator.of(context).pop({
-      'name': _generateClassificationName(),
       'ageGroup': Localizations.localeOf(context).languageCode == 'tr' ? selectedAgeGroup['age_group_tr'] : selectedAgeGroup['age_group_en'],
       'ageGroupId': selectedAgeGroup['age_group_id'],
       'bowType': _selectedBowType!,
@@ -289,7 +315,7 @@ class _AddClassificationScreenState extends State<AddClassificationScreen> {
       'set_per_round': setsPerRound,
       'available_score_buttons': scoreButtonsString,
     });
-    print('DEBUG: Classification data saved with score buttons: $scoreButtonsString');
+    print('DEBUG: Classification data saved: ${_generateClassificationName()} with score buttons: $scoreButtonsString');
   }
 
   @override
@@ -392,6 +418,7 @@ class _AddClassificationScreenState extends State<AddClassificationScreen> {
                     onChanged: (value) {
                       setState(() => _selectedEnvironment = value);
                       _autoSelectScoreButtons();
+                      _autoFillRoundSettings();
                     },
                   ),
                   const SizedBox(height: 16),
@@ -402,14 +429,56 @@ class _AddClassificationScreenState extends State<AddClassificationScreen> {
                     onChanged: (value) => setState(() => _selectedGender = value),
                   ),
                   const SizedBox(height: 16),
-                  DropdownButtonFormField<int>(
-                    value: _selectedDistance,
-                    decoration: InputDecoration(labelText: l10n.distanceMetersLabel, border: const OutlineInputBorder()),
-                    items: [
-                      ..._distances.map((d) => DropdownMenuItem(value: d, child: Text('${d}m'))),
-                      DropdownMenuItem(value: -1, child: Text(l10n.customDistance)),
+                  // Distance Section with Auto-fill indicator for Indoor
+                  Row(
+                    children: [
+                      Expanded(
+                        child: DropdownButtonFormField<int>(
+                          value: _selectedDistance,
+                          decoration: InputDecoration(
+                            labelText: l10n.distanceMetersLabel, 
+                            border: const OutlineInputBorder(),
+                            suffixIcon: _selectedEnvironment != null && 
+                                       (_selectedEnvironment!.toLowerCase().contains('salon') || 
+                                        _selectedEnvironment!.toLowerCase().contains('indoor')) &&
+                                       _selectedDistance == 18
+                                ? Container(
+                                    margin: const EdgeInsets.only(right: 8),
+                                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                    decoration: BoxDecoration(
+                                      color: Theme.of(context).colorScheme.primaryContainer,
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Icon(
+                                          Icons.auto_awesome,
+                                          size: 12,
+                                          color: Theme.of(context).colorScheme.primary,
+                                        ),
+                                        const SizedBox(width: 2),
+                                        Text(
+                                          l10n.autoFilled,
+                                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                            color: Theme.of(context).colorScheme.primary,
+                                            fontWeight: FontWeight.w600,
+                                            fontSize: 10,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  )
+                                : null,
+                          ),
+                          items: [
+                            ..._distances.map((d) => DropdownMenuItem(value: d, child: Text('${d}m'))),
+                            DropdownMenuItem(value: -1, child: Text(l10n.customDistance)),
+                          ],
+                          onChanged: (value) => setState(() => _selectedDistance = value == -1 ? null : value),
+                        ),
+                      ),
                     ],
-                    onChanged: (value) => setState(() => _selectedDistance = value == -1 ? null : value),
                   ),
                   if (_selectedDistance == null) ...[
                     const SizedBox(height: 16),
@@ -420,22 +489,62 @@ class _AddClassificationScreenState extends State<AddClassificationScreen> {
                     ),
                   ],
                   const SizedBox(height: 16),
-                  TextField(
+                  // Round Settings Section with Auto-fill indicator
+                  Row(
+                    children: [
+                      Text(
+                        l10n.roundSettingsLabel,
+                        style: Theme.of(context).textTheme.titleMedium,
+                      ),
+                      const Spacer(),
+                      if (_selectedEnvironment != null)
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: Theme.of(context).colorScheme.primaryContainer,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.auto_awesome,
+                                size: 16,
+                                color: Theme.of(context).colorScheme.primary,
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                l10n.autoFilled,
+                                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                  color: Theme.of(context).colorScheme.primary,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  NumberInputField(
                     controller: _roundCountController,
-                    decoration: InputDecoration(labelText: l10n.roundCountLabel, border: const OutlineInputBorder()),
-                    keyboardType: TextInputType.number,
+                    labelText: l10n.roundCountLabel,
+                    minValue: 1,
+                    maxValue: 10,
                   ),
                   const SizedBox(height: 16),
-                  TextField(
+                  NumberInputField(
                     controller: _arrowsPerSetController,
-                    decoration: InputDecoration(labelText: l10n.arrowsPerSetLabel, border: const OutlineInputBorder()),
-                    keyboardType: TextInputType.number,
+                    labelText: l10n.arrowsPerSetLabel,
+                    minValue: 1,
+                    maxValue: 12,
                   ),
                   const SizedBox(height: 16),
-                  TextField(
+                  NumberInputField(
                     controller: _setsPerRoundController,
-                    decoration: InputDecoration(labelText: l10n.setsPerRoundLabel, border: const OutlineInputBorder()),
-                    keyboardType: TextInputType.number,
+                    labelText: l10n.setsPerRoundLabel,
+                    minValue: 1,
+                    maxValue: 20,
                   ),
                   const SizedBox(height: 16),
                   // Score Buttons Selection
@@ -556,6 +665,131 @@ class _AddClassificationScreenState extends State<AddClassificationScreen> {
                 ],
               ),
             ),
+    );
+  }
+}
+
+// Reusable NumberInputField widget with +/- buttons
+class NumberInputField extends StatelessWidget {
+  final TextEditingController controller;
+  final String labelText;
+  final int minValue;
+  final int maxValue;
+  final VoidCallback? onChanged;
+
+  const NumberInputField({
+    super.key,
+    required this.controller,
+    required this.labelText,
+    this.minValue = 1,
+    this.maxValue = 99,
+    this.onChanged,
+  });
+
+  void _increment() {
+    final currentValue = int.tryParse(controller.text) ?? minValue;
+    if (currentValue < maxValue) {
+      controller.text = (currentValue + 1).toString();
+      onChanged?.call();
+    }
+  }
+
+  void _decrement() {
+    final currentValue = int.tryParse(controller.text) ?? minValue;
+    if (currentValue > minValue) {
+      controller.text = (currentValue - 1).toString();
+      onChanged?.call();
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        // Decrement button
+        Container(
+          height: 56,
+          decoration: BoxDecoration(
+            border: Border.all(color: Theme.of(context).colorScheme.outline),
+            borderRadius: const BorderRadius.only(
+              topLeft: Radius.circular(4),
+              bottomLeft: Radius.circular(4),
+            ),
+          ),
+          child: IconButton(
+            onPressed: _decrement,
+            icon: const Icon(Icons.remove),
+            style: IconButton.styleFrom(
+              shape: const RoundedRectangleBorder(
+                borderRadius: BorderRadius.only(
+                  topLeft: Radius.circular(4),
+                  bottomLeft: Radius.circular(4),
+                ),
+              ),
+            ),
+          ),
+        ),
+        // Text field
+        Expanded(
+          child: TextField(
+            controller: controller,
+            decoration: InputDecoration(
+              labelText: labelText,
+              border: const OutlineInputBorder(
+                borderRadius: BorderRadius.zero,
+              ),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
+            ),
+            keyboardType: TextInputType.number,
+            textAlign: TextAlign.center,
+            inputFormatters: [
+              FilteringTextInputFormatter.digitsOnly,
+              LengthLimitingTextInputFormatter(2),
+            ],
+            onChanged: (value) {
+              // Validate range when user types
+              final intValue = int.tryParse(value);
+              if (intValue != null) {
+                if (intValue < minValue) {
+                  controller.text = minValue.toString();
+                  controller.selection = TextSelection.fromPosition(
+                    TextPosition(offset: controller.text.length),
+                  );
+                } else if (intValue > maxValue) {
+                  controller.text = maxValue.toString();
+                  controller.selection = TextSelection.fromPosition(
+                    TextPosition(offset: controller.text.length),
+                  );
+                }
+              }
+              onChanged?.call();
+            },
+          ),
+        ),
+        // Increment button
+        Container(
+          height: 56,
+          decoration: BoxDecoration(
+            border: Border.all(color: Theme.of(context).colorScheme.outline),
+            borderRadius: const BorderRadius.only(
+              topRight: Radius.circular(4),
+              bottomRight: Radius.circular(4),
+            ),
+          ),
+          child: IconButton(
+            onPressed: _increment,
+            icon: const Icon(Icons.add),
+            style: IconButton.styleFrom(
+              shape: const RoundedRectangleBorder(
+                borderRadius: BorderRadius.only(
+                  topRight: Radius.circular(4),
+                  bottomRight: Radius.circular(4),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

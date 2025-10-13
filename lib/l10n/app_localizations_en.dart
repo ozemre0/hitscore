@@ -861,6 +861,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get availableScoreButtonsDescription => 'Select which score buttons will be available for this classification';
 
   @override
+  String get autoFilled => 'Auto Filled';
+
+  @override
+  String get roundSettingsLabel => 'Round Settings';
+
+  @override
   String get scoreEntryNotAllowedTitle => 'Score Entry Not Available';
 
   @override
@@ -1028,6 +1034,68 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get cutoffRank => 'Cutoff Rank';
+
+  @override
+  String get cutoffLimit => 'Cutoff Limit';
+
+  @override
+  String cutoffLimitDescription(Object count) {
+    return 'The first $count ranked athletes are included in the elimination system';
+  }
+
+  @override
+  String get athleteCount => 'Athlete Count';
+
+  @override
+  String get enterValueBetween => 'Enter a value between 8-256';
+
+  @override
+  String get possibleBracketCombinations => 'Possible Bracket Combinations';
+
+  @override
+  String availableOptionsForCutoff(Object count) {
+    return 'Available options for Cutoff ($count athletes):';
+  }
+
+  @override
+  String personBracket(Object count) {
+    return '$count Person Bracket';
+  }
+
+  @override
+  String get allAthletesInMainTable => 'All athletes in the main table';
+
+  @override
+  String preliminaryElimination(Object total, Object winners) {
+    return 'Preliminary Round: $total athletes → $winners winners';
+  }
+
+  @override
+  String get allAthletesInMainTableShort => 'All athletes in main table';
+
+  @override
+  String preliminaryEliminationShort(Object total, Object winners) {
+    return 'Preliminary: $total athletes → $winners winners';
+  }
+
+  @override
+  String get close => 'Close';
+
+  @override
+  String get showAllMatches => 'Show All Matches';
+
+  @override
+  String get detailedMatchSchedule => 'Detailed Match Schedule';
+
+  @override
+  String mainTableStart(Object count) {
+    return 'Main Table Start ($count athletes)';
+  }
+
+  @override
+  String preliminaryEliminationStart(Object target, Object total) {
+    return 'Preliminary Elimination ($total → $target athletes)';
+  }
 
   @override
   String get byeSettings => 'Bye Settings';
@@ -1229,54 +1297,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get active => 'Active';
-
-  @override
-  String get cutoffLimit => 'Cutoff Limit';
-
-  @override
-  String cutoffLimitDescription(String count) => 'The first $count ranked athletes are included in the elimination system';
-
-  @override
-  String get athleteCount => 'Athlete Count';
-
-  @override
-  String get enterValueBetween => 'Enter a value between 8-256';
-
-  @override
-  String get possibleBracketCombinations => 'Possible Bracket Combinations';
-
-  @override
-  String availableOptionsForCutoff(String count) => 'Available options for Cutoff ($count athletes):';
-
-  @override
-  String personBracket(String count) => '$count Person Bracket';
-
-  @override
-  String get allAthletesInMainTable => 'All athletes in the main table';
-
-  @override
-  String preliminaryElimination(String total, String winners) => 'Preliminary Round: $total athletes → $winners winners';
-
-  @override
-  String get allAthletesInMainTableShort => 'All athletes in main table';
-
-  @override
-  String preliminaryEliminationShort(String total, String winners) => 'Preliminary: $total athletes → $winners winners';
-
-  @override
-  String get close => 'Close';
-
-  @override
-  String get showAllMatches => 'Show All Matches';
-
-  @override
-  String get detailedMatchSchedule => 'Detailed Match Schedule';
-
-  @override
-  String mainTableStart(String count) => 'Main Table Start ($count athletes)';
-
-  @override
-  String preliminaryEliminationStart(String total, String target) => 'Preliminary Elimination ($total → $target athletes)';
 
   @override
   String get classificationNamePreview => 'Classification Name Preview';

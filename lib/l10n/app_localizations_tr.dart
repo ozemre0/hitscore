@@ -861,6 +861,12 @@ class AppLocalizationsTr extends AppLocalizations {
   String get availableScoreButtonsDescription => 'Bu klasman için hangi skor butonlarının kullanılacağını seçin';
 
   @override
+  String get autoFilled => 'Otomatik Dolduruldu';
+
+  @override
+  String get roundSettingsLabel => 'Tur Ayarları';
+
+  @override
   String get scoreEntryNotAllowedTitle => 'Skor Girişi Mevcut Değil';
 
   @override
@@ -1028,6 +1034,68 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get cutoffRank => 'Kesme Sırası';
+
+  @override
+  String get cutoffLimit => 'Kesme Sınırı';
+
+  @override
+  String cutoffLimitDescription(Object count) {
+    return 'İlk $count sıradaki sporcu eleme sistemine dahil olur';
+  }
+
+  @override
+  String get athleteCount => 'Sporcu Sayısı';
+
+  @override
+  String get enterValueBetween => '8-256 arasında bir değer girin';
+
+  @override
+  String get possibleBracketCombinations => 'Olası Bracket Kombinasyonları';
+
+  @override
+  String availableOptionsForCutoff(Object count) {
+    return 'Cutoff ($count sporcu) için mevcut seçenekler:';
+  }
+
+  @override
+  String personBracket(Object count) {
+    return '$count Kişilik Bracket';
+  }
+
+  @override
+  String get allAthletesInMainTable => 'Tüm sporcular ana tabloda';
+
+  @override
+  String preliminaryElimination(Object total, Object winners) {
+    return 'Ön Eleme: $total sporcu → $winners kazanan';
+  }
+
+  @override
+  String get allAthletesInMainTableShort => 'Tüm sporcular ana tabloda';
+
+  @override
+  String preliminaryEliminationShort(Object total, Object winners) {
+    return 'Ön Eleme: $total sporcu → $winners kazanan';
+  }
+
+  @override
+  String get close => 'Kapat';
+
+  @override
+  String get showAllMatches => 'Tüm Maçları Göster';
+
+  @override
+  String get detailedMatchSchedule => 'Detaylı Maç Programı';
+
+  @override
+  String mainTableStart(Object count) {
+    return 'Ana Tablo Başlangıcı ($count sporcu)';
+  }
+
+  @override
+  String preliminaryEliminationStart(Object target, Object total) {
+    return 'Ön Eleme ($total → $target sporcu)';
+  }
 
   @override
   String get byeSettings => 'Bay Geçme Ayarları';
@@ -1229,54 +1297,6 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get active => 'Aktif';
-
-  @override
-  String get cutoffLimit => 'Kesme Sınırı';
-
-  @override
-  String cutoffLimitDescription(String count) => 'İlk $count sıradaki sporcu eleme sistemine dahil olur';
-
-  @override
-  String get athleteCount => 'Sporcu Sayısı';
-
-  @override
-  String get enterValueBetween => '8-256 arasında bir değer girin';
-
-  @override
-  String get possibleBracketCombinations => 'Olası Bracket Kombinasyonları';
-
-  @override
-  String availableOptionsForCutoff(String count) => 'Cutoff ($count sporcu) için mevcut seçenekler:';
-
-  @override
-  String personBracket(String count) => '$count Kişilik Bracket';
-
-  @override
-  String get allAthletesInMainTable => 'Tüm sporcular ana tabloda';
-
-  @override
-  String preliminaryElimination(String total, String winners) => 'Ön Eleme: $total sporcu → $winners kazanan';
-
-  @override
-  String get allAthletesInMainTableShort => 'Tüm sporcular ana tabloda';
-
-  @override
-  String preliminaryEliminationShort(String total, String winners) => 'Ön Eleme: $total sporcu → $winners kazanan';
-
-  @override
-  String get close => 'Kapat';
-
-  @override
-  String get showAllMatches => 'Tüm Maçları Göster';
-
-  @override
-  String get detailedMatchSchedule => 'Detaylı Maç Programı';
-
-  @override
-  String mainTableStart(String count) => 'Ana Tablo Başlangıcı ($count sporcu)';
-
-  @override
-  String preliminaryEliminationStart(String total, String target) => 'Ön Eleme ($total → $target sporcu)';
 
   @override
   String get classificationNamePreview => 'Klasman İsmi Önizleme';

@@ -53,7 +53,7 @@ class _CompetitionClassificationsScreenState extends State<CompetitionClassifica
       final response = await SupabaseConfig.client
           .from('organized_competitions_classifications')
           .select('''
-            *,
+            id, age_group_id, bow_type, environment, gender, distance, round_count, arrow_per_set, set_per_round, available_score_buttons, created_at,
             age_groups!inner(age_group_tr, age_group_en)
           ''')
           .eq('competition_id', widget.competitionId)
@@ -147,7 +147,7 @@ class _CompetitionClassificationsScreenState extends State<CompetitionClassifica
       for (final classification in _classifications) {
         final classificationData = {
           'competition_id': widget.competitionId,
-          'name': classification['name'],
+          'name': '', // Geçici: DB'de NOT NULL constraint var, boş string gönderiyoruz
           'age_group_id': classification['ageGroupId'],
           'bow_type': classification['bowType'],
           'environment': classification['environment'],
@@ -221,9 +221,9 @@ class _CompetitionClassificationsScreenState extends State<CompetitionClassifica
                 .from('organized_competitions_classifications')
                 .delete()
                 .eq('id', classification['id']);
-            print('DEBUG: Deleted classification: ${classification['name']}');
+            print('DEBUG: Deleted classification: ${classification['id']}');
           } else {
-            print('DEBUG: Cannot delete classification ${classification['name']} - has participants');
+            print('DEBUG: Cannot delete classification ${classification['id']} - has participants');
           }
         }
       }
@@ -284,7 +284,7 @@ class _CompetitionClassificationsScreenState extends State<CompetitionClassifica
                           const SizedBox(width: 8),
                           Expanded(
                             child: Text(
-                              _competitionData!['name'] ?? 'İsimsiz Yarışma',
+                              _competitionData!['name'] ?? l10n.untitledCompetition,
                               style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
                             ),
                           ),
@@ -375,9 +375,31 @@ class _CompetitionClassificationsScreenState extends State<CompetitionClassifica
                       }
                       return v;
                     }
+                    
+                    // Generate localized classification name
+                    String generateLocalizedName() {
+                      final ageGroup = classification['ageGroup'] ?? '';
+                      final localizedBow = mapBow('${classification['bowType'] ?? classification['bow_type'] ?? ''}');
+                      final localizedGender = mapGender('${classification['gender'] ?? ''}');
+                      final localizedEnv = mapEnv('${classification['environment'] ?? ''}');
+                      final distance = classification['distance'];
+                      final distanceText = distance != null ? '${distance}m' : '';
+                      
+                      final parts = <String>[];
+                      if (ageGroup.isNotEmpty) parts.add(ageGroup);
+                      if (localizedGender.isNotEmpty) parts.add(localizedGender);
+                      if (localizedBow.isNotEmpty) parts.add(localizedBow);
+                      if (distanceText.isNotEmpty) parts.add(distanceText);
+                      if (localizedEnv.isNotEmpty) parts.add(localizedEnv);
+                      
+                      return parts.join(' ');
+                    }
+                    
                     final localizedBow = mapBow('${classification['bowType'] ?? classification['bow_type'] ?? ''}');
                     final localizedGender = mapGender('${classification['gender'] ?? ''}');
                     final localizedEnv = mapEnv('${classification['environment'] ?? ''}');
+                    final localizedName = generateLocalizedName();
+                    
                     return Card(
                       margin: const EdgeInsets.only(bottom: 8),
                       shape: RoundedRectangleBorder(
@@ -386,8 +408,7 @@ class _CompetitionClassificationsScreenState extends State<CompetitionClassifica
                       ),
                       child: ListTile(
                         leading: CircleAvatar(child: Text('${index + 1}')),
-                        title: Text(classification['name'] ?? ''),
-                        subtitle: Text('${classification['ageGroup']} • $localizedBow • $localizedGender • ${classification['distance']}m • $localizedEnv'),
+                        title: Text(localizedName),
                         trailing: Row(mainAxisSize: MainAxisSize.min, children: [
                           IconButton(onPressed: () => _editClassification(index), icon: const Icon(Icons.edit)),
                           IconButton(onPressed: () => _deleteClassification(index), icon: const Icon(Icons.delete), color: Colors.red),

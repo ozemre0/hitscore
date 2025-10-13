@@ -336,6 +336,8 @@
   "onboardingFeatureToolsDescription": "Skorları net ve uyumlu ekranlarda gir, takip et.",
   "availableScoreButtonsLabel": "Mevcut Skor Butonları",
   "availableScoreButtonsDescription": "Bu klasman için hangi skor butonlarının kullanılacağını seçin",
+  "autoFilled": "Otomatik Dolduruldu",
+  "roundSettingsLabel": "Tur Ayarları",
   "scoreEntryNotAllowedTitle": "Skor Girişi Mevcut Değil",
   "scoreEntryNotAllowedMessage": "Bu yarışma için şu an için skor girişi yapılamamaktadır. Organizatör açtığı zaman skor girebileceksiniz.",
   "ok": "Tamam",

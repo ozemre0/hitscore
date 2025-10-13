@@ -335,13 +335,16 @@ class _ActiveCompetitionsScreenState extends State<ActiveCompetitionsScreen> {
                         final ageName = ageGroups == null
                             ? ''
                             : (localeCode == 'tr' ? (ageGroups['age_group_tr'] ?? '') : (ageGroups['age_group_en'] ?? ''));
-                        final subtitle = [
-                          if (ageName.isNotEmpty) ageName,
-                          if (cl['gender'] != null) cl['gender'],
-                          if (cl['bow_type'] != null) cl['bow_type'],
-                          if (cl['distance'] != null) '${cl['distance']}m',
-                          if (cl['environment'] != null) cl['environment'],
-                        ].where((e) => e != null && e.toString().isNotEmpty).join(' • ');
+                        
+                        // Generate localized classification name
+                        final parts = <String>[];
+                        if (ageName.isNotEmpty) parts.add(ageName);
+                        if (cl['gender'] != null) parts.add(cl['gender'].toString());
+                        if (cl['bow_type'] != null) parts.add(cl['bow_type'].toString());
+                        if (cl['distance'] != null) parts.add('${cl['distance']}m');
+                        if (cl['environment'] != null) parts.add(cl['environment'].toString());
+                        final classificationName = parts.join(' ');
+                        
                         return ListTile(
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12),
@@ -351,10 +354,7 @@ class _ActiveCompetitionsScreenState extends State<ActiveCompetitionsScreen> {
                             ),
                           ),
                           tileColor: Theme.of(ctx).colorScheme.surface,
-                          title: Text(cl['name'] ?? '-'),
-                          subtitle: subtitle.isNotEmpty
-                              ? Text(subtitle, style: Theme.of(ctx).textTheme.bodySmall?.copyWith(color: Theme.of(ctx).colorScheme.onSurfaceVariant))
-                              : null,
+                          title: Text(classificationName.isNotEmpty ? classificationName : '-'),
                           onTap: () => Navigator.of(ctx).pop(cl['id'].toString()),
                         );
                       },

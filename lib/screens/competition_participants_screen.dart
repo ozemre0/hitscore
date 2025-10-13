@@ -560,11 +560,11 @@ class _CompetitionParticipantsScreenState extends State<CompetitionParticipantsS
           final ageGroups = classification['age_groups'] as Map<String, dynamic>?;
           final localeCode = Localizations.localeOf(context).languageCode;
           
-          final name = classification['name'] ?? '';
           final rawBowType = (classification['bow_type'] ?? '').toString();
           final rawGender = (classification['gender'] ?? '').toString();
           final distance = classification['distance']?.toString() ?? '';
           final rawEnvironment = (classification['environment'] ?? '').toString();
+          
           // Localize DB-stored English/TR values to current locale labels
           String mapBow(String v) {
             switch (v) {
@@ -606,6 +606,7 @@ class _CompetitionParticipantsScreenState extends State<CompetitionParticipantsS
             }
             return v;
           }
+          
           final bowType = mapBow(rawBowType);
           final gender = mapGender(rawGender);
           final environment = mapEnv(rawEnvironment);
@@ -613,13 +614,14 @@ class _CompetitionParticipantsScreenState extends State<CompetitionParticipantsS
               ? ''
               : (localeCode == 'tr' ? (ageGroups['age_group_tr'] ?? '') : (ageGroups['age_group_en'] ?? ''));
           
-          final details = [
-            if (ageGroupName.isNotEmpty) ageGroupName,
-            if (gender.isNotEmpty) gender,
-            if (bowType.isNotEmpty) bowType,
-            if (distance.isNotEmpty) '${distance}m',
-            if (environment.isNotEmpty) environment,
-          ].where((e) => e.isNotEmpty).join(' • ');
+          // Generate localized classification name
+          final parts = <String>[];
+          if (ageGroupName.isNotEmpty) parts.add(ageGroupName);
+          if (gender.isNotEmpty) parts.add(gender);
+          if (bowType.isNotEmpty) parts.add(bowType);
+          if (distance.isNotEmpty) parts.add('${distance}m');
+          if (environment.isNotEmpty) parts.add(environment);
+          final name = parts.join(' ');
           
           return Card(
             margin: const EdgeInsets.only(bottom: 12),
@@ -641,12 +643,6 @@ class _CompetitionParticipantsScreenState extends State<CompetitionParticipantsS
                 name,
                 style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
               ),
-              subtitle: details.isNotEmpty
-                  ? Text(
-                      details,
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: colorScheme.onSurfaceVariant),
-                    )
-                  : null,
               trailing: const Icon(Icons.arrow_forward_ios, size: 16),
               onTap: () {
                 setState(() {
@@ -958,19 +954,14 @@ class _CompetitionParticipantsScreenState extends State<CompetitionParticipantsS
                                           final int score = v is String
                                               ? (v == l10n.arrowXSymbol ? 10 : (v == l10n.arrowMissSymbol ? 0 : int.tryParse(v) ?? 0))
                                               : ((v as num?)?.toInt() ?? 0);
-                                          final String label;
-                                          if (v is String) {
-                                            label = v;
-                                          } else {
-                                            // Use localized symbols for special cases
-                                            if (score == 10) {
-                                              label = l10n.arrowXSymbol; // prefer X symbol for inner-10 if needed
-                                            } else if (score == 0) {
-                                              label = l10n.arrowMissSymbol;
-                                            } else {
-                                              label = score.toString();
-                                            }
-                                          }
+                          final String label;
+                          if (v is String) {
+                            // If it's already a string (X, M, etc.), use it as is
+                            label = v;
+                          } else {
+                            // For numeric values, always show the number (don't convert 10 to X)
+                            label = score.toString();
+                          }
                                           Color bg;
                                           Color fg;
                                           if (score >= 9) {

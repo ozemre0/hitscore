@@ -337,6 +337,8 @@
   "onboardingFeatureToolsDescription": "Enter and follow scores with clear, responsive screens.",
   "availableScoreButtonsLabel": "Available Score Buttons",
   "availableScoreButtonsDescription": "Select which score buttons will be available for this classification",
+  "autoFilled": "Auto Filled",
+  "roundSettingsLabel": "Round Settings",
   "scoreEntryNotAllowedTitle": "Score Entry Not Available",
   "scoreEntryNotAllowedMessage": "Score entry is not currently available for this competition. You will be able to enter scores when the organizer opens it.",
   "ok": "OK"
