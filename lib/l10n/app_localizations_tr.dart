@@ -30,6 +30,9 @@ class AppLocalizationsTr extends AppLocalizations {
   String get loginErrorGoogle => 'Google ile giriş başarısız.';
 
   @override
+  String get signInWithApple => 'Apple ile Giriş Yap';
+
+  @override
   String get profileTitle => 'Profil';
 
   @override
@@ -46,6 +49,9 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get setupProfileDescription => 'Profil bulunamadı. Lütfen profilinizi tamamlayın.';
+
+  @override
+  String get exitSetupConfirm => 'Profil kurulumundan çıkmak istediğinize emin misiniz?';
 
   @override
   String get back => 'Geri';

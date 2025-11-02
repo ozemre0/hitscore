@@ -1,0 +1,140 @@
+import 'dart:convert';
+import 'dart:io' show Platform;
+import 'package:flutter/foundation.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:sign_in_with_apple/sign_in_with_apple.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:crypto/crypto.dart';
+import '../services/supabase_config.dart';
+
+/// Apple Sign In provider for iOS authentication
+final appleSignInProvider =
+    StateNotifierProvider<AppleSignInNotifier, AsyncValue<User?>>((ref) {
+  return AppleSignInNotifier();
+});
+
+/// Provider to access Apple credential data
+final appleCredentialProvider =
+    StateNotifierProvider<AppleCredentialNotifier, dynamic>((ref) {
+  return AppleCredentialNotifier();
+});
+
+class AppleCredentialNotifier extends StateNotifier<dynamic> {
+  AppleCredentialNotifier() : super(null);
+
+  void setCredential(dynamic credential) {
+    debugPrint(
+        '[DEBUG] AppleCredentialNotifier: Setting credential - ${credential?.givenName} ${credential?.familyName}');
+    state = credential;
+  }
+
+  void clearCredential() {
+    debugPrint('[DEBUG] AppleCredentialNotifier: Clearing credential');
+    state = null;
+  }
+}
+
+class AppleSignInNotifier extends StateNotifier<AsyncValue<User?>> {
+  AppleSignInNotifier() : super(const AsyncValue.data(null));
+
+  dynamic _lastCredential;
+
+  Future<dynamic> signInWithApple() async {
+    // Sadece iOS platformunda çalış
+    if (kIsWeb || !Platform.isIOS) {
+      state = AsyncValue.error(
+          'Apple Sign In is only available on iOS', StackTrace.current);
+      return null;
+    }
+
+    state = const AsyncValue.loading();
+
+    try {
+      debugPrint('[DEBUG] Starting Apple Sign In...');
+
+      // Nonce oluştur (güvenlik için)
+      final rawNonce = SupabaseConfig.client.auth.generateRawNonce();
+      final hashedNonce =
+          sha256.convert(utf8.encode(rawNonce)).toString();
+
+      // Apple Sign In başlat
+      final credential = await SignInWithApple.getAppleIDCredential(
+        scopes: [
+          AppleIDAuthorizationScopes.email,
+          AppleIDAuthorizationScopes.fullName,
+        ],
+        nonce: hashedNonce,
+      );
+
+      debugPrint(
+          '[DEBUG] AppleSignInNotifier: Apple credential received: ${credential.userIdentifier}');
+      debugPrint(
+          '[DEBUG] AppleSignInNotifier: Apple credential fullName: ${credential.givenName} ${credential.familyName}');
+      debugPrint(
+          '[DEBUG] AppleSignInNotifier: Credential details - givenName: ${credential.givenName}, familyName: ${credential.familyName}');
+
+      if (credential.identityToken == null) {
+        debugPrint('[DEBUG] Apple Sign In cancelled or failed');
+        state = const AsyncValue.data(null);
+        return null;
+      }
+
+      // Store credential data for profile setup
+      _lastCredential = credential;
+
+      // Supabase ile Apple authentication (resmi dokümantasyona göre)
+      final AuthResponse response =
+          await SupabaseConfig.client.auth.signInWithIdToken(
+        provider: OAuthProvider.apple,
+        idToken: credential.identityToken!,
+        nonce: rawNonce,
+      );
+
+      debugPrint(
+          '[DEBUG] Supabase Apple auth response: ${response.user?.email}');
+
+      if (response.user != null) {
+        state = AsyncValue.data(response.user);
+        return credential;
+      } else {
+        state = const AsyncValue.data(null);
+        return null;
+      }
+    } catch (error, stackTrace) {
+      debugPrint('[DEBUG] Apple Sign In error: $error');
+      debugPrint('[DEBUG] Error type: ${error.runtimeType}');
+
+      // Daha anlaşılır hata mesajları
+      String errorMessage = 'Apple Sign In failed';
+      if (error.toString().contains('AuthorizationErrorCode.canceled')) {
+        errorMessage = 'Apple Sign In was cancelled';
+      } else if (error
+          .toString()
+          .contains('AuthorizationErrorCode.unknown')) {
+        errorMessage = 'Apple Sign In failed. Please try again';
+      }
+
+      state = AsyncValue.error(errorMessage, stackTrace);
+      return null;
+    }
+  }
+
+  dynamic getLastCredential() {
+    return _lastCredential;
+  }
+
+  void clearLastCredential() {
+    _lastCredential = null;
+  }
+
+  Future<void> signOut() async {
+    // Apple Sign In için özel sign out gerekmez
+    // Supabase sign out yeterli
+    await SupabaseConfig.client.auth.signOut();
+    state = const AsyncValue.data(null);
+  }
+
+  void reset() {
+    state = const AsyncValue.data(null);
+  }
+}

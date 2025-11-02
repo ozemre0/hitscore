@@ -30,6 +30,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get loginErrorGoogle => 'Google sign-in failed.';
 
   @override
+  String get signInWithApple => 'Sign in with Apple';
+
+  @override
   String get profileTitle => 'Profile';
 
   @override
@@ -46,6 +49,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get setupProfileDescription => 'No profile found. Please complete your profile.';
+
+  @override
+  String get exitSetupConfirm => 'Do you want to exit profile setup?';
 
   @override
   String get back => 'Back';

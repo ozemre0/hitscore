@@ -1,12 +1,14 @@
+import 'dart:io' show Platform;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../services/supabase_config.dart';
 import '../providers/google_signin_provider.dart';
+import '../providers/apple_signin_provider.dart';
 import 'register_screen.dart';
 import 'forgot_password_screen.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter/foundation.dart';
-import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+import 'package:archeryozs/l10n/app_localizations.dart';
+import '../services/version_update_service.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -21,7 +23,28 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _isLoading = false;
   bool _obscurePassword = true;
 
-  void _showEmailVerificationAlert() {
+  @override
+  void initState() {
+    super.initState();
+    // Version kontrolü - login yapmamış kullanıcılar için de gerekli
+    // Hemen çalıştır, frame bekleme
+    _checkVersionImmediately();
+  }
+
+  void _checkVersionImmediately() async {
+    // Dialog state'ini reset et ki her ekranda gösterilebilsin
+    VersionUpdateService.resetDialogState();
+    // Kısa bir gecikme ile context'in hazır olmasını sağla
+    await Future.delayed(const Duration(milliseconds: 50));
+    if (mounted) {
+      // Önce bakım kontrolü yap
+      await VersionUpdateService.checkAndMaybeShowMaintenanceDialog(context);
+      // Sonra versiyon kontrolü yap
+      await VersionUpdateService.checkAndMaybeShowForceUpdateImmediate(context);
+    }
+  }
+
+   void _showEmailVerificationAlert() {
     final l10n = AppLocalizations.of(context);
     showDialog(
       context: context,
@@ -113,6 +136,8 @@ class _LoginScreenState extends State<LoginScreen> {
       builder: (context, ref, child) {
         // Google Sign In provider state'ini dinle
         final googleSignInState = ref.watch(googleSignInProvider);
+        // Apple Sign In provider state'ini dinle
+        final appleSignInState = ref.watch(appleSignInProvider);
 
         // Provider state değişikliklerini handle et
         googleSignInState.when(
@@ -130,6 +155,28 @@ class _LoginScreenState extends State<LoginScreen> {
               if (context.mounted) {
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(content: Text('Google Sign In failed: $error')),
+                );
+              }
+            });
+          },
+        );
+
+        // Apple Sign In provider state değişikliklerini handle et
+        appleSignInState.when(
+          data: (user) {
+            // Bu kısım sadece state değişikliği olduğunda çalışacak
+            // Buton onPressed'de handle edilecek
+          },
+          loading: () {
+            // Loading durumunda ekstra işlem yapmaya gerek yok
+            // Buton disabled durumda olacak
+          },
+          error: (error, stackTrace) {
+            // Hata durumunda kullanıcıya göster
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('Apple Sign In failed: $error')),
                 );
               }
             });
@@ -208,30 +255,15 @@ class _LoginScreenState extends State<LoginScreen> {
                         : () async {
 
                       try {
-                        if (kIsWeb) {
-                          // Web için mevcut Supabase OAuth kullanıyoruz
-                          print('[DEBUG] Web Google Sign In - Supabase OAuth redirect');
-                          final result = await SupabaseConfig.client.auth.signInWithOAuth(
-                            OAuthProvider.google,
-                            redirectTo: 'https://hitarchery.com/',
-                            queryParams: {
-                              'prompt': 'select_account',
-                            },
-                          );
-                          print('[DEBUG] Web signInWithOAuth sonucu: $result');
-                        } else {
-                          // Mobile için native Google Sign In provider kullanıyoruz
-                          print('[DEBUG] Mobile Google Sign In - Native provider');
-
-                          // Önce mevcut durumu temizle
-                          ref.read(googleSignInProvider.notifier).reset();
-
-                          // Native Google Sign In'i başlat
-                          await ref.read(googleSignInProvider.notifier).signInWithGoogle();
-
-                          // Provider state değişiklikleri Consumer build metodunda handle edilecek
-
-                        }
+                        print('[DEBUG] Starting Google Sign In via provider');
+                        
+                        // Önce mevcut durumu temizle
+                        ref.read(googleSignInProvider.notifier).reset();
+                        
+                        // Provider'da platform kontrolü yapılıyor
+                        await ref.read(googleSignInProvider.notifier).signInWithGoogle();
+                        
+                        // Provider state değişiklikleri Consumer build metodunda handle edilecek
                       } catch (e) {
                         print('[DEBUG] Google sign in hata: $e');
                         if (context.mounted) {
@@ -259,6 +291,61 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                   ),
                 ),
+                // Apple Sign In - sadece iOS'ta göster
+                if (!kIsWeb && Platform.isIOS) ...[
+                  const SizedBox(height: 16),
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      onPressed: ref.watch(appleSignInProvider).isLoading
+                          ? null
+                          : () async {
+                              try {
+                                print('[DEBUG] iOS Apple Sign In - Native provider');
+                                
+                                // Önce mevcut durumu temizle
+                                ref.read(appleSignInProvider.notifier).reset();
+                                
+                                // Native Apple Sign In'i başlat ve credential'ı al
+                                final credential = await ref.read(appleSignInProvider.notifier).signInWithApple();
+                                
+                                // Apple credential'ı store et
+                                if (credential != null) {
+                                  ref.read(appleCredentialProvider.notifier).setCredential(credential);
+                                  print('[DEBUG] LoginScreen: Apple credential stored: ${credential.givenName} ${credential.familyName}');
+                                  print('[DEBUG] LoginScreen: Credential details - givenName: ${credential.givenName}, familyName: ${credential.familyName}');
+                                } else {
+                                  print('[DEBUG] LoginScreen: No Apple credential to store');
+                                }
+                                
+                                // Provider state değişiklikleri Consumer build metodunda handle edilecek
+                                
+                              } catch (e) {
+                                print('[DEBUG] Apple sign in hata: $e');
+                                if (context.mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(content: Text('Apple Sign In failed: $e')),
+                                  );
+                                }
+                              }
+                            },
+                      icon: Image.asset(
+                        'assets/images/apple_logo.png',
+                        height: 24,
+                      ),
+                      label: Text(l10n.signInWithApple),
+                      style: OutlinedButton.styleFrom(
+                        backgroundColor: Colors.transparent,
+                        foregroundColor: Theme.of(context).colorScheme.primary,
+                        side: BorderSide(color: Theme.of(context).colorScheme.primary, width: 1),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        textStyle: const TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                  ),
+                ],
                 const SizedBox(height: 16),
                 SizedBox(
                   width: double.infinity,

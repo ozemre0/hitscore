@@ -137,6 +137,12 @@ abstract class AppLocalizations {
   /// **'Google sign-in failed.'**
   String get loginErrorGoogle;
 
+  /// No description provided for @signInWithApple.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in with Apple'**
+  String get signInWithApple;
+
   /// No description provided for @profileTitle.
   ///
   /// In en, this message translates to:
@@ -172,6 +178,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'No profile found. Please complete your profile.'**
   String get setupProfileDescription;
+
+  /// No description provided for @exitSetupConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Do you want to exit profile setup?'**
+  String get exitSetupConfirm;
 
   /// No description provided for @back.
   ///

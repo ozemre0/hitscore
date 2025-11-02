@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import '../l10n/app_localizations.dart';
 import 'package:image_picker/image_picker.dart';
@@ -8,7 +9,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../services/supabase_config.dart';
 import '../providers/profile_providers.dart';
+import '../providers/apple_signin_provider.dart';
 import 'home_shell.dart';
+import 'login_screen.dart';
 
 class ClubOption {
   final String id;
@@ -86,16 +89,127 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
     try {
       final User? user = SupabaseConfig.client.auth.currentUser;
       if (user == null) return;
+
+      // Check if user signed in with Apple Sign In
+      // This auto-fill is ONLY for Apple Sign In users
+      final appleCredential = ref.read(appleCredentialProvider);
+      final isAppleSignIn = appleCredential != null || 
+          (user.appMetadata['provider'] == 'apple') ||
+          (user.userMetadata?['provider'] == 'apple');
+      
+      debugPrint(
+          '[DEBUG] ProfileSetupScreen: Apple Sign In check - credential: ${appleCredential != null}, provider: ${user.appMetadata['provider']}');
+      
+      // Extract Apple name information ONLY if user signed in with Apple
+      String? appleFirstName;
+      String? appleLastName;
+      
+      if (isAppleSignIn) {
+        // First try to get name from Apple credential
+        if (appleCredential != null) {
+          debugPrint(
+              '[DEBUG] ProfileSetupScreen: Apple credential found - givenName: ${appleCredential.givenName}, familyName: ${appleCredential.familyName}');
+
+          appleFirstName = appleCredential.givenName;
+          appleLastName = appleCredential.familyName;
+        }
+        
+        // If Apple credential doesn't have name, try user metadata
+        // Priority: given_name/family_name (Apple's real name fields) > full_name/name (may be from other sources)
+        if ((appleFirstName == null || appleFirstName.isEmpty) &&
+            (appleLastName == null || appleLastName.isEmpty) &&
+            user.userMetadata != null) {
+          final metadata = user.userMetadata!;
+          final givenName = metadata['given_name'] as String?;
+          final familyName = metadata['family_name'] as String?;
+          final fullName = metadata['full_name'] as String?;
+          final name = metadata['name'] as String?;
+
+          debugPrint(
+              '[DEBUG] ProfileSetupScreen: User metadata - givenName: $givenName, familyName: $familyName, fullName: $fullName, name: $name');
+
+          // Priority 1: Try given_name/family_name first (Apple's real name from first sign-in)
+          // These are the actual Apple ID name fields that Apple provides
+          if (givenName != null && givenName.isNotEmpty) {
+            appleFirstName = givenName;
+            debugPrint(
+                '[DEBUG] ProfileSetupScreen: First name set from metadata given_name: $givenName');
+          }
+          if (familyName != null && familyName.isNotEmpty) {
+            appleLastName = familyName;
+            debugPrint(
+                '[DEBUG] ProfileSetupScreen: Last name set from metadata family_name: $familyName');
+          }
+
+          // Priority 2: If given_name/family_name not available, try parsing full_name or name
+          // Note: full_name/name may come from other sources (e.g., linked Google account)
+          if ((appleFirstName == null || appleFirstName.isEmpty) &&
+              (appleLastName == null || appleLastName.isEmpty)) {
+            final nameToParse = fullName ?? name;
+            if (nameToParse != null && nameToParse.isNotEmpty) {
+              final nameParts = nameToParse.trim().split(RegExp(r'\s+'));
+              if (nameParts.isNotEmpty) {
+                // First word as firstName (maps to first_name in profiles table)
+                appleFirstName = nameParts.first;
+                debugPrint(
+                    '[DEBUG] ProfileSetupScreen: Parsed first name from full_name/name: $appleFirstName');
+                
+                // Rest as lastName if there are more words (maps to last_name in profiles table)
+                if (nameParts.length > 1) {
+                  appleLastName = nameParts.skip(1).join(' ');
+                  debugPrint(
+                      '[DEBUG] ProfileSetupScreen: Parsed last name from full_name/name: $appleLastName');
+                }
+              }
+            }
+          }
+        }
+        
+        // Auto-fill name fields if we have Apple name data (ONLY for Apple Sign In)
+        if (mounted && (appleFirstName != null && appleFirstName.isNotEmpty ||
+            appleLastName != null && appleLastName.isNotEmpty)) {
+          setState(() {
+            // Map Apple's givenName -> first_name, familyName -> last_name
+            if (appleFirstName != null && appleFirstName.isNotEmpty) {
+              _firstNameController.text = appleFirstName;
+              debugPrint(
+                  '[DEBUG] ProfileSetupScreen: First name set from Apple: $appleFirstName');
+            }
+            if (appleLastName != null && appleLastName.isNotEmpty) {
+              _lastNameController.text = appleLastName;
+              debugPrint(
+                  '[DEBUG] ProfileSetupScreen: Last name set from Apple: $appleLastName');
+            }
+          });
+        }
+      } else {
+        debugPrint(
+            '[DEBUG] ProfileSetupScreen: Not Apple Sign In, skipping auto-fill');
+      }
+
       final dynamic existing = await SupabaseConfig.client
           .from('profiles')
           .select()
           .eq('id', user.id)
           .maybeSingle();
       if (!mounted) return;
+      
       if (existing != null) {
         setState(() {
-          _firstNameController.text = (existing['first_name'] ?? '').toString();
-          _lastNameController.text = (existing['last_name'] ?? '').toString();
+          // Use existing profile data, but fallback to Apple credential if fields are empty
+          final existingFirstName = (existing['first_name'] ?? '').toString();
+          final existingLastName = (existing['last_name'] ?? '').toString();
+          
+          // Map Apple's givenName -> first_name, familyName -> last_name
+          // (appleFirstName and appleLastName are already extracted above)
+          
+          // Use existing if available, otherwise use Apple credential/metadata data (ONLY if Apple Sign In)
+          _firstNameController.text = existingFirstName.isNotEmpty
+              ? existingFirstName
+              : (isAppleSignIn ? (appleFirstName ?? '') : '');
+          _lastNameController.text = existingLastName.isNotEmpty
+              ? existingLastName
+              : (isAppleSignIn ? (appleLastName ?? '') : '');
           _addressController.text = (existing['address'] ?? '').toString();
           final phone = (existing['phone_number'] ?? '').toString();
           _phoneController.text = phone.startsWith('+')
@@ -138,6 +252,7 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
           });
         }
       } else {
+        // No existing profile: default to Individual (No Club)
         final l10n = AppLocalizations.of(context);
         setState(() {
           _selectedClub = ClubOption(
@@ -390,6 +505,10 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
       await SupabaseConfig.client.from('profiles').upsert(payload);
 
       if (!mounted) return;
+      
+      // Clear Apple credential data after successful profile creation
+      ref.read(appleCredentialProvider.notifier).clearCredential();
+      
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(l10n.profileUpdated)),
       );
@@ -454,6 +573,80 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
       final String lastInitial = lastName.isNotEmpty ? lastName[0].toLowerCase() : 'a';
       final int timestamp = DateTime.now().millisecondsSinceEpoch % 10000;
       return '$firstInitial$lastInitial$timestamp';
+    }
+  }
+
+  Future<void> _handleExit() async {
+    final l10n = AppLocalizations.of(context);
+    if (l10n == null) return;
+
+    final bool? shouldExit = await showDialog<bool>(
+      context: context,
+      builder: (BuildContext context) {
+        final theme = Theme.of(context);
+        return AlertDialog(
+          title: Text(
+            l10n.exit,
+            style: theme.textTheme.titleLarge?.copyWith(
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          content: Text(
+            l10n.exitSetupConfirm,
+            style: theme.textTheme.bodyMedium,
+          ),
+          actions: [
+            OutlinedButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              style: OutlinedButton.styleFrom(
+                side: BorderSide(color: theme.primaryColor),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+              child: Text(
+                l10n.cancel,
+                style: TextStyle(color: theme.primaryColor),
+              ),
+            ),
+            OutlinedButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              style: OutlinedButton.styleFrom(
+                side: BorderSide(color: theme.colorScheme.error),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+              child: Text(
+                l10n.exit,
+                style: TextStyle(color: theme.colorScheme.error),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (shouldExit == true && mounted) {
+      // Sign out and navigate to login screen
+      try {
+        await SupabaseConfig.client.auth.signOut();
+        // Clear Apple credential data
+        ref.read(appleCredentialProvider.notifier).clearCredential();
+        // Navigate to login screen and remove all previous routes
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (_) => const LoginScreen()),
+          (route) => false,
+        );
+      } catch (e) {
+        // Even if sign out fails, navigate to login screen
+        if (mounted) {
+          Navigator.of(context).pushAndRemoveUntil(
+            MaterialPageRoute(builder: (_) => const LoginScreen()),
+            (route) => false,
+          );
+        }
+      }
     }
   }
 
@@ -534,6 +727,11 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
 
     return Scaffold(
       appBar: AppBar(
+        leading: IconButton(
+          onPressed: _isLoading ? null : _handleExit,
+          icon: const Icon(Icons.close),
+          tooltip: l10n.exit ?? 'Exit',
+        ),
         title: Text(l10n.setupProfile),
         actions: [
           IconButton(

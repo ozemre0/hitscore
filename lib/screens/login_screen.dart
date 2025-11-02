@@ -1,9 +1,11 @@
+import 'dart:io' show Platform;
 import 'package:flutter/material.dart';
 import '../l10n/app_localizations.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../services/supabase_config.dart';
 import '../providers/google_signin_provider.dart';
+import '../providers/apple_signin_provider.dart';
 import 'package:flutter/foundation.dart';
 import 'register_screen.dart';
 import 'forgot_password_screen.dart';
@@ -277,6 +279,104 @@ class _LoginScreenState extends State<LoginScreen> {
                             : const SizedBox.shrink();
                       },
                     ),
+                    // Apple Sign In - sadece iOS'ta göster
+                    if (!kIsWeb && Platform.isIOS) ...[
+                      const SizedBox(height: 12),
+                      Consumer(
+                        builder: (context, ref, _) {
+                          final state = ref.watch(appleSignInProvider);
+                          final isLoading = state.isLoading;
+                          return OutlinedButton(
+                            style: OutlinedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 12,
+                              ),
+                            ),
+                            onPressed: (_isLoading || isLoading)
+                                ? null
+                                : () async {
+                                    try {
+                                      debugPrint(
+                                          '[DEBUG] iOS Apple Sign In - Native provider');
+
+                                      // Önce mevcut durumu temizle
+                                      ref.read(appleSignInProvider.notifier).reset();
+
+                                      // Native Apple Sign In'i başlat ve credential'ı al
+                                      final credential = await ref
+                                          .read(appleSignInProvider.notifier)
+                                          .signInWithApple();
+
+                                      // Apple credential'ı store et
+                                      if (credential != null) {
+                                        ref
+                                            .read(appleCredentialProvider.notifier)
+                                            .setCredential(credential);
+                                        debugPrint(
+                                            '[DEBUG] LoginScreen: Apple credential stored: ${credential.givenName} ${credential.familyName}');
+                                        debugPrint(
+                                            '[DEBUG] LoginScreen: Credential details - givenName: ${credential.givenName}, familyName: ${credential.familyName}');
+                                      } else {
+                                        debugPrint(
+                                            '[DEBUG] LoginScreen: No Apple credential to store');
+                                      }
+
+                                      // If sign-in succeeded, pop to root so root decides
+                                      try {
+                                        final u =
+                                            SupabaseConfig.client.auth.currentUser;
+                                        if (u != null && mounted) {
+                                          debugPrint(
+                                              'login.apple: success user=${u.id}, popping to root');
+                                          Navigator.of(context)
+                                              .popUntil((route) => route.isFirst);
+                                        }
+                                      } catch (_) {}
+                                    } catch (e) {
+                                      debugPrint('[DEBUG] Apple sign in hata: $e');
+                                      if (mounted) {
+                                        ScaffoldMessenger.of(context)
+                                            .showSnackBar(
+                                          SnackBar(
+                                            content: Text(l10n.loginErrorGeneric),
+                                          ),
+                                        );
+                                      }
+                                    }
+                                  },
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                if (isLoading)
+                                  const SizedBox(
+                                    height: 18,
+                                    width: 18,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                    ),
+                                  )
+                                else
+                                  const Icon(
+                                    Icons.apple,
+                                    size: 18,
+                                  ),
+                                const SizedBox(width: 8),
+                                Flexible(
+                                  child: Text(
+                                    l10n.signInWithApple,
+                                    overflow: TextOverflow.ellipsis,
+                                    maxLines: 1,
+                                    softWrap: false,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        },
+                      ),
+                    ],
                     const SizedBox(height: 12),
                     SizedBox(
                       width: double.infinity,
