@@ -846,31 +846,33 @@ class _SimpleParticipationCard extends StatelessWidget {
             children: [
               Row(
                 children: [
-                  Container(
-                    width: 48,
-                    height: 48,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(12),
-                      color: colorScheme.primary.withOpacity(0.1),
-                    ),
-                    child: Icon(
-                      Icons.emoji_events,
-                      color: colorScheme.primary,
-                      size: 24,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          competitionName ?? l10n.untitledCompetition,
-                          style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.w600,
-                          ),
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                competitionName ?? l10n.untitledCompetition,
+                                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                  fontWeight: FontWeight.w600,
+                                ),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            _StatusChip(status: status),
+                            if (status == 'accepted') ...[
+                              const SizedBox(width: 8),
+                              Icon(
+                                Icons.arrow_forward_ios,
+                                size: 16,
+                                color: colorScheme.onSurfaceVariant,
+                              ),
+                            ],
+                          ],
                         ),
                         if (classificationName != null) ...[
                           const SizedBox(height: 2),
@@ -909,19 +911,6 @@ class _SimpleParticipationCard extends StatelessWidget {
                       ],
                     ),
                   ),
-                  Row(
-                    children: [
-                      _StatusChip(status: status),
-                      if (status == 'accepted') ...[
-                        const SizedBox(width: 8),
-                        Icon(
-                          Icons.arrow_forward_ios,
-                          size: 16,
-                          color: colorScheme.onSurfaceVariant,
-                        ),
-                      ],
-                    ],
-                  ),
                 ],
               ),
             if (competitionVisibleId != null) ...[
@@ -955,13 +944,16 @@ class _SimpleParticipationCard extends StatelessWidget {
                       : (Theme.of(context).brightness == Brightness.dark ? Colors.red : Colors.red.shade700),
                 ),
                 const SizedBox(width: 4),
-                Text(
-                  scoreAllowed ? l10n.scoreEntryAllowed : l10n.scoreEntryNotAllowed,
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: scoreAllowed 
-                      ? (Theme.of(context).brightness == Brightness.dark ? Colors.green.shade400 : Colors.green.shade900)
-                      : (Theme.of(context).brightness == Brightness.dark ? Colors.red : Colors.red.shade700),
-                    fontWeight: FontWeight.w600,
+                Expanded(
+                  child: Text(
+                    scoreAllowed ? l10n.scoreEntryAllowed : l10n.scoreEntryNotAllowed,
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: scoreAllowed 
+                        ? (Theme.of(context).brightness == Brightness.dark ? Colors.green.shade400 : Colors.green.shade900)
+                        : (Theme.of(context).brightness == Brightness.dark ? Colors.red : Colors.red.shade700),
+                      fontWeight: FontWeight.w600,
+                    ),
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
               ],
@@ -976,14 +968,18 @@ class _SimpleParticipationCard extends StatelessWidget {
                     color: colorScheme.onSurfaceVariant,
                   ),
                   const SizedBox(width: 4),
-                  Text(
-                    '${l10n.joinedOn}: ${_formatDate(joinedAt)}',
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: colorScheme.onSurfaceVariant,
+                  Expanded(
+                    child: Text(
+                      '${l10n.joinedOn}: ${_formatDate(joinedAt)}',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: colorScheme.onSurfaceVariant,
+                      ),
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
+                ] else ...[
+                  const Spacer(),
                 ],
-                const Spacer(),
                 if (competitionStatus == 'active' && status == 'accepted')
                   OutlinedButton(
                     onPressed: onLeave,
@@ -1012,10 +1008,13 @@ class _SimpleParticipationCard extends StatelessWidget {
                           color: colorScheme.onSurfaceVariant,
                         ),
                         const SizedBox(width: 4),
-                        Text(
-                          '${l10n.competitionStartsOn}: ${_formatDate(startDate)}',
-                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: colorScheme.onSurfaceVariant,
+                        Expanded(
+                          child: Text(
+                            '${l10n.competitionStartsOn}: ${_formatDate(startDate)}',
+                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              color: colorScheme.onSurfaceVariant,
+                            ),
+                            overflow: TextOverflow.ellipsis,
                           ),
                         ),
                       ],
@@ -1031,10 +1030,13 @@ class _SimpleParticipationCard extends StatelessWidget {
                           color: colorScheme.onSurfaceVariant,
                         ),
                         const SizedBox(width: 4),
-                        Text(
-                          '${l10n.competitionEndsOn}: ${_formatDate(endDate)}',
-                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: colorScheme.onSurfaceVariant,
+                        Expanded(
+                          child: Text(
+                            '${l10n.competitionEndsOn}: ${_formatDate(endDate)}',
+                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              color: colorScheme.onSurfaceVariant,
+                            ),
+                            overflow: TextOverflow.ellipsis,
                           ),
                         ),
                       ],

@@ -3,7 +3,6 @@ import '../../l10n/app_localizations.dart';
 import 'athlete_multi_select_sheet.dart';
 // import 'competition_classifications_screen.dart';
 import '../../services/supabase_config.dart';
-import '../elimination/elimination_settings_screen.dart';
 
 class CompetitionParticipantsScreen extends StatefulWidget {
   final String competitionId;
@@ -75,6 +74,37 @@ class _CompetitionParticipantsScreenState extends State<CompetitionParticipantsS
           p['last_name'] = prof['last_name'] ?? p['last_name'];
         }
       }
+
+      // Özel sıralama: Pending en üstte, sonra accepted, sonra cancelled
+      // Her grup kendi içinde kayıt tarihine göre sıralı (en yeni üstte)
+      loaded.sort((a, b) {
+        final statusA = a['status'] as String? ?? '';
+        final statusB = b['status'] as String? ?? '';
+        
+        // Status öncelik sırası: pending > accepted > cancelled > diğerleri
+        int getStatusPriority(String status) {
+          switch (status) {
+            case 'pending': return 0;
+            case 'accepted': return 1;
+            case 'cancelled': return 2;
+            default: return 3;
+          }
+        }
+        
+        final priorityA = getStatusPriority(statusA);
+        final priorityB = getStatusPriority(statusB);
+        
+        // Önce status'e göre sırala
+        if (priorityA != priorityB) {
+          return priorityA.compareTo(priorityB);
+        }
+        
+        // Aynı status'teyse, created_at'e göre sırala (en yeni üstte)
+        // DateTime(1970): Unix epoch başlangıcı, geçersiz tarih durumunda fallback
+        final createdAtA = DateTime.tryParse(a['created_at'] as String? ?? '') ?? DateTime(1970);
+        final createdAtB = DateTime.tryParse(b['created_at'] as String? ?? '') ?? DateTime(1970);
+        return createdAtB.compareTo(createdAtA);
+      });
 
       setState(() {
         _participants = loaded;
@@ -291,11 +321,6 @@ class _CompetitionParticipantsScreenState extends State<CompetitionParticipantsS
         title: Text(l10n.participantsTitle),
         actions: [
           IconButton(
-            onPressed: _navigateToElimination,
-            icon: const Icon(Icons.emoji_events),
-            tooltip: 'Eleme Sistemi',
-          ),
-          IconButton(
             onPressed: () async {
               // Open full-screen selector page instead of bottom sheet
               final result = await Navigator.of(context).push<UserMultiSelectResult>(
@@ -460,19 +485,6 @@ class _CompetitionParticipantsScreenState extends State<CompetitionParticipantsS
     }
   }
 
-  Future<void> _navigateToElimination() async {
-    // Şimdilik basit bir placeholder - gerçek implementasyonda yarışma adını alacak
-    final competitionName = 'Yarışma'; // TODO: Gerçek yarışma adını al
-    
-    await Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (context) => EliminationSettingsScreen(
-          competitionId: widget.competitionId,
-          competitionName: competitionName,
-        ),
-      ),
-    );
-  }
 
   Widget _buildBody(AppLocalizations l10n, ColorScheme colorScheme) {
     if (_isLoading) {
@@ -544,61 +556,6 @@ class _CompetitionParticipantsScreenState extends State<CompetitionParticipantsS
       onRefresh: _loadParticipants,
       child: Column(
         children: [
-          // Eleme Sistemi Kartı
-          Container(
-            margin: const EdgeInsets.all(16.0),
-            child: Card(
-              elevation: 0,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-                side: BorderSide(color: colorScheme.primary.withOpacity(0.3), width: 1.2),
-              ),
-              child: InkWell(
-                borderRadius: BorderRadius.circular(16),
-                onTap: _navigateToElimination,
-                child: Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Row(
-                    children: [
-                      Container(
-                        width: 56,
-                        height: 56,
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(16),
-                          color: colorScheme.primary.withOpacity(0.1),
-                        ),
-                        child: Icon(Icons.emoji_events, color: colorScheme.primary, size: 28),
-                      ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Eleme Sistemi',
-                              style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                                fontWeight: FontWeight.bold,
-                                color: colorScheme.primary,
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              'Eleme ayarlarını yapılandır ve bracket oluştur',
-                              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                color: colorScheme.onSurfaceVariant,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Icon(Icons.chevron_right, color: colorScheme.primary),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ),
           // Katılımcı Listesi
           Expanded(
             child: ListView.builder(

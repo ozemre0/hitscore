@@ -17,6 +17,10 @@
   "role": "Role",
   "gender": "Gender",
   "genderRequired": "Gender is required",
+  "roleRequired": "Role is required",
+  "roleWarningTitle": "Role Selection Information",
+  "roleWarningMessage": "You cannot change your role without deleting your account. Role functionalities are different in the Hit Archery app, but in this app all roles have the same functionality.",
+  "understood": "Understood",
   "birthDateLabel": "Birth date",
   "birthDateRequired": "Birth date is required",
   "phoneNumber": "Phone number",
@@ -75,10 +79,10 @@
   "competitionNameLabel": "Competition name",
   "competitionDescriptionLabel": "Description",
   "competitionDuration": "Competition Duration",
-  "competitionDurationDesc": "Select start and end date/time.",
+  "competitionDurationDesc": "Select start and end dates.",
   "startDate": "Start date",
   "endDate": "End date",
-  "competitionDateHint": "DD.MM.YYYY HH:mm",
+  "competitionDateHint": "DD.MM.YYYY",
   "registrationDatesLabel": "Registration Dates",
   "registrationDatesOptional": "Optional registration start and end times.",
   "registrationStartLabel": "Registration start",
@@ -517,6 +521,70 @@
   "matchCompletedDescription": "The match has been successfully completed and saved",
   "classificationNamePreview": "Classification Name Preview",
   "classificationNamePreviewEmpty": "Select classification properties to see the auto-generated name",
-  "autoSelected": "Auto Selected"
+  "autoSelected": "Auto Selected",
+  "multiByeSystem": "Multi-Bye System",
+  "multiByeSystemStart": "Multi-Bye Elimination System ({total} → {target} athletes)",
+  "@multiByeSystemStart": {
+    "placeholders": {
+      "total": {"type": "String"},
+      "target": {"type": "String"}
+    }
+  },
+  "multiByeSystemShort": "3R: {threeRound}, 2R: {twoRound}, 1R: {oneRound}, 0R: {zeroRound}",
+  "@multiByeSystemShort": {
+    "placeholders": {
+      "threeRound": {"type": "String"},
+      "twoRound": {"type": "String"},
+      "oneRound": {"type": "String"},
+      "zeroRound": {"type": "String"}
+    }
+  },
+  "thirdPlaceMatch": "3rd Place Match",
+  "thirdPlaceMatchTitle": "3RD PLACE MATCH",
+  "thirdPlaceMatchDescription": "3RD PLACE: L{round}_1 vs L{round}_2",
+  "@thirdPlaceMatchDescription": {
+    "placeholders": {
+      "round": {"type": "int"}
+    }
+  },
+  "register": "Register",
+  "forgotPassword": "Forgot Password",
+  "confirmPasswordLabel": "Confirm Password",
+  "passwordTooShort": "Password must be at least 6 characters long",
+  "passwordMismatch": "Passwords do not match",
+  "emailRequired": "Email is required",
+  "tooManyRequests": "Too many requests. Please try again later",
+  "emailVerificationRequiredContent": "We've sent a verification email to your address. Please check your email and click the verification link to activate your account.",
+  "emailAlreadyRegisteredTitle": "Email Already Registered",
+  "emailAlreadyRegisteredMessage": "This email address is already registered. Please try logging in instead.",
+  "goToLogin": "Go to Login",
+  "forgotPasswordTitle": "Forgot Password",
+  "forgotPasswordDescription": "Enter your email address and we'll send you a link to reset your password.",
+  "sendResetLink": "Send Reset Link",
+  "resetLinkSent": "Password reset link sent to your email",
+  "resetPasswordTitle": "Reset Password",
+  "newPasswordLabel": "New Password",
+  "confirmPasswordRequired": "Please confirm your password",
+  "passwordRequired": "Password is required",
+  "resetPasswordButton": "Reset Password",
+  "passwordResetSuccess": "Password reset successfully",
+  "redirectingToLogin": "Redirecting to login page...",
+  "invalidResetLink": "Invalid or expired reset link",
+  "invalidResetLinkDescription": "This password reset link is invalid or has expired. Please request a new password reset.",
+  "backToLogin": "Back to Login",
+  "tokenExpired": "Password reset link has expired",
+  "passwordResetError": "Error resetting password",
+  "processingAuthentication": "Verifying reset link...",
+  "resetPasswordNewPasswordTitle": "Enter New Password",
+  "resetPasswordNewPasswordDescription": "Please enter your new password below",
+  "tokenExpiryWarning": "This reset link expires quickly. Please complete the process immediately.",
+  "error": "Error: {message}",
+  "@error": {
+    "placeholders": {
+      "message": {
+        "type": "String"
+      }
+    }
+  }
 }
 

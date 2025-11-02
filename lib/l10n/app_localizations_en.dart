@@ -60,6 +60,18 @@ class AppLocalizationsEn extends AppLocalizations {
   String get genderRequired => 'Gender is required';
 
   @override
+  String get roleRequired => 'Role is required';
+
+  @override
+  String get roleWarningTitle => 'Role Selection Information';
+
+  @override
+  String get roleWarningMessage => 'You cannot change your role without deleting your account. Role functionalities are different in the Hit Archery app, but in this app all roles have the same functionality.';
+
+  @override
+  String get understood => 'Understood';
+
+  @override
   String get birthDateLabel => 'Birth date';
 
   @override
@@ -209,7 +221,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get competitionDuration => 'Competition Duration';
 
   @override
-  String get competitionDurationDesc => 'Select start and end date/time.';
+  String get competitionDurationDesc => 'Select start and end dates.';
 
   @override
   String get startDate => 'Start date';
@@ -218,7 +230,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get endDate => 'End date';
 
   @override
-  String get competitionDateHint => 'DD.MM.YYYY HH:mm';
+  String get competitionDateHint => 'DD.MM.YYYY';
 
   @override
   String get registrationDatesLabel => 'Registration Dates';
@@ -1306,4 +1318,123 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get autoSelected => 'Auto Selected';
+
+  @override
+  String get multiByeSystem => 'Multi-Bye System';
+
+  @override
+  String multiByeSystemStart(String total, String target) {
+    return 'Multi-Bye Elimination System ($total → $target athletes)';
+  }
+
+  @override
+  String multiByeSystemShort(String threeRound, String twoRound, String oneRound, String zeroRound) {
+    return '3R: $threeRound, 2R: $twoRound, 1R: $oneRound, 0R: $zeroRound';
+  }
+
+  @override
+  String get thirdPlaceMatch => '3rd Place Match';
+
+  @override
+  String get thirdPlaceMatchTitle => '3RD PLACE MATCH';
+
+  @override
+  String thirdPlaceMatchDescription(int round) {
+    return '3RD PLACE: L${round}_1 vs L${round}_2';
+  }
+
+  @override
+  String get register => 'Register';
+
+  @override
+  String get forgotPassword => 'Forgot Password';
+
+  @override
+  String get confirmPasswordLabel => 'Confirm Password';
+
+  @override
+  String get passwordTooShort => 'Password must be at least 6 characters long';
+
+  @override
+  String get passwordMismatch => 'Passwords do not match';
+
+  @override
+  String get emailRequired => 'Email is required';
+
+  @override
+  String get tooManyRequests => 'Too many requests. Please try again later';
+
+  @override
+  String get emailVerificationRequiredContent => 'We\'ve sent a verification email to your address. Please check your email and click the verification link to activate your account.';
+
+  @override
+  String get emailAlreadyRegisteredTitle => 'Email Already Registered';
+
+  @override
+  String get emailAlreadyRegisteredMessage => 'This email address is already registered. Please try logging in instead.';
+
+  @override
+  String get forgotPasswordTitle => 'Forgot Password';
+
+  @override
+  String get forgotPasswordDescription => 'Enter your email address and we\'ll send you a link to reset your password.';
+
+  @override
+  String get sendResetLink => 'Send Reset Link';
+
+  @override
+  String get resetLinkSent => 'Password reset link sent to your email';
+
+  @override
+  String get resetPasswordTitle => 'Reset Password';
+
+  @override
+  String get newPasswordLabel => 'New Password';
+
+  @override
+  String get confirmPasswordRequired => 'Please confirm your password';
+
+  @override
+  String get passwordRequired => 'Password is required';
+
+  @override
+  String get resetPasswordButton => 'Reset Password';
+
+  @override
+  String get passwordResetSuccess => 'Password reset successfully';
+
+  @override
+  String get redirectingToLogin => 'Redirecting to login page...';
+
+  @override
+  String get invalidResetLink => 'Invalid or expired reset link';
+
+  @override
+  String get invalidResetLinkDescription => 'This password reset link is invalid or has expired. Please request a new password reset.';
+
+  @override
+  String get backToLogin => 'Back to Login';
+
+  @override
+  String get tokenExpired => 'Password reset link has expired';
+
+  @override
+  String get passwordResetError => 'Error resetting password';
+
+  @override
+  String get processingAuthentication => 'Verifying reset link...';
+
+  @override
+  String get resetPasswordNewPasswordTitle => 'Enter New Password';
+
+  @override
+  String get resetPasswordNewPasswordDescription => 'Please enter your new password below';
+
+  @override
+  String get tokenExpiryWarning => 'This reset link expires quickly. Please complete the process immediately.';
+
+  @override
+  String error(String message) {
+    return 'Error: $message';
+  }
 }

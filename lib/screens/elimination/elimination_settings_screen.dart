@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import '../../l10n/app_localizations.dart';
+import '../../services/bracket_service.dart';
 
 class EliminationSettingsScreen extends StatefulWidget {
   final String competitionId;
@@ -25,16 +26,26 @@ class _EliminationSettingsScreenState extends State<EliminationSettingsScreen> {
   final TextEditingController _cutoffController = TextEditingController();
   Timer? _incrementTimer;
   Timer? _decrementTimer;
+  
+  // Yeni parametreler - gelişmiş bracket sistemi için
+  int _byeCount = 0;
+  int _byeRounds = 1;
+  final TextEditingController _byeCountController = TextEditingController();
+  final TextEditingController _byeRoundsController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
     _cutoffController.text = _cutoffRank.toString();
+    _byeCountController.text = _byeCount.toString();
+    _byeRoundsController.text = _byeRounds.toString();
   }
 
   @override
   void dispose() {
     _cutoffController.dispose();
+    _byeCountController.dispose();
+    _byeRoundsController.dispose();
     _incrementTimer?.cancel();
     _decrementTimer?.cancel();
     super.dispose();
@@ -121,6 +132,8 @@ class _EliminationSettingsScreenState extends State<EliminationSettingsScreen> {
                     _buildBowTypeCard(l10n),
                     const SizedBox(height: 16),
                     _buildByeSettingsCard(l10n),
+                    const SizedBox(height: 16),
+                    _buildAdvancedBracketSettingsCard(l10n),
                     const SizedBox(height: 24),
                     _buildActionButtons(l10n),
                   ],
@@ -504,6 +517,7 @@ class _EliminationSettingsScreenState extends State<EliminationSettingsScreen> {
                               tooltip: isExpanded ? l10n.close : l10n.showAllMatches,
                             ),
                             
+                            
                             // Recommended badge
                             if (combination['recommended'] == true) ...[
                               Container(
@@ -584,7 +598,191 @@ class _EliminationSettingsScreenState extends State<EliminationSettingsScreen> {
     );
   }
 
-
+  Widget _buildAdvancedBracketSettingsCard(AppLocalizations l10n) {
+    final colorScheme = Theme.of(context).colorScheme;
+    
+    return Card(
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(color: colorScheme.outline.withOpacity(0.2), width: 1),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.sports_martial_arts, color: colorScheme.primary, size: 20),
+                const SizedBox(width: 8),
+                Text(
+                  'Gelişmiş Bracket Ayarları',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Bay geçen yarışmacılar ve bracket pozisyonlama ayarları',
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: colorScheme.onSurfaceVariant,
+              ),
+            ),
+            const SizedBox(height: 16),
+            
+            // Bay Count Setting
+            Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Bay Geçen Yarışmacı Sayısı',
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Kaç yarışmacı bay geçecek (çift sayı olmalı)',
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 16),
+                SizedBox(
+                  width: 80,
+                  child: TextField(
+                    controller: _byeCountController,
+                    keyboardType: TextInputType.number,
+                    textAlign: TextAlign.center,
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: colorScheme.primary,
+                    ),
+                    decoration: InputDecoration(
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: BorderSide(color: colorScheme.primary.withOpacity(0.3)),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: BorderSide(color: colorScheme.primary.withOpacity(0.3)),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: BorderSide(color: colorScheme.primary, width: 2),
+                      ),
+                      filled: true,
+                      fillColor: colorScheme.primaryContainer.withOpacity(0.3),
+                    ),
+                    onChanged: (value) {
+                      final newValue = int.tryParse(value);
+                      if (newValue != null && newValue >= 0 && newValue <= _cutoffRank) {
+                        setState(() {
+                          _byeCount = newValue;
+                        });
+                      }
+                    },
+                  ),
+                ),
+              ],
+            ),
+            
+            const SizedBox(height: 16),
+            
+            // Bay Rounds Setting
+            Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Bay Geçme Tur Sayısı',
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Bay geçenler kaç tur bay geçecek',
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 16),
+                SizedBox(
+                  width: 80,
+                  child: TextField(
+                    controller: _byeRoundsController,
+                    keyboardType: TextInputType.number,
+                    textAlign: TextAlign.center,
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: colorScheme.primary,
+                    ),
+                    decoration: InputDecoration(
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: BorderSide(color: colorScheme.primary.withOpacity(0.3)),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: BorderSide(color: colorScheme.primary.withOpacity(0.3)),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: BorderSide(color: colorScheme.primary, width: 2),
+                      ),
+                      filled: true,
+                      fillColor: colorScheme.primaryContainer.withOpacity(0.3),
+                    ),
+                    onChanged: (value) {
+                      final newValue = int.tryParse(value);
+                      if (newValue != null && newValue >= 1 && newValue <= 10) {
+                        setState(() {
+                          _byeRounds = newValue;
+                        });
+                      }
+                    },
+                  ),
+                ),
+              ],
+            ),
+            
+            const SizedBox(height: 16),
+            
+            // Test Bracket Button
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: _testBracketGeneration,
+                icon: Icon(Icons.play_arrow, size: 18),
+                label: Text('Bracket Oluştur ve Test Et'),
+                style: OutlinedButton.styleFrom(
+                  side: BorderSide(color: colorScheme.primary),
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 
   Widget _buildActionButtons(AppLocalizations l10n) {
     final colorScheme = Theme.of(context).colorScheme;
@@ -624,19 +822,31 @@ class _EliminationSettingsScreenState extends State<EliminationSettingsScreen> {
   List<Map<String, dynamic>> _calculatePossibleCombinations() {
     List<Map<String, dynamic>> combinations = [];
     
+    // Eğer cutoff 2'nin kuvvetiyse, sadece o boyutta tek seçenek göster
+    if (_isPowerOfTwo(_cutoffRank)) {
+      combinations.add({
+        'targetSize': _cutoffRank,
+        'description': _getDirectBracketDescription(_cutoffRank),
+        'recommended': true,
+        'multiBye': false,
+        'directBracket': true,
+      });
+      return combinations; // Sadece bu seçeneği döndür
+    }
+    
     // Case'lere göre olası hedef boyutlar
     List<int> possibleTargets = [8, 16, 32, 64, 128, 256];
     
     for (int target in possibleTargets) {
       // Hedef cutoff'tan küçük veya eşit olmalı
       if (target <= _cutoffRank) {
-        // Case'lere göre: cutoff hedefin 2 katından küçük veya eşit olmalı
-        // Örnek: 20 sporcu, 8 hedef → 20 <= 16 ✓, 20 sporcu, 16 hedef → 20 <= 32 ✓
         if (_cutoffRank <= target * 2) {
+          // Basit eleme sistemi
           combinations.add({
             'targetSize': target,
             'description': _getCombinationDescription(target),
             'recommended': _isRecommendedTarget(target),
+            'multiBye': false,
           });
         }
       }
@@ -652,12 +862,14 @@ class _EliminationSettingsScreenState extends State<EliminationSettingsScreen> {
     if (_cutoffRank <= targetSize) {
       return l10n.allAthletesInMainTableShort;
     } else {
-      int excess = _cutoffRank - targetSize;
-      int eliminationParticipants = excess * 2;
-      return l10n.preliminaryEliminationShort(
-          eliminationParticipants.toString(), 
-          excess.toString()
-      );
+      {
+        int excess = _cutoffRank - targetSize;
+        int eliminationParticipants = excess * 2;
+        return l10n.preliminaryEliminationShort(
+            eliminationParticipants.toString(), 
+            excess.toString()
+        );
+      }
     }
   }
 
@@ -667,7 +879,7 @@ class _EliminationSettingsScreenState extends State<EliminationSettingsScreen> {
     
     if (_cutoffRank <= targetSize) {
       // Direkt hedef boyuta ulaşılabilir - Ana tablo başlangıcı
-      return '${l10n.mainTableStart(_cutoffRank.toString())}\n${_getMainTableMatches(targetSize)}';
+      return '${l10n.mainTableStart(_cutoffRank.toString())}\n${_getCompleteBracketMatches(targetSize)}';
     } else {
       // Eleme turu gerekli
       int excess = _cutoffRank - targetSize;
@@ -677,7 +889,7 @@ class _EliminationSettingsScreenState extends State<EliminationSettingsScreen> {
       String description = '${l10n.preliminaryEliminationStart(_cutoffRank.toString(), targetSize.toString())}\n';
       description += _getEliminationMatches(directQualifiers + 1, _cutoffRank);
       description += '\n\n${l10n.mainTableStart(targetSize.toString())}\n';
-      description += _getMainTableMatches(targetSize);
+      description += _getCompleteBracketMatches(targetSize);
       
       return description;
     }
@@ -741,6 +953,111 @@ class _EliminationSettingsScreenState extends State<EliminationSettingsScreen> {
     
     return matches.join('\n');
   }
+
+  String _getCompleteBracketMatches(int targetSize) {
+    List<String> allMatches = [];
+    int currentSize = targetSize;
+    int roundNumber = 1;
+    int matchNumber = 1;
+    
+    // İlk tur maçları
+    List<String> currentRoundMatches = [];
+    
+    // Eğer cutoff > target size ise, eleme kazananlarını W1_X formatında göster
+    if (_cutoffRank > targetSize) {
+      int excess = _cutoffRank - targetSize;
+      int eliminationParticipants = excess * 2;
+      int directQualifiers = _cutoffRank - eliminationParticipants;
+      
+      for (int i = 1; i <= currentSize ~/ 2; i++) {
+        int opponent = currentSize - i + 1;
+        if (i < opponent) {
+          if (i <= directQualifiers && opponent <= directQualifiers) {
+            // Her ikisi de direkt geçen
+            currentRoundMatches.add('R$roundNumber Maç $matchNumber: $i vs $opponent');
+          } else if (i <= directQualifiers) {
+            // Birinci direkt geçen, ikinci eleme kazananı
+            int winnerIndex = opponent - directQualifiers;
+            currentRoundMatches.add('R$roundNumber Maç $matchNumber: $i vs W1_$winnerIndex');
+          } else {
+            // Her ikisi de eleme kazananı
+            int winnerIndex1 = i - directQualifiers;
+            int winnerIndex2 = opponent - directQualifiers;
+            currentRoundMatches.add('R$roundNumber Maç $matchNumber: W1_$winnerIndex1 vs W1_$winnerIndex2');
+          }
+          matchNumber++;
+        }
+      }
+    } else {
+      // Normal bracket - herkes direkt
+      for (int i = 1; i <= currentSize ~/ 2; i++) {
+        int opponent = currentSize - i + 1;
+        if (i < opponent) {
+          currentRoundMatches.add('R$roundNumber Maç $matchNumber: $i vs $opponent');
+          matchNumber++;
+        }
+      }
+    }
+    
+    if (currentRoundMatches.isNotEmpty) {
+      allMatches.add('=== ROUND $roundNumber (${currentSize} → ${currentSize ~/ 2}) ===');
+      allMatches.addAll(currentRoundMatches);
+      allMatches.add('');
+    }
+    
+    // Sonraki turlar
+    currentSize = currentSize ~/ 2;
+    roundNumber++;
+    matchNumber = 1;
+    
+    while (currentSize > 1) {
+      List<String> roundMatches = [];
+      
+      for (int i = 1; i <= currentSize ~/ 2; i++) {
+        int opponent = currentSize - i + 1;
+        if (i < opponent) {
+          String matchText;
+          if (currentSize == 2) {
+            // Final maçı
+            matchText = 'FINAL: W${roundNumber-1}_$i vs W${roundNumber-1}_$opponent';
+          } else if (currentSize == 4) {
+            // Yarı final
+            matchText = 'YARI FİNAL $i: W${roundNumber-1}_$i vs W${roundNumber-1}_$opponent';
+          } else {
+            // Normal tur
+            matchText = 'R$roundNumber Maç $matchNumber: W${roundNumber-1}_$i vs W${roundNumber-1}_$opponent';
+          }
+          roundMatches.add(matchText);
+          matchNumber++;
+        }
+      }
+      
+      if (roundMatches.isNotEmpty) {
+        String roundTitle = currentSize == 2 ? '=== FINAL ===' : 
+                           currentSize == 4 ? '=== YARI FİNAL (4 → 2) ===' :
+                           '=== ROUND $roundNumber (${currentSize} → ${currentSize ~/ 2}) ===';
+        allMatches.add(roundTitle);
+        allMatches.addAll(roundMatches);
+        allMatches.add('');
+      }
+      
+      currentSize = currentSize ~/ 2;
+      roundNumber++;
+      matchNumber = 1;
+    }
+    
+    // 3.lük maçı ekle (sadece 4 veya daha fazla sporcu varsa)
+    if (targetSize >= 4) {
+      final l10n = AppLocalizations.of(context);
+      if (l10n != null) {
+        allMatches.add('=== ${l10n.thirdPlaceMatchTitle} ===');
+        allMatches.add(l10n.thirdPlaceMatchDescription(roundNumber - 1));
+        allMatches.add('');
+      }
+    }
+    
+    return allMatches.join('\n');
+  }
   
   bool _isRecommendedTarget(int targetSize) {
     // En yakın küçük 2'nin kuvveti önerilen
@@ -758,6 +1075,28 @@ class _EliminationSettingsScreenState extends State<EliminationSettingsScreen> {
     return power;
   }
 
+  bool _isPowerOfTwo(int n) {
+    return n > 0 && (n & (n - 1)) == 0;
+  }
+
+  String _getDirectBracketDescription(int targetSize) {
+    final l10n = AppLocalizations.of(context);
+    if (l10n == null) return '';
+    
+    String description = 'Direct Bracket Start (${_cutoffRank} athletes)\n\n';
+    description += _getCompleteBracketMatches(targetSize);
+    
+    return description;
+  }
+
+
+
+
+
+
+
+
+
   String _getBowTypeDisplayName(String bowType, AppLocalizations l10n) {
     switch (bowType) {
       case 'recurve':
@@ -772,8 +1111,136 @@ class _EliminationSettingsScreenState extends State<EliminationSettingsScreen> {
   }
 
 
+
   void _saveSettings() {
     // Ayarları kaydetme mantığı
     Navigator.of(context).pop();
+  }
+
+  void _testBracketGeneration() {
+    try {
+      final bracketService = BracketService(
+        totalParticipants: _cutoffRank,
+        eliminationParticipants: _cutoffRank,
+        byeCount: _byeCount,
+        byeRounds: _byeRounds,
+      );
+
+      // Validation kontrolü
+      final validation = bracketService.validate();
+      if (!validation.item1) {
+        _showErrorDialog(validation.item2);
+        return;
+      }
+
+      // Bracket oluştur
+      final matches = bracketService.createBracket();
+      
+      // Sonuçları göster
+      _showBracketResults(matches);
+      
+    } catch (e) {
+      _showErrorDialog('Bracket oluşturulurken hata: $e');
+    }
+  }
+
+  void _showErrorDialog(String message) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Hata'),
+        content: Text(message),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: Text('Tamam'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showBracketResults(List<Match> matches) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Bracket Sonuçları'),
+        content: SizedBox(
+          width: double.maxFinite,
+          height: 400,
+          child: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Toplam ${matches.length} maç oluşturuldu',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                ...matches.map((match) => Container(
+                  margin: const EdgeInsets.only(bottom: 8),
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.3),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: match.isBye 
+                          ? Theme.of(context).colorScheme.primary.withOpacity(0.5)
+                          : Theme.of(context).colorScheme.outline.withOpacity(0.3),
+                    ),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Text(
+                            'TUR ${match.round}: ${match.roundName}',
+                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                              fontWeight: FontWeight.bold,
+                              color: Theme.of(context).colorScheme.primary,
+                            ),
+                          ),
+                          if (match.isBye) ...[
+                            const SizedBox(width: 8),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: Theme.of(context).colorScheme.secondary,
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: Text(
+                                'BAY',
+                                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                  color: Theme.of(context).colorScheme.onSecondary,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Maç ${match.matchNo}: ${match.participant1} vs ${match.participant2}',
+                        style: Theme.of(context).textTheme.bodyMedium,
+                      ),
+                    ],
+                  ),
+                )).toList(),
+              ],
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: Text('Kapat'),
+          ),
+        ],
+      ),
+    );
   }
 }

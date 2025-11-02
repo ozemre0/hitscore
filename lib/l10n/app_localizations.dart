@@ -197,6 +197,30 @@ abstract class AppLocalizations {
   /// **'Gender is required'**
   String get genderRequired;
 
+  /// No description provided for @roleRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Role is required'**
+  String get roleRequired;
+
+  /// No description provided for @roleWarningTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Role Selection Information'**
+  String get roleWarningTitle;
+
+  /// No description provided for @roleWarningMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'You cannot change your role without deleting your account. Role functionalities are different in the Hit Archery app, but in this app all roles have the same functionality.'**
+  String get roleWarningMessage;
+
+  /// No description provided for @understood.
+  ///
+  /// In en, this message translates to:
+  /// **'Understood'**
+  String get understood;
+
   /// No description provided for @birthDateLabel.
   ///
   /// In en, this message translates to:
@@ -494,7 +518,7 @@ abstract class AppLocalizations {
   /// No description provided for @competitionDurationDesc.
   ///
   /// In en, this message translates to:
-  /// **'Select start and end date/time.'**
+  /// **'Select start and end dates.'**
   String get competitionDurationDesc;
 
   /// No description provided for @startDate.
@@ -512,7 +536,7 @@ abstract class AppLocalizations {
   /// No description provided for @competitionDateHint.
   ///
   /// In en, this message translates to:
-  /// **'DD.MM.YYYY HH:mm'**
+  /// **'DD.MM.YYYY'**
   String get competitionDateHint;
 
   /// No description provided for @registrationDatesLabel.
@@ -2620,6 +2644,228 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Auto Selected'**
   String get autoSelected;
+
+  /// No description provided for @multiByeSystem.
+  ///
+  /// In en, this message translates to:
+  /// **'Multi-Bye System'**
+  String get multiByeSystem;
+
+  /// No description provided for @multiByeSystemStart.
+  ///
+  /// In en, this message translates to:
+  /// **'Multi-Bye Elimination System ({total} → {target} athletes)'**
+  String multiByeSystemStart(String total, String target);
+
+  /// No description provided for @multiByeSystemShort.
+  ///
+  /// In en, this message translates to:
+  /// **'3R: {threeRound}, 2R: {twoRound}, 1R: {oneRound}, 0R: {zeroRound}'**
+  String multiByeSystemShort(String threeRound, String twoRound, String oneRound, String zeroRound);
+
+  /// No description provided for @thirdPlaceMatch.
+  ///
+  /// In en, this message translates to:
+  /// **'3rd Place Match'**
+  String get thirdPlaceMatch;
+
+  /// No description provided for @thirdPlaceMatchTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'3RD PLACE MATCH'**
+  String get thirdPlaceMatchTitle;
+
+  /// No description provided for @thirdPlaceMatchDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'3RD PLACE: L{round}_1 vs L{round}_2'**
+  String thirdPlaceMatchDescription(int round);
+
+  /// No description provided for @register.
+  ///
+  /// In en, this message translates to:
+  /// **'Register'**
+  String get register;
+
+  /// No description provided for @forgotPassword.
+  ///
+  /// In en, this message translates to:
+  /// **'Forgot Password'**
+  String get forgotPassword;
+
+  /// No description provided for @confirmPasswordLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirm Password'**
+  String get confirmPasswordLabel;
+
+  /// No description provided for @passwordTooShort.
+  ///
+  /// In en, this message translates to:
+  /// **'Password must be at least 6 characters long'**
+  String get passwordTooShort;
+
+  /// No description provided for @passwordMismatch.
+  ///
+  /// In en, this message translates to:
+  /// **'Passwords do not match'**
+  String get passwordMismatch;
+
+  /// No description provided for @emailRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Email is required'**
+  String get emailRequired;
+
+  /// No description provided for @tooManyRequests.
+  ///
+  /// In en, this message translates to:
+  /// **'Too many requests. Please try again later'**
+  String get tooManyRequests;
+
+  /// No description provided for @emailVerificationRequiredContent.
+  ///
+  /// In en, this message translates to:
+  /// **'We\'ve sent a verification email to your address. Please check your email and click the verification link to activate your account.'**
+  String get emailVerificationRequiredContent;
+
+  /// No description provided for @emailAlreadyRegisteredTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Email Already Registered'**
+  String get emailAlreadyRegisteredTitle;
+
+  /// No description provided for @emailAlreadyRegisteredMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'This email address is already registered. Please try logging in instead.'**
+  String get emailAlreadyRegisteredMessage;
+
+  /// No description provided for @forgotPasswordTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Forgot Password'**
+  String get forgotPasswordTitle;
+
+  /// No description provided for @forgotPasswordDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter your email address and we\'ll send you a link to reset your password.'**
+  String get forgotPasswordDescription;
+
+  /// No description provided for @sendResetLink.
+  ///
+  /// In en, this message translates to:
+  /// **'Send Reset Link'**
+  String get sendResetLink;
+
+  /// No description provided for @resetLinkSent.
+  ///
+  /// In en, this message translates to:
+  /// **'Password reset link sent to your email'**
+  String get resetLinkSent;
+
+  /// No description provided for @resetPasswordTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Reset Password'**
+  String get resetPasswordTitle;
+
+  /// No description provided for @newPasswordLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'New Password'**
+  String get newPasswordLabel;
+
+  /// No description provided for @confirmPasswordRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Please confirm your password'**
+  String get confirmPasswordRequired;
+
+  /// No description provided for @passwordRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Password is required'**
+  String get passwordRequired;
+
+  /// No description provided for @resetPasswordButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Reset Password'**
+  String get resetPasswordButton;
+
+  /// No description provided for @passwordResetSuccess.
+  ///
+  /// In en, this message translates to:
+  /// **'Password reset successfully'**
+  String get passwordResetSuccess;
+
+  /// No description provided for @redirectingToLogin.
+  ///
+  /// In en, this message translates to:
+  /// **'Redirecting to login page...'**
+  String get redirectingToLogin;
+
+  /// No description provided for @invalidResetLink.
+  ///
+  /// In en, this message translates to:
+  /// **'Invalid or expired reset link'**
+  String get invalidResetLink;
+
+  /// No description provided for @invalidResetLinkDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'This password reset link is invalid or has expired. Please request a new password reset.'**
+  String get invalidResetLinkDescription;
+
+  /// No description provided for @backToLogin.
+  ///
+  /// In en, this message translates to:
+  /// **'Back to Login'**
+  String get backToLogin;
+
+  /// No description provided for @tokenExpired.
+  ///
+  /// In en, this message translates to:
+  /// **'Password reset link has expired'**
+  String get tokenExpired;
+
+  /// No description provided for @passwordResetError.
+  ///
+  /// In en, this message translates to:
+  /// **'Error resetting password'**
+  String get passwordResetError;
+
+  /// No description provided for @processingAuthentication.
+  ///
+  /// In en, this message translates to:
+  /// **'Verifying reset link...'**
+  String get processingAuthentication;
+
+  /// No description provided for @resetPasswordNewPasswordTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter New Password'**
+  String get resetPasswordNewPasswordTitle;
+
+  /// No description provided for @resetPasswordNewPasswordDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Please enter your new password below'**
+  String get resetPasswordNewPasswordDescription;
+
+  /// No description provided for @tokenExpiryWarning.
+  ///
+  /// In en, this message translates to:
+  /// **'This reset link expires quickly. Please complete the process immediately.'**
+  String get tokenExpiryWarning;
+
+  /// No description provided for @error.
+  ///
+  /// In en, this message translates to:
+  /// **'Error: {message}'**
+  String error(String message);
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

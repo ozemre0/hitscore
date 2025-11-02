@@ -1,10 +1,11 @@
 ext {
     // Provide Flutter-style version constants for older plugins expecting them
     flutter = [
-        compileSdkVersion: 35,
-        targetSdkVersion : 35,
+        compileSdkVersion: 36,
+        targetSdkVersion : 36,
         minSdkVersion    : 21
     ]
+    ext.kotlin_version = '2.1.0'
 }
 
 allprojects {

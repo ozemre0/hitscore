@@ -294,7 +294,31 @@ class _CompetitionClassificationsScreenState extends State<CompetitionClassifica
                           Text(_competitionData!['description'], style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant)),
                         ],
                         const SizedBox(height: 8),
-                        Text('${l10n.competitionDateLabel}: ${_formatDate(_competitionData!['start_date'])}', style: Theme.of(context).textTheme.bodySmall),
+                        Row(
+                          children: [
+                            Icon(Icons.calendar_today, size: 16, color: Theme.of(context).colorScheme.onSurfaceVariant),
+                            const SizedBox(width: 4),
+                            Text(
+                              '${l10n.competitionStartsOn}: ${_formatDate(_competitionData!['start_date'])}',
+                              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                color: Theme.of(context).colorScheme.onSurfaceVariant,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 4),
+                        Row(
+                          children: [
+                            Icon(Icons.event, size: 16, color: Theme.of(context).colorScheme.onSurfaceVariant),
+                            const SizedBox(width: 4),
+                            Text(
+                              '${l10n.competitionEndsOn}: ${_formatDate(_competitionData!['end_date'])}',
+                              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                color: Theme.of(context).colorScheme.onSurfaceVariant,
+                              ),
+                            ),
+                          ],
+                        ),
                       ]),
                     ),
                   ),
@@ -395,9 +419,6 @@ class _CompetitionClassificationsScreenState extends State<CompetitionClassifica
                       return parts.join(' ');
                     }
                     
-                    final localizedBow = mapBow('${classification['bowType'] ?? classification['bow_type'] ?? ''}');
-                    final localizedGender = mapGender('${classification['gender'] ?? ''}');
-                    final localizedEnv = mapEnv('${classification['environment'] ?? ''}');
                     final localizedName = generateLocalizedName();
                     
                     return Card(

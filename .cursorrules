@@ -1,6 +1,6 @@
 Flutter/Dart Standards
 - Use l10n (AppLocalizations) for every string. No hardcoded strings.
-- AppLocalizations must be used correctly everywhere. No fallback literals.
+- AppLocalizations must be used correctly everywhere. No fallback literals. for both .arb files and .dart localization files under lib/l10n folder , if necessery add localizations yourself if flutter gen-l10n doesnt work 
 - Every page must be fully responsive (small/big screens, text scales, no overflow).
 - Prefer composition over inheritance.
 - Use const constructors and const widgets wherever possible.

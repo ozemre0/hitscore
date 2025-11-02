@@ -712,68 +712,70 @@ class _ScoreEntryContentState extends ConsumerState<_ScoreEntryContent> {
                                           width: 1,
                                         ),
                                       ),
-                                      child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                      child: Row(
+                                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                         children: [
-                                          Row(
+                                          // Sol taraf: Set numarası ve toplam skor
+                                          Column(
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            mainAxisSize: MainAxisSize.min,
                                             children: [
-                                              Text(
-                                                l10n.setLabel(set['setNumber'] as int),
-                                                style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                                                  fontWeight: FontWeight.bold,
-                                                ),
+                                              Row(
+                                                children: [
+                                                  Text(
+                                                    l10n.setLabel(set['setNumber'] as int),
+                                                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                                                      fontWeight: FontWeight.bold,
+                                                    ),
+                                                  ),
+                                                  const SizedBox(width: 8),
+                                                  Icon(
+                                                    Icons.touch_app,
+                                                    size: 16,
+                                                    color: colorScheme.onSurfaceVariant,
+                                                  ),
+                                                ],
                                               ),
-                                              const SizedBox(width: 8),
-                                              Icon(
-                                                Icons.touch_app,
-                                                size: 16,
-                                                color: colorScheme.onSurfaceVariant,
-                                              ),
-                                            ],
-                                          ),
-                                          const SizedBox(height: 8),
-                                          Row(
-                                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                            children: [
                                               Text(
                                                 '${set['totalScore']}/${_arrowsPerSet * 10}',
                                                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                                                   color: colorScheme.onSurfaceVariant,
                                                 ),
                                               ),
-                                              Row(
-                                                children: () {
-                                                  final arrows = (set['arrows'] as List<int>);
-                                                  final rawArrows = (set['rawArrows'] as List<dynamic>?) ?? arrows;
-                                                  return List.generate(arrows.length, (i) {
-                                                    final score = arrows[i];
-                                                    final raw = i < rawArrows.length ? rawArrows[i] : null;
-                                                    final label = (raw == 'X' || raw == 'M')
-                                                        ? raw as String
-                                                        : (score == 0 ? 'M' : score.toString());
-                                                    return Container(
-                                                      width: 32,
-                                                      height: 32,
-                                                      margin: const EdgeInsets.only(left: 4),
-                                                      decoration: BoxDecoration(
-                                                        color: _getColorForScore(score),
-                                                        shape: BoxShape.circle,
-                                                        border: Border.all(color: Colors.black26),
-                                                      ),
-                                                      alignment: Alignment.center,
-                                                      child: Text(
-                                                        label,
-                                                        style: TextStyle(
-                                                          color: _getTextColorForScore(score),
-                                                          fontSize: 15,
-                                                          fontWeight: FontWeight.bold,
-                                                        ),
-                                                      ),
-                                                    );
-                                                  });
-                                                }(),
-                                              ),
                                             ],
+                                          ),
+                                          // Sağ taraf: Ok daireleri
+                                          Row(
+                                            children: () {
+                                              final arrows = (set['arrows'] as List<int>);
+                                              final rawArrows = (set['rawArrows'] as List<dynamic>?) ?? arrows;
+                                              return List.generate(arrows.length, (i) {
+                                                final score = arrows[i];
+                                                final raw = i < rawArrows.length ? rawArrows[i] : null;
+                                                final label = (raw == 'X' || raw == 'M')
+                                                    ? raw as String
+                                                    : (score == 0 ? 'M' : score.toString());
+                                                return Container(
+                                                  width: 32,
+                                                  height: 32,
+                                                  margin: const EdgeInsets.only(left: 4),
+                                                  decoration: BoxDecoration(
+                                                    color: _getColorForScore(score),
+                                                    shape: BoxShape.circle,
+                                                    border: Border.all(color: Colors.black26),
+                                                  ),
+                                                  alignment: Alignment.center,
+                                                  child: Text(
+                                                    label,
+                                                    style: TextStyle(
+                                                      color: _getTextColorForScore(score),
+                                                      fontSize: 15,
+                                                      fontWeight: FontWeight.bold,
+                                                    ),
+                                                  ),
+                                                );
+                                              });
+                                            }(),
                                           ),
                                         ],
                                       ),

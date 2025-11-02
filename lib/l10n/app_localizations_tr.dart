@@ -60,6 +60,18 @@ class AppLocalizationsTr extends AppLocalizations {
   String get genderRequired => 'Cinsiyet zorunludur';
 
   @override
+  String get roleRequired => 'Rol zorunludur';
+
+  @override
+  String get roleWarningTitle => 'Rol Seçimi Bilgisi';
+
+  @override
+  String get roleWarningMessage => 'Rolünüzü hesabınızı silmeden değiştirmeniz mümkün değildir. Rollerin farklı işlevleri Hit Archery uygulamasında vardır, bu uygulamada her rolün işlevi aynıdır.';
+
+  @override
+  String get understood => 'Anladım';
+
+  @override
   String get birthDateLabel => 'Doğum tarihi';
 
   @override
@@ -209,7 +221,7 @@ class AppLocalizationsTr extends AppLocalizations {
   String get competitionDuration => 'Yarışma Süresi';
 
   @override
-  String get competitionDurationDesc => 'Başlangıç ve bitiş tarih/saatini seçin.';
+  String get competitionDurationDesc => 'Başlangıç ve bitiş tarihlerini seçin.';
 
   @override
   String get startDate => 'Başlangıç tarihi';
@@ -218,7 +230,7 @@ class AppLocalizationsTr extends AppLocalizations {
   String get endDate => 'Bitiş tarihi';
 
   @override
-  String get competitionDateHint => 'GG.AA.YYYY SS:dd';
+  String get competitionDateHint => 'GG.AA.YYYY';
 
   @override
   String get registrationDatesLabel => 'Kayıt Tarihleri';
@@ -810,7 +822,7 @@ class AppLocalizationsTr extends AppLocalizations {
   String get guestSubtitle => 'Aktif yarışmaları keşfet veya devam etmek için giriş yap.';
 
   @override
-  String get goToLogin => 'Giriş ekranına git';
+  String get goToLogin => 'Giriş Ekranına Git';
 
   @override
   String get browseActiveCompetitions => 'Aktif Yarışmalar';
@@ -1306,4 +1318,123 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get autoSelected => 'Otomatik Seçildi';
+
+  @override
+  String get multiByeSystem => 'Çoklu Bay Sistem';
+
+  @override
+  String multiByeSystemStart(String total, String target) {
+    return 'Çoklu Bay Eleme Sistemi ($total → $target sporcu)';
+  }
+
+  @override
+  String multiByeSystemShort(String threeRound, String twoRound, String oneRound, String zeroRound) {
+    return '3T: $threeRound, 2T: $twoRound, 1T: $oneRound, 0T: $zeroRound';
+  }
+
+  @override
+  String get thirdPlaceMatch => '3.lük Maçı';
+
+  @override
+  String get thirdPlaceMatchTitle => '3.LÜK MAÇI';
+
+  @override
+  String thirdPlaceMatchDescription(int round) {
+    return '3.LÜK: L${round}_1 vs L${round}_2';
+  }
+
+  @override
+  String get register => 'Kayıt Ol';
+
+  @override
+  String get forgotPassword => 'Şifremi Unuttum';
+
+  @override
+  String get confirmPasswordLabel => 'Şifre Tekrarı';
+
+  @override
+  String get passwordTooShort => 'Şifre en az 6 karakter olmalıdır';
+
+  @override
+  String get passwordMismatch => 'Şifreler eşleşmiyor';
+
+  @override
+  String get emailRequired => 'E-posta gereklidir';
+
+  @override
+  String get tooManyRequests => 'Çok fazla istek. Lütfen daha sonra tekrar deneyin';
+
+  @override
+  String get emailVerificationRequiredContent => 'Adresinize bir doğrulama e-postası gönderdik. Lütfen e-postanızı kontrol edin ve hesabınızı etkinleştirmek için doğrulama bağlantısına tıklayın.';
+
+  @override
+  String get emailAlreadyRegisteredTitle => 'E-posta Zaten Kayıtlı';
+
+  @override
+  String get emailAlreadyRegisteredMessage => 'Bu e-posta adresi zaten kayıtlı. Lütfen giriş yapmayı deneyin.';
+
+  @override
+  String get forgotPasswordTitle => 'Şifremi Unuttum';
+
+  @override
+  String get forgotPasswordDescription => 'E-posta adresinizi girin, size şifre sıfırlama bağlantısı gönderelim.';
+
+  @override
+  String get sendResetLink => 'Sıfırlama Bağlantısı Gönder';
+
+  @override
+  String get resetLinkSent => 'Şifre sıfırlama bağlantısı e-postanıza gönderildi';
+
+  @override
+  String get resetPasswordTitle => 'Şifre Sıfırla';
+
+  @override
+  String get newPasswordLabel => 'Yeni Şifre';
+
+  @override
+  String get confirmPasswordRequired => 'Lütfen şifrenizi onaylayın';
+
+  @override
+  String get passwordRequired => 'Şifre gereklidir';
+
+  @override
+  String get resetPasswordButton => 'Şifreyi Sıfırla';
+
+  @override
+  String get passwordResetSuccess => 'Şifre başarıyla sıfırlandı';
+
+  @override
+  String get redirectingToLogin => 'Giriş sayfasına yönlendiriliyor...';
+
+  @override
+  String get invalidResetLink => 'Geçersiz veya süresi dolmuş sıfırlama bağlantısı';
+
+  @override
+  String get invalidResetLinkDescription => 'Bu şifre sıfırlama bağlantısı geçersiz veya süresi dolmuş. Lütfen yeni bir şifre sıfırlama isteği gönderin.';
+
+  @override
+  String get backToLogin => 'Giriş Ekranına Dön';
+
+  @override
+  String get tokenExpired => 'Şifre sıfırlama bağlantısının süresi doldu';
+
+  @override
+  String get passwordResetError => 'Şifre sıfırlama hatası';
+
+  @override
+  String get processingAuthentication => 'Sıfırlama bağlantısı doğrulanıyor...';
+
+  @override
+  String get resetPasswordNewPasswordTitle => 'Yeni Şifre Girin';
+
+  @override
+  String get resetPasswordNewPasswordDescription => 'Lütfen aşağıya yeni şifrenizi girin';
+
+  @override
+  String get tokenExpiryWarning => 'Bu sıfırlama bağlantısının süresi hızla doluyor. Lütfen işlemi hemen tamamlayın.';
+
+  @override
+  String error(String message) {
+    return 'Hata: $message';
+  }
 }

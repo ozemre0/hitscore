@@ -4,8 +4,10 @@ import 'package:flutter/material.dart';
 import '../l10n/app_localizations.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../services/supabase_config.dart';
+import '../providers/profile_providers.dart';
 import 'home_shell.dart';
 
 class ClubOption {
@@ -25,14 +27,14 @@ class ClubOption {
   int get hashCode => id.hashCode;
 }
 
-class ProfileSetupScreen extends StatefulWidget {
+class ProfileSetupScreen extends ConsumerStatefulWidget {
   const ProfileSetupScreen({super.key});
 
   @override
-  State<ProfileSetupScreen> createState() => _ProfileSetupScreenState();
+  ConsumerState<ProfileSetupScreen> createState() => _ProfileSetupScreenState();
 }
 
-class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
+class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
   final TextEditingController _firstNameController = TextEditingController();
   final TextEditingController _lastNameController = TextEditingController();
@@ -43,7 +45,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
   dynamic _selectedImage; // File or XFile depending on platform
   String? _currentPhotoUrl;
 
-  String _selectedRole = 'athlete';
+  String? _selectedRole;
   String? _selectedGender;
   DateTime? _selectedBirthDate;
 
@@ -99,7 +101,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
           _phoneController.text = phone.startsWith('+')
               ? phone.split(' ').skip(1).join(' ')
               : phone;
-          _selectedRole = (existing['role'] ?? 'athlete').toString();
+          _selectedRole = (existing['role'])?.toString();
           _selectedGender = (existing['gender'])?.toString();
           final dynamic birth = existing['birth_date'];
           if (birth is String && birth.isNotEmpty) {
@@ -318,12 +320,30 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
       );
       return;
     }
+    if (_selectedRole == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(l10n.roleRequired)),
+      );
+      return;
+    }
     if (_selectedGender == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(l10n.genderRequired)),
       );
       return;
     }
+
+    // Show role warning dialog first, then save if confirmed
+    final bool? shouldSave = await _showRoleWarningDialog();
+    if (shouldSave == true) {
+      await _saveProfile();
+    }
+  }
+
+  Future<void> _saveProfile() async {
+    final l10n = AppLocalizations.of(context);
+    if (l10n == null) return;
+
     setState(() => _isLoading = true);
     try {
       final User? user = SupabaseConfig.client.auth.currentUser;
@@ -342,6 +362,12 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
         formattedPhone = '';
       }
 
+      // Generate visible_id
+      final String visibleId = await _generateVisibleId(
+        _firstNameController.text.trim(),
+        _lastNameController.text.trim(),
+      );
+
       final payload = {
         'id': user.id,
         'first_name': _firstNameController.text,
@@ -355,6 +381,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
         'club_id': (_selectedClub != null && !_selectedClub!.isIndividual) ? _selectedClub!.id : null,
         'city': (_selectedClub != null && !_selectedClub!.isIndividual) ? _selectedCity : null,
         'country': (_selectedClub != null && !_selectedClub!.isIndividual) ? _selectedCountry : null,
+        'visible_id': visibleId,
         'created_at': DateTime.now().toIso8601String(),
         'updated_at': DateTime.now().toIso8601String(),
       };
@@ -366,6 +393,14 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(l10n.profileUpdated)),
       );
+      
+      if (!mounted) return;
+      // Invalidate the profile providers to trigger a refresh
+      ref.invalidate(profileExistsProvider);
+      ref.invalidate(profileFirstNameProvider);
+      ref.invalidate(profileDisplayNameProvider);
+      
+      // Navigate to home shell with the new profile
       if (!mounted) return;
       Navigator.of(context).pushAndRemoveUntil(
         MaterialPageRoute(builder: (_) => const HomeShell()),
@@ -381,6 +416,104 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
         setState(() => _isLoading = false);
       }
     }
+  }
+
+  Future<String> _generateVisibleId(String firstName, String lastName) async {
+    try {
+      // Get first letters and convert to lowercase
+      final String firstInitial = firstName.isNotEmpty ? firstName[0].toLowerCase() : 'a';
+      final String lastInitial = lastName.isNotEmpty ? lastName[0].toLowerCase() : 'a';
+      final String baseId = '$firstInitial$lastInitial';
+
+      // Query existing visible_ids that start with the same initials
+      final List<dynamic> existingIds = await SupabaseConfig.client
+          .from('profiles')
+          .select('visible_id')
+          .like('visible_id', '$baseId%')
+          .not('visible_id', 'is', null);
+
+      // Extract numbers from existing IDs and find the next available number
+      int maxNumber = 0;
+      for (final row in existingIds) {
+        final String? visibleId = row['visible_id']?.toString();
+        if (visibleId != null && visibleId.startsWith(baseId)) {
+          final String numberPart = visibleId.substring(baseId.length);
+          final int? number = int.tryParse(numberPart);
+          if (number != null && number > maxNumber) {
+            maxNumber = number;
+          }
+        }
+      }
+
+      // Generate the next sequential number
+      final int nextNumber = maxNumber + 1;
+      return '$baseId$nextNumber';
+    } catch (e) {
+      // Fallback: use timestamp if there's an error
+      final String firstInitial = firstName.isNotEmpty ? firstName[0].toLowerCase() : 'a';
+      final String lastInitial = lastName.isNotEmpty ? lastName[0].toLowerCase() : 'a';
+      final int timestamp = DateTime.now().millisecondsSinceEpoch % 10000;
+      return '$firstInitial$lastInitial$timestamp';
+    }
+  }
+
+  Future<bool?> _showRoleWarningDialog() async {
+    final l10n = AppLocalizations.of(context);
+    if (l10n == null) return false;
+
+    return showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        final theme = Theme.of(context);
+        return AlertDialog(
+          title: Row(
+            children: [
+              Expanded(
+                child: Text(
+                  l10n.roleWarningTitle,
+                  style: theme.textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: theme.primaryColor,
+                  ),
+                ),
+              ),
+              IconButton(
+                onPressed: () => Navigator.of(context).pop(false),
+                icon: const Icon(Icons.close),
+                style: IconButton.styleFrom(
+                  backgroundColor: theme.colorScheme.error.withOpacity(0.1),
+                  foregroundColor: theme.colorScheme.error,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+                tooltip: 'Close',
+              ),
+            ],
+          ),
+          content: Text(
+            l10n.roleWarningMessage,
+            style: theme.textTheme.bodyMedium,
+          ),
+          actions: [
+            OutlinedButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              style: OutlinedButton.styleFrom(
+                side: BorderSide(color: theme.primaryColor),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+              child: Text(
+                l10n.understood,
+                style: TextStyle(color: theme.primaryColor),
+              ),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   @override
@@ -473,10 +606,18 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                             const SizedBox(height: 24),
                             SizedBox(
                               width: double.infinity,
-                              child: ElevatedButton.icon(
+                              child: OutlinedButton.icon(
                                 onPressed: _isLoading ? null : _submitForm,
                                 icon: const Icon(Icons.save),
                                 label: Text(l10n.save),
+                                style: OutlinedButton.styleFrom(
+                                  side: BorderSide(color: theme.primaryColor, width: 2),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  padding: const EdgeInsets.symmetric(vertical: 16),
+                                  foregroundColor: theme.primaryColor,
+                                ),
                               ),
                             ),
                           ],
@@ -533,7 +674,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
         TextFormField(
           controller: _firstNameController,
           decoration: InputDecoration(
-            labelText: l10n.firstName,
+            labelText: '${l10n.firstName} *',
             labelStyle: TextStyle(color: hintTextColor),
             border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
           ),
@@ -543,7 +684,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
         TextFormField(
           controller: _lastNameController,
           decoration: InputDecoration(
-            labelText: l10n.lastName,
+            labelText: '${l10n.lastName} *',
             labelStyle: TextStyle(color: hintTextColor),
             border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
           ),
@@ -661,24 +802,12 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
     final textColor = isDark ? Colors.white : Colors.black87;
     return Column(
       children: [
-        DropdownButtonFormField<String>(
-          value: _selectedRole,
-          decoration: InputDecoration(
-            labelText: l10n.role,
-            labelStyle: TextStyle(color: hintTextColor),
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-          ),
-          items: [
-            DropdownMenuItem(value: 'athlete', child: Text('athlete', style: TextStyle(color: textColor))),
-            DropdownMenuItem(value: 'coach', child: Text('coach', style: TextStyle(color: textColor))),
-          ],
-          onChanged: (v) => setState(() => _selectedRole = v ?? 'athlete'),
-        ),
+        _buildRolePicker(context, isDark, l10n),
         const SizedBox(height: 16),
         DropdownButtonFormField<String>(
           value: _selectedGender,
           decoration: InputDecoration(
-            labelText: l10n.gender,
+            labelText: '${l10n.gender} *',
             labelStyle: TextStyle(color: hintTextColor),
             border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
           ),
@@ -707,7 +836,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(l10n.birthDate, style: theme.textTheme.bodyMedium?.copyWith(color: hintTextColor)),
+                      Text('${l10n.birthDate} *', style: theme.textTheme.bodyMedium?.copyWith(color: hintTextColor)),
                       const SizedBox(height: 4),
                       Text(
                         _selectedBirthDate != null
@@ -752,7 +881,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
             children: [
               Icon(Icons.sports_martial_arts_outlined, color: theme.primaryColor, size: 20),
               const SizedBox(width: 8),
-              Text(l10n.clubInfo, style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold, color: theme.primaryColor)),
+              Text('${l10n.clubInfo} *', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold, color: theme.primaryColor)),
             ],
           ),
           const SizedBox(height: 12),
@@ -892,6 +1021,104 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
             ],
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildRolePicker(BuildContext context, bool isDark, AppLocalizations l10n) {
+    final theme = Theme.of(context);
+    final hintTextColor = isDark ? Colors.white70 : theme.hintColor;
+    final textColor = isDark ? Colors.white : Colors.black87;
+    
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Align(
+          alignment: Alignment.centerLeft,
+          child: Text('${l10n.role} *', style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: hintTextColor)),
+        ),
+        const SizedBox(height: 8),
+        Container(
+          decoration: BoxDecoration(
+            border: Border.all(color: theme.dividerColor),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Column(
+            children: [
+              _buildRoleOption(
+                context: context,
+                value: 'athlete',
+                title: l10n.athlete,
+                icon: Icons.sports_martial_arts_outlined,
+                isDark: isDark,
+                textColor: textColor,
+                theme: theme,
+              ),
+              Divider(height: 1, color: theme.dividerColor),
+              _buildRoleOption(
+                context: context,
+                value: 'coach',
+                title: l10n.coach,
+                icon: Icons.sports_outlined,
+                isDark: isDark,
+                textColor: textColor,
+                theme: theme,
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildRoleOption({
+    required BuildContext context,
+    required String value,
+    required String title,
+    required IconData icon,
+    required bool isDark,
+    required Color textColor,
+    required ThemeData theme,
+  }) {
+    final isSelected = _selectedRole == value;
+    
+    return InkWell(
+      onTap: () => setState(() => _selectedRole = value),
+      borderRadius: BorderRadius.circular(8),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        child: Row(
+          children: [
+            Icon(
+              icon,
+              color: isSelected ? theme.primaryColor : textColor.withOpacity(0.7),
+              size: 24,
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                title,
+                style: TextStyle(
+                  color: isSelected ? theme.primaryColor : textColor,
+                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                  fontSize: 16,
+                ),
+              ),
+            ),
+            if (isSelected)
+              Icon(
+                Icons.check_circle,
+                color: theme.primaryColor,
+                size: 20,
+              )
+            else
+              Icon(
+                Icons.radio_button_unchecked,
+                color: textColor.withOpacity(0.5),
+                size: 20,
+              ),
+          ],
+        ),
       ),
     );
   }

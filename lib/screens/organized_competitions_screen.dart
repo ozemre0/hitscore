@@ -542,12 +542,6 @@ class _OrganizedCompetitionsContentState extends ConsumerState<_OrganizedCompeti
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(
-                Icons.add_circle_outline,
-                size: 64,
-                color: colorScheme.onSurfaceVariant,
-              ),
-              const SizedBox(height: 16),
               Text(
                 l10n.myCompetitionsEmptyTitle,
                 style: Theme.of(context).textTheme.headlineSmall?.copyWith(
@@ -562,6 +556,20 @@ class _OrganizedCompetitionsContentState extends ConsumerState<_OrganizedCompeti
                   color: colorScheme.onSurfaceVariant,
                 ),
                 textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 24),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: _createAndOpenCompetition,
+                  icon: const Icon(Icons.add),
+                  label: Text(l10n.createCompetitionTitle),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: colorScheme.primary,
+                    side: BorderSide(color: colorScheme.primary),
+                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                  ),
+                ),
               ),
             ],
           ),

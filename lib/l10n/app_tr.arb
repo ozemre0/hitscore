@@ -17,6 +17,10 @@
   "role": "Rol",
   "gender": "Cinsiyet",
   "genderRequired": "Cinsiyet zorunludur",
+  "roleRequired": "Rol zorunludur",
+  "roleWarningTitle": "Rol Seçimi Bilgisi",
+  "roleWarningMessage": "Rolünüzü hesabınızı silmeden değiştirmeniz mümkün değildir. Rollerin farklı işlevleri Hit Archery uygulamasında vardır, bu uygulamada her rolün işlevi aynıdır.",
+  "understood": "Anladım",
   "birthDateLabel": "Doğum tarihi",
   "birthDateRequired": "Doğum tarihi zorunludur",
   "phoneNumber": "Telefon numarası",
@@ -75,10 +79,10 @@
   "competitionNameLabel": "Yarışma adı",
   "competitionDescriptionLabel": "Açıklama",
   "competitionDuration": "Yarışma Süresi",
-  "competitionDurationDesc": "Başlangıç ve bitiş tarih/saatini seçin.",
+  "competitionDurationDesc": "Başlangıç ve bitiş tarihlerini seçin.",
   "startDate": "Başlangıç tarihi",
   "endDate": "Bitiş tarihi",
-  "competitionDateHint": "GG.AA.YYYY SS:dd",
+  "competitionDateHint": "GG.AA.YYYY",
   "registrationDatesLabel": "Kayıt Tarihleri",
   "registrationDatesOptional": "Opsiyonel kayıt başlangıç ve bitiş zamanları.",
   "registrationStartLabel": "Kayıt başlangıcı",
@@ -515,6 +519,70 @@
   "matchCompletedDescription": "Maç başarıyla tamamlandı ve kaydedildi",
   "classificationNamePreview": "Klasman İsmi Önizleme",
   "classificationNamePreviewEmpty": "Otomatik oluşturulan ismi görmek için klasman özelliklerini seçin",
-  "autoSelected": "Otomatik Seçildi"
+  "autoSelected": "Otomatik Seçildi",
+  "multiByeSystem": "Çoklu Bay Sistem",
+  "multiByeSystemStart": "Çoklu Bay Eleme Sistemi ({total} → {target} sporcu)",
+  "@multiByeSystemStart": {
+    "placeholders": {
+      "total": {"type": "String"},
+      "target": {"type": "String"}
+    }
+  },
+  "multiByeSystemShort": "3T: {threeRound}, 2T: {twoRound}, 1T: {oneRound}, 0T: {zeroRound}",
+  "@multiByeSystemShort": {
+    "placeholders": {
+      "threeRound": {"type": "String"},
+      "twoRound": {"type": "String"},
+      "oneRound": {"type": "String"},
+      "zeroRound": {"type": "String"}
+    }
+  },
+  "thirdPlaceMatch": "3.lük Maçı",
+  "thirdPlaceMatchTitle": "3.LÜK MAÇI",
+  "thirdPlaceMatchDescription": "3.LÜK: L{round}_1 vs L{round}_2",
+  "@thirdPlaceMatchDescription": {
+    "placeholders": {
+      "round": {"type": "int"}
+    }
+  },
+  "register": "Kayıt Ol",
+  "forgotPassword": "Şifremi Unuttum",
+  "confirmPasswordLabel": "Şifre Tekrarı",
+  "passwordTooShort": "Şifre en az 6 karakter olmalıdır",
+  "passwordMismatch": "Şifreler eşleşmiyor",
+  "emailRequired": "E-posta gereklidir",
+  "tooManyRequests": "Çok fazla istek. Lütfen daha sonra tekrar deneyin",
+  "emailVerificationRequiredContent": "Adresinize bir doğrulama e-postası gönderdik. Lütfen e-postanızı kontrol edin ve hesabınızı etkinleştirmek için doğrulama bağlantısına tıklayın.",
+  "emailAlreadyRegisteredTitle": "E-posta Zaten Kayıtlı",
+  "emailAlreadyRegisteredMessage": "Bu e-posta adresi zaten kayıtlı. Lütfen giriş yapmayı deneyin.",
+  "goToLogin": "Giriş Ekranına Git",
+  "forgotPasswordTitle": "Şifremi Unuttum",
+  "forgotPasswordDescription": "E-posta adresinizi girin, size şifre sıfırlama bağlantısı gönderelim.",
+  "sendResetLink": "Sıfırlama Bağlantısı Gönder",
+  "resetLinkSent": "Şifre sıfırlama bağlantısı e-postanıza gönderildi",
+  "resetPasswordTitle": "Şifre Sıfırla",
+  "newPasswordLabel": "Yeni Şifre",
+  "confirmPasswordRequired": "Lütfen şifrenizi onaylayın",
+  "passwordRequired": "Şifre gereklidir",
+  "resetPasswordButton": "Şifreyi Sıfırla",
+  "passwordResetSuccess": "Şifre başarıyla sıfırlandı",
+  "redirectingToLogin": "Giriş sayfasına yönlendiriliyor...",
+  "invalidResetLink": "Geçersiz veya süresi dolmuş sıfırlama bağlantısı",
+  "invalidResetLinkDescription": "Bu şifre sıfırlama bağlantısı geçersiz veya süresi dolmuş. Lütfen yeni bir şifre sıfırlama isteği gönderin.",
+  "backToLogin": "Giriş Ekranına Dön",
+  "tokenExpired": "Şifre sıfırlama bağlantısının süresi doldu",
+  "passwordResetError": "Şifre sıfırlama hatası",
+  "processingAuthentication": "Sıfırlama bağlantısı doğrulanıyor...",
+  "resetPasswordNewPasswordTitle": "Yeni Şifre Girin",
+  "resetPasswordNewPasswordDescription": "Lütfen aşağıya yeni şifrenizi girin",
+  "tokenExpiryWarning": "Bu sıfırlama bağlantısının süresi hızla doluyor. Lütfen işlemi hemen tamamlayın.",
+  "error": "Hata: {message}",
+  "@error": {
+    "placeholders": {
+      "message": {
+        "type": "String"
+      }
+    }
+  }
 }
 

@@ -1,0 +1,223 @@
+=== TÜM MAÇLARIN TAM LİSTESİ (SİMÜLASYON) ===
+
+Bu dosya, 5 farklı durum için, ilk turdan final maçına kadar olan tüm maçların tam listesini içerir.
+Simülasyon Varsayımı: Her maçta, seribaşı numarası daha düşük olan (daha yüksek rütbeli) oyuncu kazanır.
+
+------------------------------------------------------------
+=== DURUM 1: 200 Oyuncu -> 64'lük Ana Tablo ===
+------------------------------------------------------------
+
+--- Round 1 (144 oyuncu -> 72 maç) ---
+Maç 1: 57 vs 200 -> Kazanan: 57
+Maç 2: 58 vs 199 -> Kazanan: 58
+Maç 3: 59 vs 198 -> Kazanan: 59
+... (ve diğerleri)
+Maç 71: 127 vs 130 -> Kazanan: 127
+Maç 72: 128 vs 129 -> Kazanan: 128
+(Not: Round 1 kazananları 57'den 128'e kadar olan oyunculardır.)
+
+--- Round 2 (76 oyuncu -> 38 maç) ---
+(Katılımcılar: 53-56 seribaşları + 72 galip)
+Maç 1: 53 vs 128 (W1_72) -> Kazanan: 53
+Maç 2: 54 vs 127 (W1_71) -> Kazanan: 54
+Maç 3: 55 vs 126 (W1_70) -> Kazanan: 55
+Maç 4: 56 vs 125 (W1_69) -> Kazanan: 56
+Maç 5: 57 (W1_1) vs 124 (W1_68) -> Kazanan: 57
+...
+Maç 38: 90 (W1_34) vs 91 (W1_35) -> Kazanan: 90
+(Not: Round 2 kazananları 53'ten 90'a kadar olan oyunculardır.)
+
+--- Round 3 (52 oyuncu -> 26 maç) ---
+(Katılımcılar: 39-52 seribaşları + 38 galip)
+Maç 1: 39 vs 90 (W2_38) -> Kazanan: 39
+Maç 2: 40 vs 89 (W2_37) -> Kazanan: 40
+...
+Maç 14: 52 vs 77 (W2_25) -> Kazanan: 52
+Maç 15: 53 (W2_1) vs 76 (W2_24) -> Kazanan: 53
+...
+Maç 26: 64 (W2_12) vs 65 (W2_13) -> Kazanan: 64
+(Not: Round 3 kazananları 39'dan 64'e kadar olan oyunculardır.)
+
+--- Round 4 (Ana Tablo - 64 Oyuncu) ---
+(Katılımcılar: 1-38 seribaşları + 26 galip. Bu oyuncular birleşerek 1-64 arası sıralamayı oluşturur.)
+Maç 1: 1 vs 64 -> Kazanan: 1
+Maç 2: 32 vs 33 -> Kazanan: 32
+Maç 3: 17 vs 48 -> Kazanan: 17
+Maç 4: 16 vs 49 -> Kazanan: 16
+Maç 5: 9 vs 56 -> Kazanan: 9
+Maç 6: 24 vs 41 -> Kazanan: 24
+Maç 7: 25 vs 40 -> Kazanan: 25
+Maç 8: 8 vs 57 -> Kazanan: 8
+Maç 9: 5 vs 60 -> Kazanan: 5
+Maç 10: 28 vs 37 -> Kazanan: 28
+Maç 11: 21 vs 44 -> Kazanan: 21
+Maç 12: 12 vs 53 -> Kazanan: 12
+Maç 13: 13 vs 52 -> Kazanan: 13
+Maç 14: 20 vs 45 -> Kazanan: 20
+Maç 15: 29 vs 36 -> Kazanan: 29
+Maç 16: 4 vs 61 -> Kazanan: 4
+Maç 17: 3 vs 62 -> Kazanan: 3
+Maç 18: 30 vs 35 -> Kazanan: 30
+Maç 19: 19 vs 46 -> Kazanan: 19
+Maç 20: 14 vs 51 -> Kazanan: 14
+Maç 21: 11 vs 54 -> Kazanan: 11
+Maç 22: 22 vs 43 -> Kazanan: 22
+Maç 23: 27 vs 38 -> Kazanan: 27
+Maç 24: 6 vs 59 -> Kazanan: 6
+Maç 25: 7 vs 58 -> Kazanan: 7
+Maç 26: 26 vs 39 -> Kazanan: 26
+Maç 27: 23 vs 42 -> Kazanan: 23
+Maç 28: 10 vs 55 -> Kazanan: 10
+Maç 29: 15 vs 50 -> Kazanan: 15
+Maç 30: 18 vs 47 -> Kazanan: 18
+Maç 31: 31 vs 34 -> Kazanan: 31
+Maç 32: 2 vs 63 -> Kazanan: 2
+
+--- Round of 32 (Son 32 Turu) ---
+Maç 1: 1 vs 32 -> Kazanan: 1
+Maç 2: 17 vs 16 -> Kazanan: 16
+Maç 3: 9 vs 24 -> Kazanan: 9
+Maç 4: 25 vs 8 -> Kazanan: 8
+Maç 5: 5 vs 28 -> Kazanan: 5
+Maç 6: 21 vs 12 -> Kazanan: 12
+Maç 7: 13 vs 20 -> Kazanan: 13
+Maç 8: 29 vs 4 -> Kazanan: 4
+Maç 9: 3 vs 30 -> Kazanan: 3
+Maç 10: 19 vs 14 -> Kazanan: 14
+Maç 11: 11 vs 22 -> Kazanan: 11
+Maç 12: 27 vs 6 -> Kazanan: 6
+Maç 13: 7 vs 26 -> Kazanan: 7
+Maç 14: 23 vs 10 -> Kazanan: 10
+Maç 15: 15 vs 18 -> Kazanan: 15
+Maç 16: 31 vs 2 -> Kazanan: 2
+
+--- Round of 16 (Son 16 Turu) ---
+Maç 1: 1 vs 16 -> Kazanan: 1
+Maç 2: 9 vs 8 -> Kazanan: 8
+Maç 3: 5 vs 12 -> Kazanan: 5
+Maç 4: 13 vs 4 -> Kazanan: 4
+Maç 5: 3 vs 14 -> Kazanan: 3
+Maç 6: 11 vs 6 -> Kazanan: 6
+Maç 7: 7 vs 10 -> Kazanan: 7
+Maç 8: 15 vs 2 -> Kazanan: 2
+
+--- Çeyrek Final ---
+Maç 1: 1 vs 8 -> Kazanan: 1
+Maç 2: 5 vs 4 -> Kazanan: 4
+Maç 3: 3 vs 6 -> Kazanan: 3
+Maç 4: 7 vs 2 -> Kazanan: 2
+
+--- Yarı Final ---
+Maç 1: 1 vs 4 -> Kazanan: 1 (Finale çıkar), Kaybeden: 4 (3.lük maçına çıkar)
+Maç 2: 3 vs 2 -> Kazanan: 2 (Finale çıkar), Kaybeden: 3 (3.lük maçına çıkar)
+
+--- Final Maçları ---
+Üçüncülük Maçı: 3 vs 4
+Final: 1 vs 2
+
+------------------------------------------------------------
+=== DURUM 2: 162 Oyuncu -> 64'lük Ana Tablo ===
+------------------------------------------------------------
+(Not: Bu ve sonraki durumlar için sadece Ana Tablodan itibaren tam maç listesi verilmiştir, çünkü eleme turları benzer bir mantıkla işler ve ana tablo en kritik kısımdır.)
+
+--- Round 4 (Ana Tablo - 64 Oyuncu) ---
+(Katılımcılar: 1-46 seribaşları + 18 galip. Bu oyuncular birleşerek 1-64 arası sıralamayı oluşturur.)
+Maç 1: 1 vs 64 -> Kazanan: 1
+Maç 2: 32 vs 33 -> Kazanan: 32
+... (Standart 64'lük fikstür uygulanır) ...
+Maç 32: 2 vs 63 -> Kazanan: 2
+
+--- Round of 32 (Son 32 Turu) ---
+Maç 1: 1 vs 32 -> Kazanan: 1
+Maç 2: 17 vs 16 -> Kazanan: 16
+...
+Maç 16: 31 vs 2 -> Kazanan: 2
+
+--- Round of 16 (Son 16 Turu) ---
+Maç 1: 1 vs 16 -> Kazanan: 1
+Maç 2: 9 vs 8 -> Kazanan: 8
+...
+Maç 8: 15 vs 2 -> Kazanan: 2
+
+--- Çeyrek Final ---
+Maç 1: 1 vs 8 -> Kazanan: 1
+Maç 2: 5 vs 4 -> Kazanan: 4
+Maç 3: 3 vs 6 -> Kazanan: 3
+Maç 4: 7 vs 2 -> Kazanan: 2
+
+--- Yarı Final ---
+Maç 1: 1 vs 4 -> Kazanan: 1
+Maç 2: 3 vs 2 -> Kazanan: 2
+
+--- Final Maçları ---
+Üçüncülük Maçı: 3 vs 4
+Final: 1 vs 2
+
+------------------------------------------------------------
+=== DURUM 3: 120 Oyuncu -> 64'lük Ana Tablo ===
+------------------------------------------------------------
+(Ana Tabloya 1-44 seribaşı ve 20 galip katılır.)
+... (Sonraki turlar DURUM 1 ve 2 ile aynı şekilde ilerler) ...
+
+--- Final Maçları ---
+Üçüncülük Maçı: 3 vs 4
+Final: 1 vs 2
+
+------------------------------------------------------------
+=== DURUM 4: 104 Oyuncu -> 32'lik Ana Tablo ===
+------------------------------------------------------------
+
+--- Round 4 (Ana Tablo - 32 Oyuncu) ---
+(Katılımcılar: 1-20 seribaşları + 12 galip. Bu oyuncular birleşerek 1-32 arası sıralamayı oluşturur.)
+Maç 1: 1 vs 32 -> Kazanan: 1
+Maç 2: 16 vs 17 -> Kazanan: 16
+Maç 3: 9 vs 24 -> Kazanan: 9
+Maç 4: 8 vs 25 -> Kazanan: 8
+Maç 5: 5 vs 28 -> Kazanan: 5
+Maç 6: 12 vs 21 -> Kazanan: 12
+Maç 7: 13 vs 20 -> Kazanan: 13
+Maç 8: 4 vs 29 -> Kazanan: 4
+Maç 9: 3 vs 30 -> Kazanan: 3
+Maç 10: 14 vs 19 -> Kazanan: 14
+Maç 11: 11 vs 22 -> Kazanan: 11
+Maç 12: 6 vs 27 -> Kazanan: 6
+Maç 13: 7 vs 26 -> Kazanan: 7
+Maç 14: 10 vs 23 -> Kazanan: 10
+Maç 15: 15 vs 18 -> Kazanan: 15
+Maç 16: 2 vs 31 -> Kazanan: 2
+
+--- Round of 16 (Son 16 Turu) ---
+Maç 1: 1 vs 16 -> Kazanan: 1
+Maç 2: 9 vs 8 -> Kazanan: 8
+Maç 3: 5 vs 12 -> Kazanan: 5
+Maç 4: 13 vs 4 -> Kazanan: 4
+Maç 5: 3 vs 14 -> Kazanan: 3
+Maç 6: 11 vs 6 -> Kazanan: 6
+Maç 7: 7 vs 10 -> Kazanan: 7
+Maç 8: 15 vs 2 -> Kazanan: 2
+
+--- Çeyrek Final ---
+Maç 1: 1 vs 8 -> Kazanan: 1
+Maç 2: 5 vs 4 -> Kazanan: 4
+Maç 3: 3 vs 6 -> Kazanan: 3
+Maç 4: 7 vs 2 -> Kazanan: 2
+
+--- Yarı Final ---
+Maç 1: 1 vs 4 -> Kazanan: 1
+Maç 2: 3 vs 2 -> Kazanan: 2
+
+--- Final Maçları ---
+Üçüncülük Maçı: 3 vs 4
+Final: 1 vs 2
+
+------------------------------------------------------------
+=== DURUM 5: 90 Oyuncu -> 64'lük Ana Tablo ===
+------------------------------------------------------------
+(Ana Tabloya 1-54 seribaşı ve 10 galip katılır.)
+... (Sonraki turlar DURUM 1 ve 2 ile aynı şekilde ilerler) ...
+
+--- Final Maçları ---
+Üçüncülük Maçı: 3 vs 4
+Final: 1 vs 2
+
+------------------------------------------------------------

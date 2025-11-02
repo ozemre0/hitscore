@@ -45,6 +45,27 @@ final profileDisplayNameProvider = FutureProvider<String>((ref) async {
   }
 });
 
+/// Checks if the current user has a profile in the database.
+/// Returns true if profile exists, false if not, null if no user is authenticated.
+final profileExistsProvider = FutureProvider<bool?>((ref) async {
+  // Recompute whenever auth state changes
+  ref.watch(authStateProvider);
+  final User? currentUser = SupabaseConfig.client.auth.currentUser;
+  if (currentUser == null) return null;
+
+  try {
+    final dynamic response = await SupabaseConfig.client
+        .from('profiles')
+        .select('id')
+        .eq('id', currentUser.id)
+        .maybeSingle();
+    
+    return response != null;
+  } catch (_) {
+    return false;
+  }
+});
+
 /// Returns only the user's `first_name` for lightweight displays (like welcome banner).
 /// Falls back to `visible_id` if `first_name` is missing, otherwise empty string.
 final profileFirstNameProvider = FutureProvider<String>((ref) async {

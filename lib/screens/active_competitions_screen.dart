@@ -421,7 +421,7 @@ class _ActiveCompetitionsScreenState extends State<ActiveCompetitionsScreen> {
       if (user == null) return;
       await SupabaseConfig.client
           .from('organized_competition_participants')
-          .update({'status': 'cancelled', 'updated_at': DateTime.now().toIso8601String()})
+          .delete()
           .match({
         'organized_competition_id': competition['organized_competition_id'],
         'user_id': user.id,
@@ -856,12 +856,8 @@ class _ActiveCompetitionsScreenState extends State<ActiveCompetitionsScreen> {
                             ),
                           ),
                           const SizedBox(width: 4),
-                          IconButton(
-                            icon: const Icon(Icons.copy, size: 16),
-                            padding: EdgeInsets.zero,
-                            constraints: const BoxConstraints(),
-                            tooltip: l10n.competitionVisibleIdCopyTooltip,
-                            onPressed: () async {
+                          GestureDetector(
+                            onTap: () async {
                               await Clipboard.setData(ClipboardData(
                                 text: c['competition_visible_id'].toString(),
                               ));
@@ -871,17 +867,20 @@ class _ActiveCompetitionsScreenState extends State<ActiveCompetitionsScreen> {
                                 );
                               }
                             },
+                            child: Tooltip(
+                              message: l10n.competitionVisibleIdCopyTooltip,
+                              child: Icon(
+                                Icons.copy,
+                                size: 16,
+                                color: colorScheme.onSurfaceVariant,
+                              ),
+                            ),
                           ),
                         ],
                       ),
                     ),
                   ]),
                 ],
-                Row(children: [
-                  Icon(Icons.how_to_reg, size: 16, color: colorScheme.onSurfaceVariant),
-                  const SizedBox(width: 4),
-                  Text(canRegister ? l10n.registrationOpen : l10n.registrationClosed, style: Theme.of(context).textTheme.bodySmall?.copyWith(color: colorScheme.onSurfaceVariant)),
-                ]),
                 const SizedBox(height: 12),
                 if (_pendingCompetitionIds.contains(c['organized_competition_id'])) ...[
                   Row(children: [

@@ -1,25 +1,27 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../models/profile_model.dart';
 import '../../models/club_model.dart';
 import '../../services/profile_service.dart';
 import '../../services/club_service.dart';
 import '../../services/supabase_config.dart';
 import '../home_screen.dart';
-import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+import 'package:archeryozs/l10n/app_localizations.dart';
 import 'dart:io';
 import 'package:image_picker/image_picker.dart';
 import '../../services/storage_service.dart';
 import '../login_screen.dart';
 import 'package:intl_phone_number_input/intl_phone_number_input.dart';
+import '../../providers/apple_signin_provider.dart';
 
-class ProfileSetupScreen extends StatefulWidget {
+class ProfileSetupScreen extends ConsumerStatefulWidget {
   const ProfileSetupScreen({super.key});
 
   @override
-  State<ProfileSetupScreen> createState() => _ProfileSetupScreenState();
+  ConsumerState<ProfileSetupScreen> createState() => _ProfileSetupScreenState();
 }
 
-class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
+class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
   final _formKey = GlobalKey<FormState>();
   final _firstNameController = TextEditingController();
   final _lastNameController = TextEditingController();
@@ -29,7 +31,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
   final _clubService = ClubService();
   final _storageService = StorageService();
   final _imagePicker = ImagePicker();
-  String _selectedRole = 'athlete';
+  String? _selectedRole;
   String? _selectedGender;
   DateTime? _selectedBirthDate;
   bool _isLoading = false;
@@ -157,13 +159,88 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
       final user = SupabaseConfig.client.auth.currentUser;
       if (user == null) return;
 
+      // Check for Apple credential data first
+      final appleCredential = ref.read(appleCredentialProvider);
+      print('[DEBUG] ProfileSetupScreen: Apple credential check - ${appleCredential != null}');
+      if (appleCredential != null) {
+        print('[DEBUG] ProfileSetupScreen: Apple credential found - givenName: ${appleCredential.givenName}, familyName: ${appleCredential.familyName}');
+        
+        // Check if we have valid name data from Apple credential
+        bool hasValidNameData = (appleCredential.givenName != null && appleCredential.givenName!.isNotEmpty) ||
+                               (appleCredential.familyName != null && appleCredential.familyName!.isNotEmpty);
+        
+        if (hasValidNameData) {
+          // Auto-fill name fields from Apple credential
+          if (mounted) {
+            setState(() {
+              if (appleCredential.givenName != null && appleCredential.givenName!.isNotEmpty) {
+                _firstNameController.text = appleCredential.givenName!;
+                print('[DEBUG] ProfileSetupScreen: First name set to: ${appleCredential.givenName}');
+              }
+              if (appleCredential.familyName != null && appleCredential.familyName!.isNotEmpty) {
+                _lastNameController.text = appleCredential.familyName!;
+                print('[DEBUG] ProfileSetupScreen: Last name set to: ${appleCredential.familyName}');
+              }
+            });
+          }
+          print('[DEBUG] ProfileSetupScreen: Apple credential auto-filled: ${appleCredential.givenName} ${appleCredential.familyName}');
+        } else {
+          print('[DEBUG] ProfileSetupScreen: Apple credential found but no valid name data (givenName: ${appleCredential.givenName}, familyName: ${appleCredential.familyName})');
+          print('[DEBUG] ProfileSetupScreen: This is normal - Apple only provides name data on first sign-in');
+          
+          // Try to get name from user metadata
+          final user = SupabaseConfig.client.auth.currentUser;
+          if (user != null && user.userMetadata != null) {
+            final metadata = user.userMetadata!;
+            final fullName = metadata['full_name'] as String?;
+            final givenName = metadata['given_name'] as String?;
+            final familyName = metadata['family_name'] as String?;
+            
+            print('[DEBUG] ProfileSetupScreen: User metadata - fullName: $fullName, givenName: $givenName, familyName: $familyName');
+            print('[DEBUG] ProfileSetupScreen: Full user metadata: $metadata');
+            
+            // Try alternative metadata fields that Apple might use
+            final alternativeFields = {
+              'name': metadata['name'] as String?,
+              'display_name': metadata['display_name'] as String?,
+              'first_name': metadata['first_name'] as String?,
+              'last_name': metadata['last_name'] as String?,
+              'given_name': metadata['given_name'] as String?,
+              'family_name': metadata['family_name'] as String?,
+            };
+            
+            print('[DEBUG] ProfileSetupScreen: Alternative metadata fields: $alternativeFields');
+            
+            if (mounted) {
+              setState(() {
+                if (givenName != null && givenName.isNotEmpty) {
+                  _firstNameController.text = givenName;
+                  print('[DEBUG] ProfileSetupScreen: First name set from metadata: $givenName');
+                }
+                if (familyName != null && familyName.isNotEmpty) {
+                  _lastNameController.text = familyName;
+                  print('[DEBUG] ProfileSetupScreen: Last name set from metadata: $familyName');
+                }
+              });
+            }
+          }
+        }
+      } else {
+        print('[DEBUG] ProfileSetupScreen: No Apple credential found');
+      }
+
       final existingProfile = await _profileService.getProfile(user.id);
       if (!mounted) return;
 
       if (existingProfile != null) {
         setState(() {
-          _firstNameController.text = existingProfile.firstName;
-          _lastNameController.text = existingProfile.lastName;
+          // Use existing profile data, but fallback to Apple credential if fields are empty
+          _firstNameController.text = existingProfile.firstName.isNotEmpty 
+              ? existingProfile.firstName 
+              : (appleCredential?.givenName ?? '');
+          _lastNameController.text = existingProfile.lastName.isNotEmpty 
+              ? existingProfile.lastName 
+              : (appleCredential?.familyName ?? '');
           _addressController.text = existingProfile.address ?? '';
           // Initialize phone: parse "+<code> <number>" into dialCode + local number
           final existingPhone = existingProfile.phoneNumber;
@@ -299,6 +376,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
     }
   }
 
+
   Future<void> _selectDate(BuildContext context) async {
     final DateTime? picked = await showDatePicker(
       context: context,
@@ -337,6 +415,12 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
 
   Future<void> _submitForm() async {
     if (!_formKey.currentState!.validate()) return;
+    if (_selectedRole == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(AppLocalizations.of(context).roleRequired)),
+      );
+      return;
+    }
     if (_selectedBirthDate == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(AppLocalizations.of(context).birthDateRequired)),
@@ -349,6 +433,31 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
       );
       return;
     }
+
+    // Show role change warning dialog
+    final l10n = AppLocalizations.of(context);
+    final shouldContinue = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(l10n.roleChangeWarningTitle),
+        content: Text(l10n.roleChangeWarningMessage),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: Text(l10n.cancelButton),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: Text(l10n.continueButton),
+          ),
+        ],
+      ),
+    );
+
+    if (shouldContinue != true) {
+      return; // User cancelled
+    }
+
     setState(() => _isLoading = true);
     try {
       final user = SupabaseConfig.client.auth.currentUser;
@@ -378,7 +487,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
           id: user.id,
           firstName: _firstNameController.text,
           lastName: _lastNameController.text,
-          role: _selectedRole,
+          role: _selectedRole!,
           gender: _selectedGender,
           birthDate: _selectedBirthDate!,
           address: _addressController.text.isNotEmpty ? _addressController.text : null,
@@ -392,6 +501,9 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
         );
         await _profileService.createProfile(profile);
         if (mounted) {
+          // Clear Apple credential data after successful profile creation
+          ref.read(appleCredentialProvider.notifier).clearCredential();
+          
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text(AppLocalizations.of(context).profileUpdated)),
           );
@@ -628,7 +740,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
         TextFormField(
           controller: _firstNameController,
           decoration: InputDecoration(
-            labelText: l10n.firstName,
+            labelText: '${l10n.firstName} *',
             labelStyle: TextStyle(color: hintTextColor),
             border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
           ),
@@ -638,7 +750,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
         TextFormField(
           controller: _lastNameController,
           decoration: InputDecoration(
-            labelText: l10n.lastName,
+            labelText: '${l10n.lastName} *',
             labelStyle: TextStyle(color: hintTextColor),
             border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
           ),
@@ -660,6 +772,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
             l10n.phoneNumber,
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                   color: hintTextColor,
+                  fontWeight: FontWeight.w500,
                 ),
           ),
         ),
@@ -680,34 +793,60 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
     final textColor = isDark ? Colors.white : Colors.black87;
     return Column(
       children: [
-        DropdownButtonFormField<String>(
-          value: _selectedRole,
-          decoration: InputDecoration(
-            labelText: l10n.role,
-            labelStyle: TextStyle(color: hintTextColor),
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-          ),
-          items: [
-            DropdownMenuItem(
-              value: 'athlete',
-              child: Text(l10n.athlete, style: TextStyle(color: textColor)),
+        Text('${l10n.role} *', style: theme.textTheme.bodyMedium?.copyWith(color: hintTextColor)),
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            Expanded(
+              child: Container(
+                decoration: BoxDecoration(
+                  border: Border.all(color: theme.dividerColor),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: RadioListTile<String>(
+                  title: Text(
+                    l10n.athlete,
+                    style: TextStyle(fontSize: 15, color: textColor),
+                  ),
+                  value: 'athlete',
+                  groupValue: _selectedRole,
+                  onChanged: (value) {
+                    setState(() => _selectedRole = value);
+                  },
+                  contentPadding: EdgeInsets.zero,
+                  dense: true,
+                ),
+              ),
             ),
-            DropdownMenuItem(
-              value: 'coach',
-              child: Text(l10n.coach, style: TextStyle(color: textColor)),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Container(
+                decoration: BoxDecoration(
+                  border: Border.all(color: theme.dividerColor),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: RadioListTile<String>(
+                  title: Text(
+                    l10n.coach,
+                    style: TextStyle(fontSize: 15, color: textColor),
+                  ),
+                  value: 'coach',
+                  groupValue: _selectedRole,
+                  onChanged: (value) {
+                    setState(() => _selectedRole = value);
+                  },
+                  contentPadding: EdgeInsets.zero,
+                  dense: true,
+                ),
+              ),
             ),
           ],
-          onChanged: (value) {
-            if (value != null) {
-              setState(() => _selectedRole = value);
-            }
-          },
         ),
         const SizedBox(height: 16),
         DropdownButtonFormField<String>(
           value: _selectedGender,
           decoration: InputDecoration(
-            labelText: l10n.gender,
+            labelText: '${l10n.gender} *',
             labelStyle: TextStyle(color: hintTextColor),
             border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
           ),
@@ -744,7 +883,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(l10n.birthDate, style: theme.textTheme.bodyMedium?.copyWith(color: hintTextColor)),
+                      Text('${l10n.birthDate} *', style: theme.textTheme.bodyMedium?.copyWith(color: hintTextColor)),
                       const SizedBox(height: 4),
                       Text(
                         _selectedBirthDate != null
@@ -808,6 +947,8 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
     final hintTextColor = isDark ? Colors.white70 : theme.hintColor;
     final textColor = isDark ? Colors.white : Colors.black87;
     final cardColor = isDark ? theme.colorScheme.surface : theme.cardColor;
+    final l10n = AppLocalizations.of(context);
+    
     return Container(
       decoration: BoxDecoration(
         border: Border.all(color: theme.dividerColor),
@@ -831,10 +972,13 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
           }
         },
         style: TextStyle(color: textColor),
-        decoration: const InputDecoration(
-          border: InputBorder.none,
-          contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 14),
-        ),
+         decoration: InputDecoration(
+           hintText: l10n.selectCountryCode,
+           hintStyle: TextStyle(color: hintTextColor.withOpacity(0.7)),
+           border: InputBorder.none,
+           contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+           prefixIcon: Icon(Icons.flag_outlined, color: hintTextColor),
+         ),
         icon: Icon(Icons.arrow_drop_down, size: 24, color: hintTextColor),
         isExpanded: true,
         dropdownColor: cardColor,
@@ -862,7 +1006,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
             keyboardType: TextInputType.number,
             style: TextStyle(color: isDark ? Colors.white : Colors.black87),
             decoration: InputDecoration(
-              hintText: AppLocalizations.of(context).phoneNumber,
+              hintText: AppLocalizations.of(context).phoneNumberSimple,
               hintStyle: TextStyle(color: hintTextColor),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(8),
@@ -906,7 +1050,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
           keyboardType: TextInputType.number,
           style: TextStyle(color: isDark ? Colors.white : Colors.black87),
           decoration: InputDecoration(
-            hintText: AppLocalizations.of(context).phoneNumber,
+            hintText: AppLocalizations.of(context).phoneNumberSimple,
             hintStyle: TextStyle(color: hintTextColor),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(8),

@@ -96,29 +96,16 @@ class _CreateCompetitionScreenState extends State<CreateCompetitionScreen> {
     super.dispose();
   }
 
-  Future<void> _selectDateTime(TextEditingController controller, DateTime? currentDateTime, Function(DateTime) onDateTimeSelected) async {
+  Future<void> _selectDate(TextEditingController controller, DateTime? currentDate, Function(DateTime) onDateSelected) async {
     final pickedDate = await showDatePicker(
       context: context,
-      initialDate: currentDateTime?.toLocal() ?? DateTime.now(),
+      initialDate: currentDate ?? DateTime.now(),
       firstDate: DateTime(2020),
       lastDate: DateTime(2100),
     );
     if (pickedDate != null) {
-      final pickedTime = await showTimePicker(
-        context: context,
-        initialTime: TimeOfDay.fromDateTime(currentDateTime ?? DateTime.now()),
-      );
-      if (pickedTime != null) {
-        final selectedDateTime = DateTime(
-          pickedDate.year,
-          pickedDate.month,
-          pickedDate.day,
-          pickedTime.hour,
-          pickedTime.minute,
-        );
-        onDateTimeSelected(selectedDateTime);
-        controller.text = "${selectedDateTime.day.toString().padLeft(2, '0')}.${selectedDateTime.month.toString().padLeft(2, '0')}.${selectedDateTime.year} ${selectedDateTime.hour.toString().padLeft(2, '0')}:${selectedDateTime.minute.toString().padLeft(2, '0')}";
-      }
+      onDateSelected(pickedDate);
+      controller.text = "${pickedDate.day.toString().padLeft(2, '0')}.${pickedDate.month.toString().padLeft(2, '0')}.${pickedDate.year}";
     }
   }
 
@@ -166,8 +153,8 @@ class _CreateCompetitionScreenState extends State<CreateCompetitionScreen> {
         'organized_competition_id': competitionId,
         'name': _nameController.text.trim(),
         'description': _descriptionController.text.trim().isEmpty ? null : _descriptionController.text.trim(),
-        'start_date': _startDate!.toIso8601String(),
-        'end_date': _endDate!.toIso8601String(),
+        'start_date': DateTime(_startDate!.year, _startDate!.month, _startDate!.day, 0, 0, 0).toIso8601String(),
+        'end_date': DateTime(_endDate!.year, _endDate!.month, _endDate!.day, 23, 59, 59).toIso8601String(),
         'registration_allowed': _registrationAllowed,
         'score_allowed': _scoreAllowed,
         'competition_visible_id': visibleId,
@@ -327,7 +314,7 @@ class _CreateCompetitionScreenState extends State<CreateCompetitionScreen> {
                     hintText: l10n.competitionDateHint,
                   ),
                   readOnly: true,
-                  onTap: () => _selectDateTime(_startDateController, _startDate, (d) => _startDate = d),
+                  onTap: () => _selectDate(_startDateController, _startDate, (d) => _startDate = d),
                 ),
                 const SizedBox(height: 16),
                 TextField(
@@ -342,7 +329,7 @@ class _CreateCompetitionScreenState extends State<CreateCompetitionScreen> {
                     hintText: l10n.competitionDateHint,
                   ),
                   readOnly: true,
-                  onTap: () => _selectDateTime(_endDateController, _endDate, (d) => _endDate = d),
+                  onTap: () => _selectDate(_endDateController, _endDate, (d) => _endDate = d),
                 ),
               ],
             ),
