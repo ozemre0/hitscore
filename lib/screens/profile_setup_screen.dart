@@ -9,7 +9,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../services/supabase_config.dart';
 import '../providers/profile_providers.dart';
-import '../providers/apple_signin_provider.dart';
 import 'home_shell.dart';
 import 'login_screen.dart';
 
@@ -53,8 +52,6 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
   DateTime? _selectedBirthDate;
 
   bool _isLoading = false;
-  bool _isLoadingCountries = false;
-  bool _isLoadingCities = false;
   bool _isLoadingClubs = false;
 
   String? _selectedCountry;
@@ -90,103 +87,6 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
       final User? user = SupabaseConfig.client.auth.currentUser;
       if (user == null) return;
 
-      // Check if user signed in with Apple Sign In
-      // This auto-fill is ONLY for Apple Sign In users
-      final appleCredential = ref.read(appleCredentialProvider);
-      final isAppleSignIn = appleCredential != null || 
-          (user.appMetadata['provider'] == 'apple') ||
-          (user.userMetadata?['provider'] == 'apple');
-      
-      debugPrint(
-          '[DEBUG] ProfileSetupScreen: Apple Sign In check - credential: ${appleCredential != null}, provider: ${user.appMetadata['provider']}');
-      
-      // Extract Apple name information ONLY if user signed in with Apple
-      String? appleFirstName;
-      String? appleLastName;
-      
-      if (isAppleSignIn) {
-        // First try to get name from Apple credential
-        if (appleCredential != null) {
-          debugPrint(
-              '[DEBUG] ProfileSetupScreen: Apple credential found - givenName: ${appleCredential.givenName}, familyName: ${appleCredential.familyName}');
-
-          appleFirstName = appleCredential.givenName;
-          appleLastName = appleCredential.familyName;
-        }
-        
-        // If Apple credential doesn't have name, try user metadata
-        // Priority: given_name/family_name (Apple's real name fields) > full_name/name (may be from other sources)
-        if ((appleFirstName == null || appleFirstName.isEmpty) &&
-            (appleLastName == null || appleLastName.isEmpty) &&
-            user.userMetadata != null) {
-          final metadata = user.userMetadata!;
-          final givenName = metadata['given_name'] as String?;
-          final familyName = metadata['family_name'] as String?;
-          final fullName = metadata['full_name'] as String?;
-          final name = metadata['name'] as String?;
-
-          debugPrint(
-              '[DEBUG] ProfileSetupScreen: User metadata - givenName: $givenName, familyName: $familyName, fullName: $fullName, name: $name');
-
-          // Priority 1: Try given_name/family_name first (Apple's real name from first sign-in)
-          // These are the actual Apple ID name fields that Apple provides
-          if (givenName != null && givenName.isNotEmpty) {
-            appleFirstName = givenName;
-            debugPrint(
-                '[DEBUG] ProfileSetupScreen: First name set from metadata given_name: $givenName');
-          }
-          if (familyName != null && familyName.isNotEmpty) {
-            appleLastName = familyName;
-            debugPrint(
-                '[DEBUG] ProfileSetupScreen: Last name set from metadata family_name: $familyName');
-          }
-
-          // Priority 2: If given_name/family_name not available, try parsing full_name or name
-          // Note: full_name/name may come from other sources (e.g., linked Google account)
-          if ((appleFirstName == null || appleFirstName.isEmpty) &&
-              (appleLastName == null || appleLastName.isEmpty)) {
-            final nameToParse = fullName ?? name;
-            if (nameToParse != null && nameToParse.isNotEmpty) {
-              final nameParts = nameToParse.trim().split(RegExp(r'\s+'));
-              if (nameParts.isNotEmpty) {
-                // First word as firstName (maps to first_name in profiles table)
-                appleFirstName = nameParts.first;
-                debugPrint(
-                    '[DEBUG] ProfileSetupScreen: Parsed first name from full_name/name: $appleFirstName');
-                
-                // Rest as lastName if there are more words (maps to last_name in profiles table)
-                if (nameParts.length > 1) {
-                  appleLastName = nameParts.skip(1).join(' ');
-                  debugPrint(
-                      '[DEBUG] ProfileSetupScreen: Parsed last name from full_name/name: $appleLastName');
-                }
-              }
-            }
-          }
-        }
-        
-        // Auto-fill name fields if we have Apple name data (ONLY for Apple Sign In)
-        if (mounted && (appleFirstName != null && appleFirstName.isNotEmpty ||
-            appleLastName != null && appleLastName.isNotEmpty)) {
-          setState(() {
-            // Map Apple's givenName -> first_name, familyName -> last_name
-            if (appleFirstName != null && appleFirstName.isNotEmpty) {
-              _firstNameController.text = appleFirstName;
-              debugPrint(
-                  '[DEBUG] ProfileSetupScreen: First name set from Apple: $appleFirstName');
-            }
-            if (appleLastName != null && appleLastName.isNotEmpty) {
-              _lastNameController.text = appleLastName;
-              debugPrint(
-                  '[DEBUG] ProfileSetupScreen: Last name set from Apple: $appleLastName');
-            }
-          });
-        }
-      } else {
-        debugPrint(
-            '[DEBUG] ProfileSetupScreen: Not Apple Sign In, skipping auto-fill');
-      }
-
       final dynamic existing = await SupabaseConfig.client
           .from('profiles')
           .select()
@@ -196,20 +96,9 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
       
       if (existing != null) {
         setState(() {
-          // Use existing profile data, but fallback to Apple credential if fields are empty
-          final existingFirstName = (existing['first_name'] ?? '').toString();
-          final existingLastName = (existing['last_name'] ?? '').toString();
-          
-          // Map Apple's givenName -> first_name, familyName -> last_name
-          // (appleFirstName and appleLastName are already extracted above)
-          
-          // Use existing if available, otherwise use Apple credential/metadata data (ONLY if Apple Sign In)
-          _firstNameController.text = existingFirstName.isNotEmpty
-              ? existingFirstName
-              : (isAppleSignIn ? (appleFirstName ?? '') : '');
-          _lastNameController.text = existingLastName.isNotEmpty
-              ? existingLastName
-              : (isAppleSignIn ? (appleLastName ?? '') : '');
+          // Use existing profile data only
+          _firstNameController.text = (existing['first_name'] ?? '').toString();
+          _lastNameController.text = (existing['last_name'] ?? '').toString();
           _addressController.text = (existing['address'] ?? '').toString();
           final phone = (existing['phone_number'] ?? '').toString();
           _phoneController.text = phone.startsWith('+')
@@ -277,7 +166,6 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
 
   Future<void> _loadCountries() async {
     try {
-      setState(() => _isLoadingCountries = true);
       final List<dynamic> rows = await SupabaseConfig.client
           .from('clubs')
           .select('country')
@@ -291,18 +179,15 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
       if (!mounted) return;
       setState(() {
         _availableCountries = countries;
-        _isLoadingCountries = false;
       });
     } catch (e) {
       if (!mounted) return;
-      setState(() => _isLoadingCountries = false);
       _showNetworkAwareError(e);
     }
   }
 
   Future<void> _loadCitiesForCountry(String country) async {
     try {
-      setState(() => _isLoadingCities = true);
       final List<dynamic> rows = await SupabaseConfig.client
           .from('clubs')
           .select('city')
@@ -317,11 +202,9 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
       if (!mounted) return;
       setState(() {
         _availableCities = cities;
-        _isLoadingCities = false;
       });
     } catch (e) {
       if (!mounted) return;
-      setState(() => _isLoadingCities = false);
       _showNetworkAwareError(e);
     }
   }
@@ -506,9 +389,6 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
 
       if (!mounted) return;
       
-      // Clear Apple credential data after successful profile creation
-      ref.read(appleCredentialProvider.notifier).clearCredential();
-      
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(l10n.profileUpdated)),
       );
@@ -584,16 +464,21 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
       context: context,
       builder: (BuildContext context) {
         final theme = Theme.of(context);
+        final isDark = theme.brightness == Brightness.dark;
+        final textColor = isDark ? Colors.white : Colors.black87;
+        
         return AlertDialog(
+          backgroundColor: theme.dialogBackgroundColor,
           title: Text(
             l10n.exit,
             style: theme.textTheme.titleLarge?.copyWith(
               fontWeight: FontWeight.bold,
+              color: textColor,
             ),
           ),
           content: Text(
             l10n.exitSetupConfirm,
-            style: theme.textTheme.bodyMedium,
+            style: theme.textTheme.bodyMedium?.copyWith(color: textColor),
           ),
           actions: [
             OutlinedButton(
@@ -631,8 +516,6 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
       // Sign out and navigate to login screen
       try {
         await SupabaseConfig.client.auth.signOut();
-        // Clear Apple credential data
-        ref.read(appleCredentialProvider.notifier).clearCredential();
         // Navigate to login screen and remove all previous routes
         Navigator.of(context).pushAndRemoveUntil(
           MaterialPageRoute(builder: (_) => const LoginScreen()),
@@ -659,7 +542,11 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
       barrierDismissible: false,
       builder: (BuildContext context) {
         final theme = Theme.of(context);
+        final isDark = theme.brightness == Brightness.dark;
+        final textColor = isDark ? Colors.white : Colors.black87;
+        
         return AlertDialog(
+          backgroundColor: theme.dialogBackgroundColor,
           title: Row(
             children: [
               Expanded(
@@ -667,7 +554,7 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
                   l10n.roleWarningTitle,
                   style: theme.textTheme.titleLarge?.copyWith(
                     fontWeight: FontWeight.bold,
-                    color: theme.primaryColor,
+                    color: textColor,
                   ),
                 ),
               ),
@@ -687,26 +574,39 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
           ),
           content: Text(
             l10n.roleWarningMessage,
-            style: theme.textTheme.bodyMedium,
+            style: theme.textTheme.bodyMedium?.copyWith(color: textColor),
           ),
           actions: [
             OutlinedButton(
               onPressed: () => Navigator.of(context).pop(true),
               style: OutlinedButton.styleFrom(
-                side: BorderSide(color: theme.primaryColor),
+                side: BorderSide(
+                  color: isDark ? Colors.white.withOpacity(0.7) : theme.primaryColor,
+                  width: 1,
+                ),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(8),
                 ),
               ),
               child: Text(
                 l10n.understood,
-                style: TextStyle(color: theme.primaryColor),
+                style: TextStyle(
+                  color: isDark ? Colors.white : theme.primaryColor,
+                ),
               ),
             ),
           ],
         );
       },
     );
+  }
+
+  bool get _isFormComplete {
+    return _firstNameController.text.trim().isNotEmpty &&
+        _lastNameController.text.trim().isNotEmpty &&
+        _selectedRole != null &&
+        _selectedGender != null &&
+        _selectedBirthDate != null;
   }
 
   @override
@@ -730,13 +630,18 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
         leading: IconButton(
           onPressed: _isLoading ? null : _handleExit,
           icon: const Icon(Icons.close),
-          tooltip: l10n.exit ?? 'Exit',
+          tooltip: l10n.exit,
         ),
         title: Text(l10n.setupProfile),
         actions: [
           IconButton(
             onPressed: _isLoading ? null : _submitForm,
-            icon: const Icon(Icons.save),
+            icon: Icon(
+              Icons.save,
+              color: _isLoading 
+                  ? theme.iconTheme.color?.withOpacity(0.5)
+                  : theme.iconTheme.color,
+            ),
             tooltip: l10n.save,
           ),
         ],
@@ -806,15 +711,30 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
                               width: double.infinity,
                               child: OutlinedButton.icon(
                                 onPressed: _isLoading ? null : _submitForm,
-                                icon: const Icon(Icons.save),
+                                icon: Icon(Icons.save),
                                 label: Text(l10n.save),
                                 style: OutlinedButton.styleFrom(
-                                  side: BorderSide(color: theme.primaryColor, width: 2),
+                                  side: BorderSide(
+                                    color: _isLoading 
+                                        ? (isDark 
+                                            ? Colors.white.withOpacity(0.5)
+                                            : theme.primaryColor.withOpacity(0.5))
+                                        : (_isFormComplete && isDark
+                                            ? Colors.white
+                                            : theme.primaryColor), 
+                                    width: 2,
+                                  ),
                                   shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(8),
                                   ),
                                   padding: const EdgeInsets.symmetric(vertical: 16),
-                                  foregroundColor: theme.primaryColor,
+                                  foregroundColor: _isLoading
+                                      ? (isDark 
+                                          ? Colors.white.withOpacity(0.7)
+                                          : theme.primaryColor.withOpacity(0.7))
+                                      : (_isFormComplete && isDark
+                                          ? Colors.white
+                                          : theme.primaryColor),
                                 ),
                               ),
                             ),
@@ -865,15 +785,15 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
   }
 
   Widget _buildNameFields(BuildContext context, bool isDark, AppLocalizations l10n) {
-    final theme = Theme.of(context);
-    final hintTextColor = isDark ? Colors.white70 : theme.hintColor;
+    final textColor = isDark ? Colors.white : Colors.black87;
     return Column(
       children: [
         TextFormField(
           controller: _firstNameController,
+          onChanged: (_) => setState(() {}),
           decoration: InputDecoration(
             labelText: '${l10n.firstName} *',
-            labelStyle: TextStyle(color: hintTextColor),
+            labelStyle: TextStyle(color: textColor),
             border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
           ),
           validator: (v) => v == null || v.isEmpty ? l10n.firstNameRequired : null,
@@ -881,9 +801,10 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
         const SizedBox(height: 16),
         TextFormField(
           controller: _lastNameController,
+          onChanged: (_) => setState(() {}),
           decoration: InputDecoration(
             labelText: '${l10n.lastName} *',
-            labelStyle: TextStyle(color: hintTextColor),
+            labelStyle: TextStyle(color: textColor),
             border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
           ),
           validator: (v) => v == null || v.isEmpty ? l10n.lastNameRequired : null,
@@ -893,14 +814,14 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
           controller: _addressController,
           decoration: InputDecoration(
             labelText: l10n.addressSimple,
-            labelStyle: TextStyle(color: hintTextColor),
+            labelStyle: TextStyle(color: textColor),
             border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
           ),
         ),
         const SizedBox(height: 16),
         Align(
           alignment: Alignment.centerLeft,
-          child: Text(l10n.phoneNumber, style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: hintTextColor)),
+          child: Text(l10n.phoneNumber, style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: textColor)),
         ),
         const SizedBox(height: 8),
         LayoutBuilder(
@@ -1006,7 +927,7 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
           value: _selectedGender,
           decoration: InputDecoration(
             labelText: '${l10n.gender} *',
-            labelStyle: TextStyle(color: hintTextColor),
+            labelStyle: TextStyle(color: textColor),
             border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
           ),
           items: [
@@ -1031,11 +952,11 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
                 Icon(Icons.calendar_today_outlined, size: 20, color: hintTextColor),
                 const SizedBox(width: 12),
                 Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('${l10n.birthDate} *', style: theme.textTheme.bodyMedium?.copyWith(color: hintTextColor)),
-                      const SizedBox(height: 4),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('${l10n.birthDate} *', style: theme.textTheme.bodyMedium?.copyWith(color: textColor)),
+                        const SizedBox(height: 4),
                       Text(
                         _selectedBirthDate != null
                             ? '${_selectedBirthDate!.day}/${_selectedBirthDate!.month}/${_selectedBirthDate!.year}'
@@ -1079,7 +1000,7 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
             children: [
               Icon(Icons.sports_martial_arts_outlined, color: theme.primaryColor, size: 20),
               const SizedBox(width: 8),
-              Text('${l10n.clubInfo} *', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold, color: theme.primaryColor)),
+              Text('${l10n.clubInfo} *', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold, color: textColor)),
             ],
           ),
           const SizedBox(height: 12),
@@ -1225,7 +1146,6 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
 
   Widget _buildRolePicker(BuildContext context, bool isDark, AppLocalizations l10n) {
     final theme = Theme.of(context);
-    final hintTextColor = isDark ? Colors.white70 : theme.hintColor;
     final textColor = isDark ? Colors.white : Colors.black87;
     
     return Column(
@@ -1233,7 +1153,7 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
       children: [
         Align(
           alignment: Alignment.centerLeft,
-          child: Text('${l10n.role} *', style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: hintTextColor)),
+          child: Text('${l10n.role} *', style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: textColor)),
         ),
         const SizedBox(height: 8),
         Container(
@@ -1285,11 +1205,29 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
       borderRadius: BorderRadius.circular(8),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        decoration: BoxDecoration(
+          color: isSelected 
+              ? (isDark 
+                  ? Colors.white.withOpacity(0.15)
+                  : theme.primaryColor.withOpacity(0.15))
+              : Colors.transparent,
+          borderRadius: BorderRadius.circular(8),
+          border: isSelected 
+              ? Border.all(
+                  color: isDark 
+                      ? Colors.white.withOpacity(0.5)
+                      : theme.primaryColor.withOpacity(0.5),
+                  width: 1,
+                )
+              : null,
+        ),
         child: Row(
           children: [
             Icon(
               icon,
-              color: isSelected ? theme.primaryColor : textColor.withOpacity(0.7),
+              color: isSelected 
+                  ? (isDark ? Colors.white : theme.primaryColor)
+                  : textColor.withOpacity(0.7),
               size: 24,
             ),
             const SizedBox(width: 12),
@@ -1297,7 +1235,9 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
               child: Text(
                 title,
                 style: TextStyle(
-                  color: isSelected ? theme.primaryColor : textColor,
+                  color: isSelected 
+                      ? (isDark ? Colors.white : theme.primaryColor)
+                      : textColor,
                   fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
                   fontSize: 16,
                 ),
@@ -1306,7 +1246,7 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
             if (isSelected)
               Icon(
                 Icons.check_circle,
-                color: theme.primaryColor,
+                color: isDark ? Colors.white : theme.primaryColor,
                 size: 20,
               )
             else
