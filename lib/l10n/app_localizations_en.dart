@@ -526,6 +526,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get competitionVisibleIdCopied => 'Competition ID copied';
 
   @override
+  String get competitionOrganizerLabel => 'Organizer';
+
+  @override
   String get participantsTitle => 'Participants';
 
   @override
@@ -966,6 +969,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get organizersUpdated => 'Organizers updated';
+
+  @override
+  String get organizedBy => 'Organized by';
 
   @override
   String get update => 'Update';
@@ -1443,4 +1449,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String error(String message) {
     return 'Error: $message';
   }
+
+  @override
+  String get classificationDuplicateError => 'This classification already exists. All parameters (age group, bow type, environment, gender, distance) must be unique for each classification.';
 }

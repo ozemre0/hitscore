@@ -191,6 +191,7 @@
   "competitionVisibleIdCopyTooltip": "ID'yi kopyala",
   "competitionVisibleIdCopied": "Yarışma ID kopyalandı"
   ,
+  "competitionOrganizerLabel": "Organizatör",
   "participantsTitle": "Katılımcılar",
   "participantsLoadError": "Katılımcılar yüklenemedi",
   "participantsEmptyTitle": "Henüz katılımcı yok",
@@ -585,6 +586,7 @@
         "type": "String"
       }
     }
-  }
+  },
+  "classificationDuplicateError": "Bu klasman zaten mevcut. Her klasman için tüm parametreler (yaş grubu, yay tipi, ortam, cinsiyet, mesafe) benzersiz olmalıdır."
 }
 

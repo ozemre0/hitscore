@@ -23,6 +23,7 @@ class _ActiveCompetitionsScreenState extends State<ActiveCompetitionsScreen> {
   Timer? _debounce;
   final Set<String> _pendingCompetitionIds = <String>{};
   final Map<String, String> _pendingClassificationNameByCompetitionId = <String, String>{};
+  final Map<String, String> _organizerNameByCompetitionId = <String, String>{};
 
   // Filters
   DateTime? _fromDate;
@@ -93,7 +94,7 @@ class _ActiveCompetitionsScreenState extends State<ActiveCompetitionsScreen> {
     try {
       final response = await SupabaseConfig.client
           .from('organized_competitions')
-          .select('organized_competition_id,name,description,start_date,end_date,competition_visible_id,registration_allowed,status,score_allowed')
+          .select('organized_competition_id,name,description,start_date,end_date,competition_visible_id,registration_allowed,status,score_allowed,created_by,organizer_ids,organizing_club_id')
           .eq('is_deleted', false)
           .eq('status', 'active')
           .eq('registration_allowed', true)
@@ -105,6 +106,7 @@ class _ActiveCompetitionsScreenState extends State<ActiveCompetitionsScreen> {
         _filteredCompetitions = competitions;
       });
       await _loadUserPendingStatuses(competitions);
+      await _loadOrganizerNames(competitions);
       if (mounted) {
         setState(() {
           _isLoading = false;
@@ -116,6 +118,104 @@ class _ActiveCompetitionsScreenState extends State<ActiveCompetitionsScreen> {
         _error = e.toString();
         _isLoading = false;
       });
+    }
+  }
+
+  Future<void> _loadOrganizerNames(List<Map<String, dynamic>> competitions) async {
+    try {
+      if (competitions.isEmpty) return;
+
+      // Collect organizer user ids and club ids
+      final Set<String> organizerUserIds = <String>{};
+      final Set<String> clubIds = <String>{};
+
+      for (final c in competitions) {
+        final dynamic clubId = c['organizing_club_id'];
+        if (clubId is String && clubId.isNotEmpty) {
+          clubIds.add(clubId);
+        }
+
+        final List<dynamic>? organizerIdsDyn = (c['organizer_ids'] as List<dynamic>?);
+        if (organizerIdsDyn != null && organizerIdsDyn.isNotEmpty) {
+          final first = organizerIdsDyn.first;
+          if (first is String && first.isNotEmpty) organizerUserIds.add(first);
+        } else {
+          final createdBy = c['created_by'];
+          if (createdBy is String && createdBy.isNotEmpty) organizerUserIds.add(createdBy);
+        }
+      }
+
+      // Batch fetch clubs
+      final Map<String, String> clubIdToName = <String, String>{};
+      if (clubIds.isNotEmpty) {
+        final rows = await SupabaseConfig.client
+            .from('clubs')
+            .select('club_id,name')
+            .inFilter('club_id', clubIds.toList());
+        for (final r in List<Map<String, dynamic>>.from(rows)) {
+          final id = r['club_id']?.toString();
+          final name = (r['name'] ?? '').toString();
+          if (id != null && name.isNotEmpty) clubIdToName[id] = name;
+        }
+      }
+
+      // Batch fetch profiles for organizers
+      final Map<String, String> userIdToName = <String, String>{};
+      if (organizerUserIds.isNotEmpty) {
+        final rows = await SupabaseConfig.client
+            .from('profiles')
+            .select('id, first_name, last_name, visible_id')
+            .inFilter('id', organizerUserIds.toList());
+        for (final r in List<Map<String, dynamic>>.from(rows)) {
+          final id = r['id']?.toString();
+          final firstName = (r['first_name'] ?? '').toString();
+          final lastName = (r['last_name'] ?? '').toString();
+          final visibleId = (r['visible_id'] ?? '').toString();
+          String name;
+          if (firstName.isNotEmpty || lastName.isNotEmpty) {
+            name = (firstName + ' ' + lastName).trim();
+          } else {
+            name = visibleId;
+          }
+          if (id != null && name.isNotEmpty) userIdToName[id] = name;
+        }
+      }
+
+      // Build map per competition
+      final Map<String, String> byCompetition = <String, String>{};
+      for (final c in competitions) {
+        final compId = c['organized_competition_id']?.toString();
+        if (compId == null) continue;
+        String? display;
+        final dynamic clubId = c['organizing_club_id'];
+        if (clubId is String && clubIdToName.containsKey(clubId)) {
+          display = clubIdToName[clubId];
+        } else {
+          final List<dynamic>? organizerIdsDyn = (c['organizer_ids'] as List<dynamic>?);
+          String? pickUserId;
+          if (organizerIdsDyn != null && organizerIdsDyn.isNotEmpty) {
+            final first = organizerIdsDyn.first;
+            if (first is String && first.isNotEmpty) pickUserId = first;
+          }
+          pickUserId ??= c['created_by']?.toString();
+          if (pickUserId != null) {
+            display = userIdToName[pickUserId];
+          }
+        }
+        if (display != null && display.isNotEmpty) {
+          byCompetition[compId] = display;
+        }
+      }
+
+      if (mounted) {
+        setState(() {
+          _organizerNameByCompetitionId
+            ..clear()
+            ..addAll(byCompetition);
+        });
+      }
+    } catch (_) {
+      // Non-critical; ignore errors
     }
   }
 
@@ -877,6 +977,18 @@ class _ActiveCompetitionsScreenState extends State<ActiveCompetitionsScreen> {
                             ),
                           ),
                         ],
+                      ),
+                    ),
+                  ]),
+                  const SizedBox(height: 4),
+                  Row(children: [
+                    Icon(Icons.account_circle, size: 16, color: colorScheme.onSurfaceVariant),
+                    const SizedBox(width: 4),
+                    Expanded(
+                      child: Text(
+                        '${l10n.competitionOrganizerLabel}: ${_organizerNameByCompetitionId[c['organized_competition_id']] ?? l10n.unknown}',
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(color: colorScheme.onSurfaceVariant),
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
                   ]),

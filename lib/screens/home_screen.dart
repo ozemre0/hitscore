@@ -194,19 +194,19 @@ class _WelcomeBannerCard extends StatelessWidget {
       ),
       color: cs.surface,
       child: Padding(
-        padding: const EdgeInsets.all(20.0),
+        padding: const EdgeInsets.all(14.0),
         child: Row(
           children: [
             Container(
-              width: 64,
-              height: 64,
+              width: 56,
+              height: 56,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 color: cs.primary.withOpacity(0.10),
               ),
-              child: Icon(Icons.waving_hand, color: cs.primary, size: 32),
+              child: Icon(Icons.waving_hand, color: cs.primary, size: 28),
             ),
-            const SizedBox(width: 16),
+            const SizedBox(width: 12),
             Expanded(
               child: Text(
                 title,

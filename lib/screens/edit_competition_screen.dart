@@ -78,13 +78,15 @@ class _EditCompetitionScreenState extends State<EditCompetitionScreen> {
     
     // Parse dates
     if (widget.competition['start_date'] != null) {
-      _startDate = DateTime.parse(widget.competition['start_date']);
-      _startDateController.text = _formatDateTime(_startDate!);
+      final parsedDate = DateTime.parse(widget.competition['start_date']);
+      _startDate = DateTime(parsedDate.year, parsedDate.month, parsedDate.day);
+      _startDateController.text = _formatDate(_startDate!);
     }
     
     if (widget.competition['end_date'] != null) {
-      _endDate = DateTime.parse(widget.competition['end_date']);
-      _endDateController.text = _formatDateTime(_endDate!);
+      final parsedDate = DateTime.parse(widget.competition['end_date']);
+      _endDate = DateTime(parsedDate.year, parsedDate.month, parsedDate.day);
+      _endDateController.text = _formatDate(_endDate!);
     }
     
     // registration window removed
@@ -122,8 +124,8 @@ class _EditCompetitionScreenState extends State<EditCompetitionScreen> {
     }
   }
 
-  String _formatDateTime(DateTime dateTime) {
-    return "${dateTime.day.toString().padLeft(2, '0')}.${dateTime.month.toString().padLeft(2, '0')}.${dateTime.year} ${dateTime.hour.toString().padLeft(2, '0')}:${dateTime.minute.toString().padLeft(2, '0')}";
+  String _formatDate(DateTime dateTime) {
+    return "${dateTime.day.toString().padLeft(2, '0')}.${dateTime.month.toString().padLeft(2, '0')}.${dateTime.year}";
   }
 
   @override
@@ -136,30 +138,22 @@ class _EditCompetitionScreenState extends State<EditCompetitionScreen> {
     super.dispose();
   }
 
-  Future<void> _selectDateTime(TextEditingController controller, DateTime? currentDateTime, Function(DateTime) onDateTimeSelected) async {
+  Future<void> _selectDate(TextEditingController controller, DateTime? currentDate, Function(DateTime) onDateSelected) async {
     final pickedDate = await showDatePicker(
       context: context,
-      initialDate: currentDateTime?.toLocal() ?? DateTime.now(),
+      initialDate: currentDate?.toLocal() ?? DateTime.now(),
       firstDate: DateTime(2020),
       lastDate: DateTime(2100),
     );
     if (pickedDate != null) {
-      final pickedTime = await showTimePicker(
-        context: context,
-        initialTime: TimeOfDay.fromDateTime(currentDateTime ?? DateTime.now()),
+      final selectedDate = DateTime(
+        pickedDate.year,
+        pickedDate.month,
+        pickedDate.day,
       );
-      if (pickedTime != null) {
-        final selectedDateTime = DateTime(
-          pickedDate.year,
-          pickedDate.month,
-          pickedDate.day,
-          pickedTime.hour,
-          pickedTime.minute,
-        );
-        onDateTimeSelected(selectedDateTime);
-        controller.text = _formatDateTime(selectedDateTime);
-        _checkForChanges();
-      }
+      onDateSelected(selectedDate);
+      controller.text = _formatDate(selectedDate);
+      _checkForChanges();
     }
   }
 
@@ -393,7 +387,7 @@ class _EditCompetitionScreenState extends State<EditCompetitionScreen> {
                         hintText: l10n.competitionDateHint,
                       ),
                       readOnly: true,
-                      onTap: () => _selectDateTime(_startDateController, _startDate, (d) => _startDate = d),
+                      onTap: () => _selectDate(_startDateController, _startDate, (d) => _startDate = d),
                     ),
                     const SizedBox(height: 16),
                     TextField(
@@ -405,7 +399,7 @@ class _EditCompetitionScreenState extends State<EditCompetitionScreen> {
                         hintText: l10n.competitionDateHint,
                       ),
                       readOnly: true,
-                      onTap: () => _selectDateTime(_endDateController, _endDate, (d) => _endDate = d),
+                      onTap: () => _selectDate(_endDateController, _endDate, (d) => _endDate = d),
                     ),
                     // registration date section removed
                     const SizedBox(height: 24),
@@ -479,7 +473,10 @@ class _EditCompetitionScreenState extends State<EditCompetitionScreen> {
                             ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
                             : const Icon(Icons.save),
                         label: Text(_isLoading ? l10n.savingInProgress : l10n.save),
-                        style: ElevatedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 16)),
+                        style: ElevatedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          side: BorderSide(color: Theme.of(context).colorScheme.outline),
+                        ),
                       ),
                     ),
                     const SizedBox(height: 16),

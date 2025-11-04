@@ -526,6 +526,9 @@ class AppLocalizationsTr extends AppLocalizations {
   String get competitionVisibleIdCopied => 'Yarışma ID kopyalandı';
 
   @override
+  String get competitionOrganizerLabel => 'Organizatör';
+
+  @override
   String get participantsTitle => 'Katılımcılar';
 
   @override
@@ -966,6 +969,9 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get organizersUpdated => 'Organizatörler güncellendi';
+
+  @override
+  String get organizedBy => 'Organizatör';
 
   @override
   String get update => 'Güncelle';
@@ -1443,4 +1449,7 @@ class AppLocalizationsTr extends AppLocalizations {
   String error(String message) {
     return 'Hata: $message';
   }
+
+  @override
+  String get classificationDuplicateError => 'Bu klasman zaten mevcut. Her klasman için tüm parametreler (yaş grubu, yay tipi, ortam, cinsiyet, mesafe) benzersiz olmalıdır.';
 }

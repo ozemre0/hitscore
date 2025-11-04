@@ -342,7 +342,10 @@ class _CreateCompetitionScreenState extends State<CreateCompetitionScreen> {
                     ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
                     : const Icon(Icons.save),
                 label: Text(_isLoading ? l10n.savingInProgress : l10n.saveAndContinue),
-                style: ElevatedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 16)),
+                style: ElevatedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  side: BorderSide(color: Theme.of(context).colorScheme.outline),
+                ),
               ),
             ),
             const SizedBox(height: 16),

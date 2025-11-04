@@ -191,6 +191,7 @@
   "competitionVisibleIdCopyTooltip": "Copy ID",
   "competitionVisibleIdCopied": "Competition ID copied"
   ,
+  "competitionOrganizerLabel": "Organizer",
   "participantsTitle": "Participants",
   "participantsLoadError": "Failed to load participants",
   "participantsEmptyTitle": "No participants yet",
@@ -587,6 +588,7 @@
         "type": "String"
       }
     }
-  }
+  },
+  "classificationDuplicateError": "This classification already exists. All parameters (age group, bow type, environment, gender, distance) must be unique for each classification."
 }
 

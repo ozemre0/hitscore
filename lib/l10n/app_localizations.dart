@@ -1121,6 +1121,12 @@ abstract class AppLocalizations {
   /// **'Competition ID copied'**
   String get competitionVisibleIdCopied;
 
+  /// No description provided for @competitionOrganizerLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Organizer'**
+  String get competitionOrganizerLabel;
+
   /// No description provided for @participantsTitle.
   ///
   /// In en, this message translates to:
@@ -1972,6 +1978,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Organizers updated'**
   String get organizersUpdated;
+
+  /// No description provided for @organizedBy.
+  ///
+  /// In en, this message translates to:
+  /// **'Organized by'**
+  String get organizedBy;
 
   /// No description provided for @update.
   ///
@@ -2878,6 +2890,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Error: {message}'**
   String error(String message);
+
+  /// No description provided for @classificationDuplicateError.
+  ///
+  /// In en, this message translates to:
+  /// **'This classification already exists. All parameters (age group, bow type, environment, gender, distance) must be unique for each classification.'**
+  String get classificationDuplicateError;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

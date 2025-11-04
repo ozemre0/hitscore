@@ -1025,6 +1025,100 @@ class _CompetitionParticipantsScreenState extends State<CompetitionParticipantsS
                             roundChildren.add(_RoundSeparator(label: l10n.roundSeparator(nextRound), color: cs.primary));
                           }
                         }
+                        
+                        // Calculate statistics: X, 10, 9 counts
+                        int xCount = 0;
+                        int tenCount = 0;
+                        int nineCount = 0;
+                        for (final item in sets) {
+                          if (item is List && item.length >= 2 && item[1] is List) {
+                            final List<dynamic> arrows = List<dynamic>.from(item[1] as List);
+                            for (final v in arrows) {
+                              if (v is String) {
+                                if (v == 'X' || v == l10n.arrowXSymbol) {
+                                  xCount++;
+                                }
+                              } else if (v is num) {
+                                final intValue = v.toInt();
+                                if (intValue == 10) {
+                                  tenCount++;
+                                } else if (intValue == 9) {
+                                  nineCount++;
+                                }
+                              }
+                            }
+                          }
+                        }
+                        
+                        // Add statistics widget after all sets
+                        if (xCount > 0 || tenCount > 0 || nineCount > 0) {
+                          roundChildren.add(
+                            Padding(
+                              padding: const EdgeInsets.only(top: 8.0, bottom: 4.0),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                decoration: BoxDecoration(
+                                  color: cs.primary.withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(8),
+                                  border: Border.all(color: cs.primary.withOpacity(0.3)),
+                                ),
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    if (xCount > 0) ...[
+                                      Text(
+                                        'X: $xCount',
+                                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                          fontWeight: FontWeight.w600,
+                                          color: cs.primary,
+                                        ),
+                                      ),
+                                    ],
+                                    if (xCount > 0 && (tenCount > 0 || nineCount > 0))
+                                      Padding(
+                                        padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                                        child: Text(
+                                          '•',
+                                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                            color: cs.onSurfaceVariant,
+                                          ),
+                                        ),
+                                      ),
+                                    if (tenCount > 0) ...[
+                                      Text(
+                                        '10: $tenCount',
+                                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                          fontWeight: FontWeight.w600,
+                                          color: cs.primary,
+                                        ),
+                                      ),
+                                    ],
+                                    if (tenCount > 0 && nineCount > 0)
+                                      Padding(
+                                        padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                                        child: Text(
+                                          '•',
+                                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                            color: cs.onSurfaceVariant,
+                                          ),
+                                        ),
+                                      ),
+                                    if (nineCount > 0) ...[
+                                      Text(
+                                        '9: $nineCount',
+                                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                          fontWeight: FontWeight.w600,
+                                          color: cs.primary,
+                                        ),
+                                      ),
+                                    ],
+                                  ],
+                                ),
+                              ),
+                            ),
+                          );
+                        }
+                        
                         return roundChildren;
                       }(),
                     ),

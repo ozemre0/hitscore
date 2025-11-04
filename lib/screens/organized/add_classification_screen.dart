@@ -5,7 +5,14 @@ import '../../services/supabase_config.dart';
 
 class AddClassificationScreen extends StatefulWidget {
   final Map<String, dynamic>? initialClassification;
-  const AddClassificationScreen({super.key, this.initialClassification});
+  final List<Map<String, dynamic>>? existingClassifications;
+  final int? excludeIndex;
+  const AddClassificationScreen({
+    super.key,
+    this.initialClassification,
+    this.existingClassifications,
+    this.excludeIndex,
+  });
 
   @override
   State<AddClassificationScreen> createState() => _AddClassificationScreenState();
@@ -259,6 +266,27 @@ class _AddClassificationScreenState extends State<AddClassificationScreen> {
     super.dispose();
   }
 
+  bool _isDuplicateClassification(Map<String, dynamic> newClassification) {
+    if (widget.existingClassifications == null) return false;
+    
+    for (int i = 0; i < widget.existingClassifications!.length; i++) {
+      if (widget.excludeIndex != null && i == widget.excludeIndex) continue;
+      
+      final existing = widget.existingClassifications![i];
+      final existingAgeGroupId = existing['ageGroupId'] ?? existing['age_group_id'];
+      final existingBowType = existing['bowType'] ?? existing['bow_type'];
+      
+      if (existingAgeGroupId == newClassification['ageGroupId'] &&
+          existingBowType == newClassification['bowType'] &&
+          existing['environment'] == newClassification['environment'] &&
+          existing['gender'] == newClassification['gender'] &&
+          existing['distance'] == newClassification['distance']) {
+        return true;
+      }
+    }
+    return false;
+  }
+
   void _save() {
     final l10n = AppLocalizations.of(context)!;
     if (_selectedAgeGroup == null ||
@@ -289,6 +317,23 @@ class _AddClassificationScreenState extends State<AddClassificationScreen> {
     }
 
     final selectedAgeGroup = _ageGroups.firstWhere((age) => age['age_group_id'].toString() == _selectedAgeGroup!);
+
+    // Prepare classification data for duplicate check
+    final classificationData = {
+      'ageGroupId': selectedAgeGroup['age_group_id'],
+      'bowType': _selectedBowType!,
+      'environment': _selectedEnvironment!,
+      'gender': _selectedGender!,
+      'distance': distance,
+    };
+
+    // Check for duplicate before saving
+    if (_isDuplicateClassification(classificationData)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(l10n.classificationDuplicateError)),
+      );
+      return;
+    }
 
     // Format score buttons as string array
     print('DEBUG: Selected score buttons: $_selectedScoreButtons');

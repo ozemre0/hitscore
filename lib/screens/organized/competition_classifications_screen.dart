@@ -90,7 +90,7 @@ class _CompetitionClassificationsScreenState extends State<CompetitionClassifica
 
   Future<void> _addClassification() async {
     final result = await Navigator.of(context).push<Map<String, dynamic>>(MaterialPageRoute(
-      builder: (context) => const AddClassificationScreen(),
+      builder: (context) => AddClassificationScreen(existingClassifications: _classifications),
     ));
     if (result != null) {
       setState(() => _classifications.add(result));
@@ -99,7 +99,11 @@ class _CompetitionClassificationsScreenState extends State<CompetitionClassifica
 
   Future<void> _editClassification(int index) async {
     final result = await Navigator.of(context).push<Map<String, dynamic>>(MaterialPageRoute(
-      builder: (context) => AddClassificationScreen(initialClassification: _classifications[index]),
+      builder: (context) => AddClassificationScreen(
+        initialClassification: _classifications[index],
+        existingClassifications: _classifications,
+        excludeIndex: index,
+      ),
     ));
     if (result != null) {
       setState(() => _classifications[index] = result);
